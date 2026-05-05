@@ -8,7 +8,9 @@ import { queryKeys } from "../../../lib/query-keys";
 import {
   VendorQueryParams,
   CreateVendorDto,
+  CreateVendorCategoryDto,
   UpdateVendorDto,
+  UpdateVendorCategoryDto,
   ReorderVendorsDto,
   PermanentDeleteVendorDto,
   RestoreVendorDto,
@@ -169,6 +171,98 @@ export const useRemoveProductsFromVendor = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.vendors.products(variables.vendorId) });
       queryClient.invalidateQueries({ queryKey: [queryKeys.products.all] });
       showSuccessToast("Products removed from vendor successfully");
+    },
+  });
+};
+
+export const useVendorCategories = (id: number, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: queryKeys.vendors.categories(id),
+    queryFn: () => vendorService.getVendorCategories(id),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? !!id,
+  });
+};
+
+export const useVendorCategoryTree = (id: number, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: queryKeys.vendors.categoryTree(id),
+    queryFn: () => vendorService.getVendorCategoriesTree(id),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? !!id,
+  });
+};
+
+export const useVendorCategory = (
+  vendorId: number,
+  categoryId: number,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: queryKeys.vendors.categoryDetail(vendorId, categoryId),
+    queryFn: () => vendorService.getVendorCategory(vendorId, categoryId),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? (!!vendorId && !!categoryId),
+  });
+};
+
+export const useCreateVendorCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ vendorId, data }: { vendorId: number; data: CreateVendorCategoryDto }) =>
+      vendorService.createVendorCategory(vendorId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.vendors.all] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.detail(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categories(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categoryTree(variables.vendorId) });
+      showSuccessToast("Vendor category created successfully");
+    },
+  });
+};
+
+export const useUpdateVendorCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      categoryId,
+      data,
+    }: {
+      vendorId: number;
+      categoryId: number;
+      data: UpdateVendorCategoryDto;
+    }) => vendorService.updateVendorCategory(vendorId, categoryId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.vendors.all] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.detail(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categories(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categoryTree(variables.vendorId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vendors.categoryDetail(variables.vendorId, variables.categoryId),
+      });
+      showSuccessToast("Vendor category updated successfully");
+    },
+  });
+};
+
+export const useDeleteVendorCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ vendorId, categoryId }: { vendorId: number; categoryId: number }) =>
+      vendorService.deleteVendorCategory(vendorId, categoryId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.vendors.all] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.detail(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categories(variables.vendorId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.vendors.categoryTree(variables.vendorId) });
+      queryClient.removeQueries({
+        queryKey: queryKeys.vendors.categoryDetail(variables.vendorId, variables.categoryId),
+      });
+      showSuccessToast("Vendor category deleted successfully");
     },
   });
 };

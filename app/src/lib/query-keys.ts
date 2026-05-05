@@ -67,6 +67,10 @@ export const queryKeys = {
     all: ["vendors"] as const,
     archived: ["vendors", "archived"] as const,
     products: (id: number) => ["vendors", id, "products"] as const,
+    categories: (id: number) => ["vendors", id, "categories"] as const,
+    categoryTree: (id: number) => ["vendors", id, "categories", "tree"] as const,
+    categoryDetail: (id: number, categoryId: number) =>
+      ["vendors", id, "categories", "detail", categoryId] as const,
     lists: () => [...queryKeys.vendors.all, "list"] as const,
     list: (params?: Record<string, any>) =>
       [...queryKeys.vendors.lists(), params] as const,

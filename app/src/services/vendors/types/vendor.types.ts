@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { ProductChangesPayload } from "../../../lib/product-changes";
+import { Category } from "../../categories/types/category.types";
 
 // Archived Product (included in archived vendor response)
 export interface ArchivedVendorProduct {
@@ -38,7 +39,44 @@ export const vendorSchema = z.object({
 
 export type Vendor = z.infer<typeof vendorSchema> & {
   archivedProducts?: ArchivedVendorProduct[];
+  vendor_categories?: VendorCategory[];
 };
+
+export interface VendorCategorySummary {
+  id: number;
+  title: string;
+  url: string;
+  vendor_id: number;
+  parent_id?: number | null;
+  category_id: number;
+  category_ids: number[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface VendorCategory extends VendorCategorySummary {
+  parent?: VendorCategory | null;
+  children?: VendorCategory[];
+  primary_category?: Category | null;
+  primaryCategory?: Category | null;
+  categories?: Category[];
+}
+
+export interface CreateVendorCategoryDto {
+  title: string;
+  url: string;
+  category_id: number;
+  category_ids?: number[];
+  parent_id?: number | null;
+}
+
+export interface UpdateVendorCategoryDto {
+  title?: string;
+  url?: string;
+  category_id?: number;
+  category_ids?: number[];
+  parent_id?: number | null;
+}
 
 // Create Vendor DTO
 export interface CreateVendorDto {

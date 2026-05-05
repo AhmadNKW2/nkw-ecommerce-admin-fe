@@ -11,9 +11,12 @@ import {
   VendorQueryParams,
   CreateVendorDto,
   UpdateVendorDto,
+  CreateVendorCategoryDto,
   ReorderVendorsDto,
   PermanentDeleteVendorDto,
   RestoreVendorDto,
+  UpdateVendorCategoryDto,
+  VendorCategory,
   VendorRestoreResult,
 } from "../types/vendor.types";
 
@@ -178,6 +181,38 @@ class VendorService {
    */
   async removeProducts(id: number, product_ids: number[]): Promise<ApiResponse<void>> {
     return httpClient.delete<ApiResponse<void>>(`${this.endpoint}/${id}/products`, { product_ids });
+  }
+
+  // ============================================
+  // Vendor Categories Management
+  // ============================================
+
+  async getVendorCategories(id: number): Promise<ApiResponse<VendorCategory[]>> {
+    return httpClient.get<ApiResponse<VendorCategory[]>>(`${this.endpoint}/${id}/categories`);
+  }
+
+  async getVendorCategoriesTree(id: number): Promise<ApiResponse<VendorCategory[]>> {
+    return httpClient.get<ApiResponse<VendorCategory[]>>(`${this.endpoint}/${id}/categories/tree`);
+  }
+
+  async getVendorCategory(id: number, categoryId: number): Promise<ApiResponse<VendorCategory>> {
+    return httpClient.get<ApiResponse<VendorCategory>>(`${this.endpoint}/${id}/categories/${categoryId}`);
+  }
+
+  async createVendorCategory(id: number, data: CreateVendorCategoryDto): Promise<ApiResponse<VendorCategory>> {
+    return httpClient.post<ApiResponse<VendorCategory>>(`${this.endpoint}/${id}/categories`, data);
+  }
+
+  async updateVendorCategory(
+    id: number,
+    categoryId: number,
+    data: UpdateVendorCategoryDto
+  ): Promise<ApiResponse<VendorCategory>> {
+    return httpClient.patch<ApiResponse<VendorCategory>>(`${this.endpoint}/${id}/categories/${categoryId}`, data);
+  }
+
+  async deleteVendorCategory(id: number, categoryId: number): Promise<ApiResponse<void>> {
+    return httpClient.delete<ApiResponse<void>>(`${this.endpoint}/${id}/categories/${categoryId}`);
   }
 }
 

@@ -9,8 +9,7 @@ const ENGLISH_PATTERN = /^[a-zA-Z0-9\s\p{P}]+$/u;
 export const specificationValueSchema = z.object({
   value_en: z
     .string()
-    .min(1, "Required")
-    .regex(ENGLISH_PATTERN, "Must be in English"),
+    .min(1, "Required"),
   value_ar: z
     .string()
     .min(1, "Required"),

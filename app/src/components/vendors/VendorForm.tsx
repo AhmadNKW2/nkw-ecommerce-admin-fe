@@ -5,7 +5,6 @@
  * Reusable form for creating and editing vendors
  */
 
-import { useState } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
@@ -16,7 +15,7 @@ import { PageHeader } from "../common/PageHeader";
 import { Building2 } from "lucide-react";
 import { ProductsTableSection, ProductItem } from "../common/ProductsTableSection";
 import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
-import { VendorCategoryUrlsSection } from "./VendorCategoryUrlsSection";
+import { VendorCategoryTreeSection } from "./VendorCategoryTreeSection";
 
 interface VendorFormProps {
   mode: "create" | "edit";
@@ -74,18 +73,9 @@ export const VendorForm: React.FC<VendorFormProps> = ({
   submitButtonText,
 }) => {
   const router = useRouter();
-  const [hasUnsavedCategoryUrlChanges, setHasUnsavedCategoryUrlChanges] = useState(false);
   useEnterToSubmit(onSubmit, isSubmitting);
 
   const handleBack = () => {
-    if (
-      hasUnsavedCategoryUrlChanges &&
-      typeof window !== "undefined" &&
-      !window.confirm("You have unsaved category URL mapping changes. Leave this page and discard them?")
-    ) {
-      return;
-    }
-
     router.push("/vendors");
   };
 
@@ -176,11 +166,7 @@ export const VendorForm: React.FC<VendorFormProps> = ({
 
       </Card>
 
-      <VendorCategoryUrlsSection
-        mode={mode}
-        vendorId={vendorId}
-        onDirtyChange={setHasUnsavedCategoryUrlChanges}
-      />
+      <VendorCategoryTreeSection mode={mode} vendorId={vendorId} />
 
       {/* Products Section */}
       <Card>

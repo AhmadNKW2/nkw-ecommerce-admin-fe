@@ -16,8 +16,7 @@ const HEX_COLOR_PATTERN = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 export const attributeValueSchema = z.object({
   value_en: z
     .string()
-    .min(1, "Required")
-    .regex(ENGLISH_PATTERN, "Must be in English"),
+    .min(1, "Required"),
   value_ar: z
     .string()
     .min(1, "Required"),

@@ -45,7 +45,8 @@ export type Vendor = z.infer<typeof vendorSchema> & {
 export interface VendorCategorySummary {
   id: number;
   title: string;
-  url: string;
+  reference_link?: string | null;
+  url?: string | null;
   vendor_id: number;
   parent_id?: number | null;
   category_id: number;
@@ -64,7 +65,7 @@ export interface VendorCategory extends VendorCategorySummary {
 
 export interface CreateVendorCategoryDto {
   title: string;
-  url: string;
+  reference_link: string;
   category_id: number;
   category_ids?: number[];
   parent_id?: number | null;
@@ -72,7 +73,7 @@ export interface CreateVendorCategoryDto {
 
 export interface UpdateVendorCategoryDto {
   title?: string;
-  url?: string;
+  reference_link?: string;
   category_id?: number;
   category_ids?: number[];
   parent_id?: number | null;

@@ -41,14 +41,14 @@ type EditorMode = "create-root" | "create-child" | "edit";
 
 interface VendorCategoryFormState {
     title: string;
-    url: string;
+    referenceLink: string;
     parentId: string;
     categoryIds: string[];
 }
 
 interface VendorCategoryFormErrors {
     title?: string;
-    url?: string;
+    referenceLink?: string;
     categoryIds?: string;
 }
 
@@ -59,7 +59,7 @@ interface FlatVendorCategoryNode {
 
 const createEmptyFormState = (): VendorCategoryFormState => ({
     title: "",
-    url: "",
+    referenceLink: "",
     parentId: "",
     categoryIds: [],
 });
@@ -171,6 +171,17 @@ const getMappedCategoryIds = (
     return Array.from(new Set([...directCategoryId, ...fallbackCategoryIds, ...resolvedCategoryIds]));
 };
 
+const getVendorCategoryReferenceLink = (
+    node: VendorCategory | null | undefined
+): string => {
+    if (!node) {
+        return "";
+    }
+
+    const referenceLink = node.reference_link ?? node.url ?? "";
+    return typeof referenceLink === "string" ? referenceLink : "";
+};
+
 const getAssignedStoreCategories = (
     node: VendorCategory | null | undefined,
     categories: Category[]
@@ -217,9 +228,10 @@ const filterVendorCategoryTree = (
     return nodes.flatMap((node) => {
         const categoryNames = getResolvedCategoryList(node, categories)
             .map((category) => category.name_en.toLowerCase());
+        const referenceLink = getVendorCategoryReferenceLink(node);
         const matchesNode = [
             node.title,
-            node.url,
+            referenceLink,
             ...categoryNames,
         ].some((value) => value.toLowerCase().includes(normalizedQuery));
         const filteredChildren = filterVendorCategoryTree(
@@ -270,7 +282,7 @@ interface VendorCategoryTreeNodeProps {
     onAddChild: (node: VendorCategory) => void;
     onEdit: (node: VendorCategory) => void;
     onDelete: (node: VendorCategory) => void;
-    onPreviewUrl: (url: string) => void;
+    onPreviewReferenceLink: (referenceLink: string) => void;
     forceExpanded: boolean;
 }
 
@@ -281,11 +293,12 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
     onAddChild,
     onEdit,
     onDelete,
-    onPreviewUrl,
+    onPreviewReferenceLink,
     forceExpanded,
 }) => {
     const assignedCategories = getAssignedStoreCategories(node, categories);
     const hasChildren = Boolean(node.children?.length);
+    const referenceLink = getVendorCategoryReferenceLink(node);
     const [isExpanded, setIsExpanded] = useState(depth === 0);
 
     const toggleExpanded = () => {
@@ -343,9 +356,9 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                                     No categories assigned
                                 </span>
                             )}
-                            {!node.url?.trim() ? (
+                            {!referenceLink.trim() ? (
                                 <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                                    There are no URL
+                                    No reference link
                                 </span>
                             ) : null}
                         </div>
@@ -356,11 +369,11 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                             type="button"
                             onClick={(event) => {
                                 event.stopPropagation();
-                                onPreviewUrl(node.url);
+                                onPreviewReferenceLink(referenceLink);
                             }}
                             className="rounded-full border border-primary/15 bg-white p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
                             aria-label={`Preview ${node.title}`}
-                            disabled={!node.url?.trim()}
+                            disabled={!referenceLink.trim()}
                         >
                             <ExternalLink className="h-4 w-4" />
                         </button>
@@ -418,7 +431,7 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                                         onAddChild={onAddChild}
                                         onEdit={onEdit}
                                         onDelete={onDelete}
-                                        onPreviewUrl={onPreviewUrl}
+                                        onPreviewReferenceLink={onPreviewReferenceLink}
                                         forceExpanded={forceExpanded}
                                     />
                                 ))}
@@ -517,7 +530,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
         setEditorErrors({});
         setEditorForm({
             title: node.title,
-            url: node.url,
+            referenceLink: getVendorCategoryReferenceLink(node),
             parentId: node.parent_id ? node.parent_id.toString() : "",
             categoryIds,
         });
@@ -537,8 +550,8 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
             nextErrors.title = "Title is required.";
         }
 
-        if (!editorForm.url.trim()) {
-            nextErrors.url = "URL is required.";
+        if (!editorForm.referenceLink.trim()) {
+            nextErrors.referenceLink = "Reference link is required.";
         }
 
         if (editorForm.categoryIds.length === 0) {
@@ -549,12 +562,16 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
         return Object.keys(nextErrors).length === 0;
     };
 
-    const handlePreviewUrl = (url: string) => {
+    const handlePreviewReferenceLink = (referenceLink: string) => {
         try {
-            const normalizedUrl = /^https?:\/\//i.test(url) ? url : url.startsWith("/") ? url : `/${url.replace(/^\/+/, "")}`;
+            const normalizedUrl = /^https?:\/\//i.test(referenceLink)
+                ? referenceLink
+                : referenceLink.startsWith("/")
+                    ? referenceLink
+                    : `/${referenceLink.replace(/^\/+/, "")}`;
             window.open(normalizedUrl, "_blank", "noopener,noreferrer");
         } catch (error) {
-            showErrorToast(getErrorMessage(error, "Failed to preview the vendor category URL."));
+            showErrorToast(getErrorMessage(error, "Failed to preview the vendor category reference link."));
         }
     };
 
@@ -574,7 +591,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
 
         const payload = {
             title: editorForm.title.trim(),
-            url: editorForm.url.trim(),
+            reference_link: editorForm.referenceLink.trim(),
             category_id: mappedCategoryIds[0],
             category_ids: mappedCategoryIds,
             parent_id: editorForm.parentId ? Number(editorForm.parentId) : null,
@@ -664,7 +681,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                             </div>
                             <h3 className="mt-4 text-lg font-semibold text-gray-900">Save the vendor first</h3>
                             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-600">
-                                The vendor category tree is tied to a saved vendor record. Once the vendor exists, you can build a navigation tree, add URLs, and map store categories here.
+                                The vendor category tree is tied to a saved vendor record. Once the vendor exists, you can build a navigation tree, add reference links, and map store categories here.
                             </p>
                         </div>
                     ) : isTreeError ? (
@@ -705,7 +722,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                         <Input
                                             value={searchQuery}
                                             onChange={(event) => setSearchQuery(event.target.value)}
-                                            placeholder="Search title, URL, or category"
+                                            placeholder="Search title, reference link, or category"
                                             isSearch
                                         />
                                     </div>
@@ -742,7 +759,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                     </div>
                                 ) : (
                                     <div className="rounded-3xl border border-dashed border-primary/20 bg-primary/5 p-8 text-center text-sm text-gray-600">
-                                        No categories match your search. Try a title, URL fragment, or category name.
+                                        No categories match your search. Try a title, reference link fragment, or category name.
                                     </div>
                                 )
                             ) : (
@@ -755,7 +772,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                             onAddChild={openCreateChildEditor}
                                             onEdit={openEditEditor}
                                             onDelete={setDeleteTarget}
-                                            onPreviewUrl={handlePreviewUrl}
+                                            onPreviewReferenceLink={handlePreviewReferenceLink}
                                             forceExpanded={searchQuery.trim().length > 0}
                                         />
                                     ))}
@@ -785,7 +802,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                     : "Add Root Category"}
                         </h3>
                         <p className="mt-1 text-sm text-gray-600">
-                            Define the vendor-facing title and URL, then choose the store categories mapped to this node.
+                            Define the vendor-facing title and reference link, then choose the store categories mapped to this node.
                         </p>
                     </div>
                 </div>
@@ -813,12 +830,12 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
 
                 </div>
                 <Input
-                    label="URL"
-                    value={editorForm.url}
+                    label="Reference Link"
+                    value={editorForm.referenceLink}
                     onChange={(event) =>
-                        setEditorForm((current) => ({ ...current, url: event.target.value }))
+                        setEditorForm((current) => ({ ...current, referenceLink: event.target.value }))
                     }
-                    error={editorErrors.url}
+                    error={editorErrors.referenceLink}
                     required
                 />
 

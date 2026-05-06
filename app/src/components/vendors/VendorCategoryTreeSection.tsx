@@ -18,10 +18,9 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Modal } from "../ui/modal";
-import { Select } from "../ui/select";
 import { DeleteConfirmationModal } from "../common/DeleteConfirmationModal";
 import { CategoryTreeSelect } from "../products/CategoryTreeSelect";
-import { showErrorToast, showSuccessToast } from "../../lib/toast";
+import { showErrorToast } from "../../lib/toast";
 import { useCategories } from "../../services/categories/hooks/use-categories";
 import { Category } from "../../services/categories/types/category.types";
 import {
@@ -37,7 +36,7 @@ interface VendorCategoryTreeSectionProps {
     vendorId?: number;
 }
 
-type EditorMode = "create-root" | "create-child" | "edit";
+type EditorMode = "create-child" | "edit";
 
 interface VendorCategoryFormState {
     title: string;
@@ -50,11 +49,6 @@ interface VendorCategoryFormErrors {
     title?: string;
     referenceLink?: string;
     categoryIds?: string;
-}
-
-interface FlatVendorCategoryNode {
-    node: VendorCategory;
-    depth: number;
 }
 
 const createEmptyFormState = (): VendorCategoryFormState => ({
@@ -104,28 +98,6 @@ const findVendorCategoryInTree = (
     return undefined;
 };
 
-const flattenVendorCategories = (
-    nodes: VendorCategory[],
-    depth = 0
-): FlatVendorCategoryNode[] => {
-    return nodes.flatMap((node) => [
-        { node, depth },
-        ...flattenVendorCategories(node.children || [], depth + 1),
-    ]);
-};
-
-const collectDescendantIds = (node: VendorCategory): Set<number> => {
-    const ids = new Set<number>();
-
-    const visit = (current: VendorCategory) => {
-        ids.add(current.id);
-        current.children?.forEach(visit);
-    };
-
-    visit(node);
-    return ids;
-};
-
 const getResolvedCategoryList = (
     node: VendorCategory | null | undefined,
     categories: Category[]
@@ -154,21 +126,8 @@ const getResolvedCategoryList = (
     });
 };
 
-const getMappedCategoryIds = (
-    node: VendorCategory | null | undefined,
-    categories: Category[]
-): number[] => {
-    if (!node) {
-        return [];
-    }
-
-    const directCategoryId = Number.isFinite(node.category_id) ? [node.category_id] : [];
-    const fallbackCategoryIds = Array.isArray(node.category_ids)
-        ? node.category_ids.filter((categoryId) => Number.isFinite(categoryId))
-        : [];
-    const resolvedCategoryIds = getResolvedCategoryList(node, categories).map((category) => category.id);
-
-    return Array.from(new Set([...directCategoryId, ...fallbackCategoryIds, ...resolvedCategoryIds]));
+const getPrimaryCategoryId = (node: VendorCategory | null | undefined): number | null => {
+    return node && Number.isFinite(node.category_id) ? node.category_id : null;
 };
 
 const getVendorCategoryReferenceLink = (
@@ -197,22 +156,11 @@ const getAssignedStoreCategories = (
     );
 };
 
-const countVendorCategories = (nodes: VendorCategory[]): number => {
-    return nodes.reduce(
-        (total, node) => total + 1 + countVendorCategories(node.children || []),
-        0
-    );
-};
-
-const collectUniqueMappedCategoryIds = (nodes: VendorCategory[]): Set<number> => {
-    const ids = new Set<number>();
-
-    for (const node of nodes) {
-        node.category_ids?.forEach((categoryId) => ids.add(categoryId));
-        collectUniqueMappedCategoryIds(node.children || []).forEach((categoryId) => ids.add(categoryId));
-    }
-
-    return ids;
+const getAssignedStoreCategoryIds = (
+    node: VendorCategory | null | undefined,
+    categories: Category[]
+): number[] => {
+    return getAssignedStoreCategories(node, categories).map((category) => category.id);
 };
 
 const filterVendorCategoryTree = (
@@ -252,21 +200,6 @@ const filterVendorCategoryTree = (
     });
 };
 
-const buildParentOptions = (
-    tree: VendorCategory[],
-    excludedIds: Set<number>
-) => {
-    return [
-        { value: "", label: "Top level" },
-        ...flattenVendorCategories(tree)
-            .filter(({ node }) => !excludedIds.has(node.id))
-            .map(({ node, depth }) => ({
-                value: node.id.toString(),
-                label: `${depth > 0 ? `${"— ".repeat(depth)}` : ""}${node.title}`,
-            })),
-    ];
-};
-
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (error instanceof Error && error.message) {
         return error.message;
@@ -277,9 +210,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 interface VendorCategoryTreeNodeProps {
     node: VendorCategory;
-    depth?: number;
     categories: Category[];
-    onAddChild: (node: VendorCategory) => void;
     onEdit: (node: VendorCategory) => void;
     onDelete: (node: VendorCategory) => void;
     onPreviewReferenceLink: (referenceLink: string) => void;
@@ -288,9 +219,7 @@ interface VendorCategoryTreeNodeProps {
 
 const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
     node,
-    depth = 0,
     categories,
-    onAddChild,
     onEdit,
     onDelete,
     onPreviewReferenceLink,
@@ -299,7 +228,7 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
     const assignedCategories = getAssignedStoreCategories(node, categories);
     const hasChildren = Boolean(node.children?.length);
     const referenceLink = getVendorCategoryReferenceLink(node);
-    const [isExpanded, setIsExpanded] = useState(depth === 0);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const toggleExpanded = () => {
         if (hasChildren) {
@@ -381,17 +310,6 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                             type="button"
                             onClick={(event) => {
                                 event.stopPropagation();
-                                onAddChild(node);
-                            }}
-                            className="rounded-full border border-primary/15 bg-white p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
-                            aria-label={`Add child under ${node.title}`}
-                        >
-                            <Plus className="h-4 w-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={(event) => {
-                                event.stopPropagation();
                                 onEdit(node);
                             }}
                             className="rounded-full border border-primary/15 bg-white p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
@@ -426,9 +344,7 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                                     <VendorCategoryTreeNode
                                         key={child.id}
                                         node={child}
-                                        depth={depth + 1}
                                         categories={categories}
-                                        onAddChild={onAddChild}
                                         onEdit={onEdit}
                                         onDelete={onDelete}
                                         onPreviewReferenceLink={onPreviewReferenceLink}
@@ -459,7 +375,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
     } = useVendorCategoryTree(vendorId || 0, { enabled: !isDisabled });
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [editorMode, setEditorMode] = useState<EditorMode>("create-root");
+    const [editorMode, setEditorMode] = useState<EditorMode>("create-child");
     const [editorCategoryId, setEditorCategoryId] = useState<number | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [editorForm, setEditorForm] = useState<VendorCategoryFormState>(createEmptyFormState);
@@ -475,13 +391,6 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
         [categories, categoryTree, searchQuery]
     );
 
-    const totalCategories = useMemo(() => countVendorCategories(categoryTree), [categoryTree]);
-    const totalRoots = categoryTree.length;
-    const uniqueMappedCategoryCount = useMemo(
-        () => collectUniqueMappedCategoryIds(categoryTree).size,
-        [categoryTree]
-    );
-
     const editingNode = useMemo(() => {
         if (!editorCategoryId) {
             return null;
@@ -490,40 +399,16 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
         return findVendorCategoryInTree(categoryTree, editorCategoryId) || null;
     }, [categoryTree, editorCategoryId]);
 
-    const excludedParentIds = useMemo(() => {
-        if (!editingNode || editorMode !== "edit") {
-            return new Set<number>();
+    const parentNode = useMemo(() => {
+        if (!editorForm.parentId) {
+            return null;
         }
 
-        return collectDescendantIds(editingNode);
-    }, [editingNode, editorMode]);
-
-    const parentOptions = useMemo(
-        () => buildParentOptions(categoryTree, excludedParentIds),
-        [categoryTree, excludedParentIds]
-    );
-
-    const openCreateRootEditor = () => {
-        setEditorMode("create-root");
-        setEditorCategoryId(null);
-        setEditorErrors({});
-        setEditorForm(createEmptyFormState());
-        setIsEditorOpen(true);
-    };
-
-    const openCreateChildEditor = (node: VendorCategory) => {
-        setEditorMode("create-child");
-        setEditorCategoryId(null);
-        setEditorErrors({});
-        setEditorForm({
-            ...createEmptyFormState(),
-            parentId: node.id.toString(),
-        });
-        setIsEditorOpen(true);
-    };
+        return findVendorCategoryInTree(categoryTree, Number(editorForm.parentId)) || null;
+    }, [categoryTree, editorForm.parentId]);
 
     const openEditEditor = (node: VendorCategory) => {
-        const categoryIds = getMappedCategoryIds(node, categories).map((categoryId) => categoryId.toString());
+        const categoryIds = getAssignedStoreCategoryIds(node, categories).map((categoryId) => categoryId.toString());
 
         setEditorMode("edit");
         setEditorCategoryId(node.id);
@@ -546,15 +431,15 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
     const validateEditorForm = () => {
         const nextErrors: VendorCategoryFormErrors = {};
 
-        if (!editorForm.title.trim()) {
+        if (editorMode === "create-child" && !editorForm.title.trim()) {
             nextErrors.title = "Title is required.";
         }
 
-        if (!editorForm.referenceLink.trim()) {
+        if (editorMode === "create-child" && !editorForm.referenceLink.trim()) {
             nextErrors.referenceLink = "Reference link is required.";
         }
 
-        if (editorForm.categoryIds.length === 0) {
+        if (editorMode === "create-child" && editorForm.categoryIds.length === 0) {
             nextErrors.categoryIds = "Choose at least one category.";
         }
 
@@ -580,34 +465,49 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
             return;
         }
 
-        const mappedCategoryIds = Array.from(
+        const selectedCategoryIds = Array.from(
             new Set(editorForm.categoryIds.map((categoryId) => Number(categoryId)).filter(Number.isFinite))
         );
 
-        if (mappedCategoryIds.length === 0) {
-            showErrorToast("Choose at least one category.");
-            return;
-        }
-
-        const payload = {
-            title: editorForm.title.trim(),
-            reference_link: editorForm.referenceLink.trim(),
-            category_id: mappedCategoryIds[0],
-            category_ids: mappedCategoryIds,
-            parent_id: editorForm.parentId ? Number(editorForm.parentId) : null,
-        };
-
         try {
             if (editorMode === "edit" && editorCategoryId) {
+                const primaryCategoryId = getPrimaryCategoryId(editingNode);
+                const nextCategoryIds = Array.from(
+                    new Set([
+                        ...(primaryCategoryId === null ? [] : [primaryCategoryId]),
+                        ...selectedCategoryIds,
+                    ])
+                );
+                const fallbackCategoryId = primaryCategoryId ?? nextCategoryIds[0];
+
+                if (!Number.isFinite(fallbackCategoryId)) {
+                    showErrorToast("This vendor category is missing a primary category.");
+                    return;
+                }
+
                 await updateVendorCategory.mutateAsync({
                     vendorId,
                     categoryId: editorCategoryId,
-                    data: payload,
+                    data: {
+                        category_id: fallbackCategoryId,
+                        category_ids: nextCategoryIds,
+                    },
                 });
             } else {
+                if (selectedCategoryIds.length === 0) {
+                    showErrorToast("Choose at least one category.");
+                    return;
+                }
+
                 await createVendorCategory.mutateAsync({
                     vendorId,
-                    data: payload,
+                    data: {
+                        title: editorForm.title.trim(),
+                        reference_link: editorForm.referenceLink.trim(),
+                        category_id: selectedCategoryIds[0],
+                        category_ids: selectedCategoryIds,
+                        parent_id: editorForm.parentId ? Number(editorForm.parentId) : null,
+                    },
                 });
             }
 
@@ -665,12 +565,6 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                     </span>
                                 </Button>
                             )}
-                            <Button onClick={openCreateRootEditor} disabled={isDisabled || isCategoriesLoading}>
-                                <span className="flex items-center gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    Add Root Category
-                                </span>
-                            </Button>
                         </div>
                     </div>
 
@@ -744,18 +638,10 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-primary shadow-sm">
                                             <Tag className="h-6 w-6" />
                                         </div>
-                                        <h4 className="mt-4 text-lg font-semibold text-gray-900">No vendor categories yet</h4>
+                                        <h4 className="mt-4 text-lg font-semibold text-gray-900">No vendor categories available</h4>
                                         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-600">
-                                            Start with a root category, then add child branches for vendor-specific navigation.
+                                            No vendor category nodes are available for this vendor right now.
                                         </p>
-                                        <div className="mt-6 flex justify-center">
-                                            <Button onClick={openCreateRootEditor} disabled={isCategoriesLoading}>
-                                                <span className="flex items-center gap-2">
-                                                    <Plus className="h-4 w-4" />
-                                                    Create First Category
-                                                </span>
-                                            </Button>
-                                        </div>
                                     </div>
                                 ) : (
                                     <div className="rounded-3xl border border-dashed border-primary/20 bg-primary/5 p-8 text-center text-sm text-gray-600">
@@ -769,7 +655,6 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                             key={node.id}
                                             node={node}
                                             categories={categories}
-                                            onAddChild={openCreateChildEditor}
                                             onEdit={openEditEditor}
                                             onDelete={setDeleteTarget}
                                             onPreviewReferenceLink={handlePreviewReferenceLink}
@@ -786,7 +671,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
             <Modal
                 isOpen={isEditorOpen}
                 onClose={closeEditor}
-                className="w-full max-w-5xl"
+                className="w-full max-w-5xl self-start mt-4 sm:mt-6"
                 contentClassName="gap-6"
             >
                 <div className="flex items-start gap-3">
@@ -795,49 +680,48 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                     </div>
                     <div>
                         <h3 className="text-xl font-semibold text-gray-900">
-                            {editorMode === "edit"
-                                ? "Edit Vendor Category"
-                                : editorMode === "create-child"
-                                    ? "Add Child Category"
-                                    : "Add Root Category"}
+                            {editorMode === "edit" ? "Edit Vendor Category" : "Add Child Category"}
                         </h3>
                         <p className="mt-1 text-sm text-gray-600">
-                            Define the vendor-facing title and reference link, then choose the store categories mapped to this node.
+                            {editorMode === "edit"
+                                ? "Update only the mapped store categories assigned to this vendor category."
+                                : "Define the vendor-facing title and reference link, then choose the store categories mapped to this child node."}
                         </p>
                     </div>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
-                    <Input
-                        label="Title"
-                        value={editorForm.title}
-                        onChange={(event) =>
-                            setEditorForm((current) => ({ ...current, title: event.target.value }))
-                        }
-                        error={editorErrors.title}
-                        required
-                    />
-                    <Select
-                        label="Parent Category"
-                        value={editorForm.parentId}
-                        onChange={(value) =>
-                            setEditorForm((current) => ({ ...current, parentId: String(value || "") }))
-                        }
-                        options={parentOptions}
-                        placeholder="Choose parent or keep top level"
-                        onClear={() => setEditorForm((current) => ({ ...current, parentId: "" }))}
-                    />
-
-                </div>
-                <Input
-                    label="Reference Link"
-                    value={editorForm.referenceLink}
-                    onChange={(event) =>
-                        setEditorForm((current) => ({ ...current, referenceLink: event.target.value }))
-                    }
-                    error={editorErrors.referenceLink}
-                    required
-                />
+                {editorMode === "create-child" ? (
+                    <>
+                        <div className="grid gap-5 md:grid-cols-2">
+                            <Input
+                                label="Title"
+                                value={editorForm.title}
+                                onChange={(event) =>
+                                    setEditorForm((current) => ({ ...current, title: event.target.value }))
+                                }
+                                error={editorErrors.title}
+                                required
+                            />
+                            <div className="rounded-[22px] border border-primary/10 bg-primary/5 px-4 py-3">
+                                <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                    Parent Category
+                                </span>
+                                <p className="mt-1 text-sm font-semibold text-gray-900">
+                                    {parentNode?.title || "Selected parent"}
+                                </p>
+                            </div>
+                        </div>
+                        <Input
+                            label="Reference Link"
+                            value={editorForm.referenceLink}
+                            onChange={(event) =>
+                                setEditorForm((current) => ({ ...current, referenceLink: event.target.value }))
+                            }
+                            error={editorErrors.referenceLink}
+                            required
+                        />
+                    </>
+                ) : null}
 
                 <div className="grid gap-5">
                     <CategoryTreeSelect
@@ -851,7 +735,6 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                             }))
                         }
                         error={editorErrors.categoryIds}
-                        placeholder="Choose one or more categories"
                         disabled={isCategoriesLoading}
                     />
                 </div>
@@ -870,7 +753,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                             ) : (
                                 <Tag className="h-4 w-4" />
                             )}
-                            {editorMode === "edit" ? "Save Category" : "Create Category"}
+                            {editorMode === "edit" ? "Save Mapping" : "Create Category"}
                         </span>
                     </Button>
                 </div>

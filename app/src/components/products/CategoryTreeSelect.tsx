@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Checkbox } from "../ui/checkbox";
 import { Badge } from "../ui/badge";
@@ -205,15 +206,51 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [panelPosition, setPanelPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    direction: "up" | "down";
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasValue = selectedIds.length > 0;
+
+  const updatePanelPosition = useCallback(() => {
+    if (!containerRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const viewportPadding = 16;
+    const dropdownOffset = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openUpward = spaceBelow < 280 && spaceAbove > spaceBelow;
+    const availableSpace = openUpward ? spaceAbove : spaceBelow;
+    const width = Math.min(rect.width, window.innerWidth - viewportPadding * 2);
+    const left = Math.min(
+      Math.max(viewportPadding, rect.left),
+      window.innerWidth - width - viewportPadding
+    );
+
+    setPanelPosition({
+      top: openUpward ? rect.top - dropdownOffset : rect.bottom + dropdownOffset,
+      left,
+      width,
+      maxHeight: Math.max(180, Math.min(360, availableSpace - dropdownOffset)),
+      direction: openUpward ? "up" : "down",
+    });
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node) &&
+        !panelRef.current?.contains(event.target as Node)
       ) {
         setIsOpen(false);
         setIsFocused(false);
@@ -229,13 +266,31 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
   // Focus search input when opening
   useEffect(() => {
     if (isOpen && inputRef.current) {
+      updatePanelPosition();
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     } else {
       setSearchTerm(""); // Reset search when closing
+      setPanelPosition(null);
     }
-  }, [isOpen]);
+  }, [isOpen, updatePanelPosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    updatePanelPosition();
+
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [isOpen, updatePanelPosition]);
 
   const selectedCategories = useMemo(() => {
     return selectedIds
@@ -253,75 +308,19 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
     onChange([]);
   };
 
-  return (
-    <div id={id} ref={containerRef} className="relative group">
-      <FieldWrapper
-        label={label}
-        error={error}
-        isFocused={isFocused || isOpen}
-        hasValue={hasValue}
-      >
-        <div
-          className={cn(
-              getFieldClasses(error, hasValue),
-              "h-13 cursor-pointer flex items-center justify-between min-h-[42px] py-1 px-3 bg-white transition-all duration-200",
-              isOpen && " border-secondary shadow-s2",
-              disabled && "opacity-50 cursor-not-allowed bg-gray-50"
-            )}
-            onClick={() => {
-              if (disabled) return;
-              setIsOpen(!isOpen);
-              setIsFocused(!isOpen);
+  const dropdownPanel =
+    isOpen && panelPosition && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              top: panelPosition.top,
+              left: panelPosition.left,
+              width: panelPosition.width,
+              transform: panelPosition.direction === "up" ? "translateY(-100%)" : undefined,
             }}
-            tabIndex={disabled ? -1 : 0}
-            onKeyDown={(e) => {
-              if (disabled) return;
-              if (e.key === 'Enter' || e.key === ' ') {
-                setIsOpen(!isOpen);
-                setIsFocused(!isOpen);
-              }
-            }}
-        >
-          <div className="flex flex-wrap gap-1.5 flex-1 overflow-hidden">
-            {selectedCategories.length > 0 ? (
-              selectedCategories.map((category) => (
-                <Badge 
-                  key={category.id} 
-                  variant="default" 
-                  className="pl-2 pr-1 py-0.5 h-6 text-xs font-medium flex items-center gap-1 hover:bg-secondary/20 transition-colors"
-                >
-                  <span className="truncate max-w-[150px]">{category.name_en}</span>
-                  <div 
-                    role="button"
-                    className="rounded-full p-0.5 hover:bg-secondary/30 cursor-pointer"
-                    onClick={(e) => handleRemove(e, category.id.toString())}
-                  >
-                    <X className="h-3 w-3" />
-                  </div>
-                </Badge>
-              ))
-            ) : (
-              <span className="text-muted-foreground text-sm">{placeholder}</span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 pl-2">
-            {selectedIds.length > 0 && (
-              <div 
-                role="button"
-                onClick={handleClearAll}
-                className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-full hover:bg-gray-100"
-                title="Clear all"
-              >
-                <X className="h-4 w-4" />
-              </div>
-            )}
-            <ChevronDown className={cn("h-4 w-4 text-primary/60 transition-transform duration-300", isOpen && "rotate-180")} />
-          </div>
-        </div>
-
-        {isOpen && (
-          <div className="absolute z-50 w-full bg-white border border-primary/20 rounded-lg shadow-xl mt-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top">
+            className="fixed z-70 border border-primary/20 rounded-lg bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top"
+          >
             <div className="p-2 border-b border-primary/20 bg-gray-50/50">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -335,8 +334,11 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                 />
               </div>
             </div>
-            
-            <div className="max-h-[300px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+
+            <div
+              className="overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+              style={{ maxHeight: panelPosition.maxHeight }}
+            >
               {categories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   No categories found
@@ -351,7 +353,7 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                       {recentCategories.map((recentCategory) => (
                         <CategoryTreeNode
                           key={`recent-${recentCategory.id}`}
-                          category={{...recentCategory, children: undefined}} // Flat list for recents
+                          category={{ ...recentCategory, children: undefined }}
                           selectedIds={selectedIds}
                           onChange={onChange}
                           singleSelect={singleSelect}
@@ -389,15 +391,86 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                  </div>
               )}
             </div>
-            
+
             {!singleSelect && (
               <div className="p-2 border-t border-primary/20 bg-gray-50/50 flex justify-between items-center text-xs text-muted-foreground px-3">
                 <span>{selectedIds.length} selected</span>
               </div>
             )}
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div id={id} ref={containerRef} className="relative group">
+      <FieldWrapper
+        label={label}
+        error={error}
+        isFocused={isFocused || isOpen}
+        hasValue={hasValue}
+      >
+        <div
+          className={cn(
+              getFieldClasses(error, hasValue),
+              "h-13 cursor-pointer flex items-center justify-between min-h-10.5 py-1 px-3 bg-white transition-all duration-200",
+              isOpen && " border-secondary shadow-s2",
+              disabled && "opacity-50 cursor-not-allowed bg-gray-50"
+            )}
+            onClick={() => {
+              if (disabled) return;
+              setIsOpen(!isOpen);
+              setIsFocused(!isOpen);
+            }}
+            tabIndex={disabled ? -1 : 0}
+            onKeyDown={(e) => {
+              if (disabled) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                setIsOpen(!isOpen);
+                setIsFocused(!isOpen);
+              }
+            }}
+        >
+          <div className="flex flex-wrap gap-1.5 flex-1 overflow-hidden">
+            {selectedCategories.length > 0 ? (
+              selectedCategories.map((category) => (
+                <Badge 
+                  key={category.id} 
+                  variant="default" 
+                  className="pl-2 pr-1 py-0.5 h-6 text-xs font-medium flex items-center gap-1 hover:bg-secondary/20 transition-colors"
+                >
+                  <span className="truncate max-w-37.5">{category.name_en}</span>
+                  <div 
+                    role="button"
+                    className="rounded-full p-0.5 hover:bg-secondary/30 cursor-pointer"
+                    onClick={(e) => handleRemove(e, category.id.toString())}
+                  >
+                    <X className="h-3 w-3" />
+                  </div>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-muted-foreground text-sm">{placeholder}</span>
+            )}
           </div>
-        )}
+          
+          <div className="flex items-center gap-2 pl-2">
+            {selectedIds.length > 0 && (
+              <div 
+                role="button"
+                onClick={handleClearAll}
+                className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-full hover:bg-gray-100"
+                title="Clear all"
+              >
+                <X className="h-4 w-4" />
+              </div>
+            )}
+            <ChevronDown className={cn("h-4 w-4 text-primary/60 transition-transform duration-300", isOpen && "rotate-180")} />
+          </div>
+        </div>
+
       </FieldWrapper>
+      {dropdownPanel}
     </div>
   );
 };

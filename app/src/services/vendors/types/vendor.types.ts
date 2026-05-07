@@ -66,16 +66,14 @@ export interface VendorCategory extends VendorCategorySummary {
 export interface CreateVendorCategoryDto {
   title: string;
   reference_link: string;
-  category_id: number;
-  category_ids?: number[];
+  category_ids: number[];
   parent_id?: number | null;
 }
 
 export interface UpdateVendorCategoryDto {
   title?: string;
   reference_link?: string;
-  category_id?: number;
-  category_ids?: number[];
+  category_ids: number[];
   parent_id?: number | null;
 }
 

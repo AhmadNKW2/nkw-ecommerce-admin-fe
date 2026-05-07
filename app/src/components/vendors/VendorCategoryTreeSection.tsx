@@ -126,10 +126,6 @@ const getResolvedCategoryList = (
     });
 };
 
-const getPrimaryCategoryId = (node: VendorCategory | null | undefined): number | null => {
-    return node && Number.isFinite(node.category_id) ? node.category_id : null;
-};
-
 const getVendorCategoryReferenceLink = (
     node: VendorCategory | null | undefined
 ): string => {
@@ -439,10 +435,6 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
             nextErrors.referenceLink = "Reference link is required.";
         }
 
-        if (editorMode === "create-child" && editorForm.categoryIds.length === 0) {
-            nextErrors.categoryIds = "Choose at least one category.";
-        }
-
         setEditorErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
@@ -471,40 +463,19 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
 
         try {
             if (editorMode === "edit" && editorCategoryId) {
-                const primaryCategoryId = getPrimaryCategoryId(editingNode);
-                const nextCategoryIds = Array.from(
-                    new Set([
-                        ...(primaryCategoryId === null ? [] : [primaryCategoryId]),
-                        ...selectedCategoryIds,
-                    ])
-                );
-                const fallbackCategoryId = primaryCategoryId ?? nextCategoryIds[0];
-
-                if (!Number.isFinite(fallbackCategoryId)) {
-                    showErrorToast("This vendor category is missing a primary category.");
-                    return;
-                }
-
                 await updateVendorCategory.mutateAsync({
                     vendorId,
                     categoryId: editorCategoryId,
                     data: {
-                        category_id: fallbackCategoryId,
-                        category_ids: nextCategoryIds,
+                        category_ids: selectedCategoryIds,
                     },
                 });
             } else {
-                if (selectedCategoryIds.length === 0) {
-                    showErrorToast("Choose at least one category.");
-                    return;
-                }
-
                 await createVendorCategory.mutateAsync({
                     vendorId,
                     data: {
                         title: editorForm.title.trim(),
                         reference_link: editorForm.referenceLink.trim(),
-                        category_id: selectedCategoryIds[0],
                         category_ids: selectedCategoryIds,
                         parent_id: editorForm.parentId ? Number(editorForm.parentId) : null,
                     },

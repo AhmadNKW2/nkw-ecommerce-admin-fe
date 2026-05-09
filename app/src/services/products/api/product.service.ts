@@ -11,6 +11,9 @@ import {
   ProductNamesFilters,
   ProductNameSummary,
   ProductStatus,
+  ProductImportJobStart,
+  ProductImportJobStatus,
+  BulkReviewReimportAiDto,
   CreateProductDto,
   UpdateProductDto,
   ProductAttributeInput,
@@ -267,6 +270,29 @@ class ProductService extends BaseService<Product> {
     const response = await this.patch(id, { status });
     getQueryClient().invalidateQueries({ queryKey: queryKeys.products.all });
     return response;
+  }
+
+  /**
+   * Re-run AI import for an existing product using its saved import payload
+   */
+  async reimportProductAi(id: string | number): Promise<ApiResponse<ProductImportJobStart>> {
+    return httpClient.post<ApiResponse<ProductImportJobStart>>(`${this.endpoint}/${id}/reimport-ai`, {});
+  }
+
+  /**
+   * Start background AI re-import for review products matching a vendor/category pair
+   */
+  async bulkReimportReviewProductsAi(
+    data: BulkReviewReimportAiDto
+  ): Promise<ApiResponse<ProductImportJobStart>> {
+    return httpClient.post<ApiResponse<ProductImportJobStart>>(`${this.endpoint}/review/reimport-ai`, data);
+  }
+
+  /**
+   * Get background AI import job status
+   */
+  async getImportJobStatus(jobId: string): Promise<ApiResponse<ProductImportJobStatus>> {
+    return httpClient.get<ApiResponse<ProductImportJobStatus>>(`${this.endpoint}/import-jobs/${jobId}`);
   }
 
   // ============================================

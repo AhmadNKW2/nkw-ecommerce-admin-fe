@@ -371,6 +371,42 @@ export interface ProductNamesFilters {
   search?: string;
 }
 
+export interface BulkReviewReimportAiDto {
+  category_id: number;
+  vendor_id: number;
+}
+
+export interface ProductImportJobStart {
+  job_id: string;
+  status?: string;
+}
+
+export interface ProductImportJobResultItem {
+  product_id?: number;
+  name_en?: string;
+  status?: string;
+  error?: string;
+}
+
+export interface ProductImportJobStatus {
+  job_id?: string;
+  status: string;
+  message?: string;
+  result?: {
+    message?: string;
+    matched?: number;
+    reimported?: number;
+    failed?: number;
+    filters?: {
+      status?: ProductStatus;
+      category_id?: number;
+      vendor_id?: number;
+    };
+    results?: ProductImportJobResultItem[];
+  } | null;
+  error?: string | { message?: string } | null;
+}
+
 // ==================== DTOs ====================
 
 //  Product Creation DTOs

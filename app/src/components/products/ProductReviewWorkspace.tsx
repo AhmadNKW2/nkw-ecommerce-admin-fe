@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
     AlertCircle,
@@ -28,15 +28,26 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
+import {
+    finishToastError,
+    finishToastSuccess,
+    showErrorToast,
+    showLoadingToast,
+    updateToast,
+} from "@/lib/toast";
 import { useLoading } from "@/providers/loading-provider";
+import { productService } from "@/services/products/api/product.service";
 import { useCategories } from "@/services/categories/hooks/use-categories";
 import {
+    useBulkReviewReimportAi,
     usePermanentDeleteProduct,
     useProducts,
+    useReimportProductAi,
     useUpdateProduct,
     useUpdateProductWorkflowStatus,
 } from "@/services/products/hooks/use-products";
 import {
+    BulkReviewReimportAiDto,
     Product,
     ProductFilters,
     UpdateProductDto,
@@ -92,6 +103,45 @@ type PriceCandidate = {
 
 const REVIEW_STORAGE_KEY = "products_review";
 const REVIEW_FILTERS_STORAGE_KEY = `${REVIEW_STORAGE_KEY}_filters`;
+const IMPORT_JOB_POLL_INTERVAL_MS = 2500;
+const IMPORT_JOB_MAX_ATTEMPTS = 120;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+const getActionErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    const record = asRecord(error);
+    const message = getDisplayText(record?.message);
+    return message ?? fallback;
+};
+
+const getImportJobId = (payload: unknown) => {
+    const record = asRecord(payload);
+    return getDisplayText(record?.job_id, record?.jobId, record?.id);
+};
+
+const getImportJobStatusValue = (payload: unknown) => {
+    const record = asRecord(payload);
+    return getDisplayText(record?.status, record?.state, record?.job_status)?.toLowerCase() ?? "";
+};
+
+const getImportJobMessage = (payload: unknown, fallback: string) => {
+    const record = asRecord(payload);
+    const result = asRecord(record?.result);
+    const errorRecord = asRecord(record?.error);
+
+    return (
+        getDisplayText(
+            result?.message,
+            record?.message,
+            typeof record?.error === "string" ? record.error : undefined,
+            errorRecord?.message
+        ) ?? fallback
+    );
+};
 
 const formatPriceValue = (value: number) => {
     return value.toLocaleString("en-US", {
@@ -691,16 +741,22 @@ function ProductGroupSection({
 function ProductReviewCard({
     item,
     onApprove,
+    onReimport,
     onSavePrice,
     onDelete,
     isApproving,
+    isBulkReimporting,
+    isReimporting,
     isSavingPrice,
 }: {
     item: QueueItem;
     onApprove: (productId: number) => Promise<void>;
+    onReimport: (productId: number) => Promise<void>;
     onSavePrice: (product: Product, values: PriceOverride) => Promise<void>;
     onDelete: (product: Product) => void;
     isApproving: boolean;
+    isBulkReimporting: boolean;
+    isReimporting: boolean;
     isSavingPrice: boolean;
 }) {
     const { product, snapshot } = item;
@@ -905,7 +961,7 @@ function ProductReviewCard({
                                     label="Edit"
                                     color="var(--color-primary)"
                                     onClick={handleStartEditingPrice}
-                                    disabled={isApproving || isSavingPrice}
+                                    disabled={isApproving || isSavingPrice || isReimporting || isBulkReimporting}
                                     variant="outline"
                                     className="border-slate-200 bg-white text-slate-700"
                                 />
@@ -1016,29 +1072,46 @@ function ProductReviewCard({
                                 icon={<ExternalLink className="h-4 w-4" />}
                                 label="Reference"
                                 onClick={() => openExternalLink(snapshot.referenceUrl)}
-                                disabled={!snapshot.referenceUrl}
+                                disabled={!snapshot.referenceUrl || isSavingPrice || isReimporting || isBulkReimporting}
                                 variant="outline"
                                 color="var(--color-primary2)"
                                 className="w-full border-slate-200 bg-white text-slate-700"
                             />
                             <ReviewActionButton
-                                icon={<PencilLine className="h-4 w-4" />}
-                                label="Editor"
-                                href={`/products/${product.id}`}
-                                color="#64748b"
-                                disabled={isSavingPrice}
+                                icon={
+                                    isReimporting ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="h-4 w-4" />
+                                    )
+                                }
+                                label={isReimporting ? "Re-importing" : "Re-import"}
+                                color="var(--color-primary2)"
+                                onClick={() => onReimport(product.id)}
+                                disabled={isReimporting || isApproving || isSavingPrice || isEditingPrice || isBulkReimporting}
                                 variant="outline"
-                                className="w-full border-slate-200 bg-white text-slate-700"
+                                className="w-full border-primary2/20 bg-primary2/5 text-primary2"
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
                             <ReviewActionButton
+                                icon={
+                                    <PencilLine className="h-4 w-4" />
+                                }
+                                label="Editor"
+                                href={`/products/${product.id}`}
+                                color="#64748b"
+                                disabled={isSavingPrice || isReimporting || isBulkReimporting}
+                                variant="outline"
+                                className="w-full border-slate-200 bg-white text-slate-700"
+                            />
+                            <ReviewActionButton
                                 icon={<TriangleAlert className="h-4 w-4" />}
                                 label="Delete"
                                 color="var(--color-danger)"
                                 onClick={() => onDelete(product)}
-                                disabled={isApproving || isSavingPrice}
+                                disabled={isApproving || isSavingPrice || isReimporting || isBulkReimporting}
                                 variant="outline"
                                 className="w-full border-rose-200 bg-rose-50 text-rose-700"
                             />
@@ -1054,7 +1127,7 @@ function ProductReviewCard({
                                 variant="solid"
                                 color="var(--color-success)"
                                 onClick={() => onApprove(product.id)}
-                                disabled={isApproving || isSavingPrice || isEditingPrice}
+                                disabled={isApproving || isSavingPrice || isEditingPrice || isReimporting || isBulkReimporting}
                                 className="w-full border-success/30 bg-success text-white shadow-[0_12px_28px_-16px_var(--color-success)]"
                             />
                         </div>
@@ -1149,9 +1222,14 @@ export function ProductReviewWorkspace() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [priceOverrides, setPriceOverrides] = useState<Partial<Record<number, PriceOverride>>>({});
+    const [activeReimportProductIds, setActiveReimportProductIds] = useState<number[]>([]);
+    const [isBulkReimporting, setIsBulkReimporting] = useState(false);
+    const isMountedRef = useRef(true);
 
     const { data, isLoading, isFetching, isError, error, refetch } = useProducts(queryParams);
     const approveProduct = useUpdateProductWorkflowStatus();
+    const bulkReviewReimport = useBulkReviewReimportAi();
+    const reimportProduct = useReimportProductAi();
     const updateProduct = useUpdateProduct();
     const permanentDeleteProduct = usePermanentDeleteProduct({
         onSuccess: () => {
@@ -1163,6 +1241,14 @@ export function ProductReviewWorkspace() {
     const { data: vendorsData } = useVendors();
     const categoriesData = useCategories();
     const products = data?.data.data || [];
+
+    useEffect(() => {
+        isMountedRef.current = true;
+
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         setStoredPage(queryParams.page ?? 1);
@@ -1223,6 +1309,98 @@ export function ProductReviewWorkspace() {
     const hasActiveFilters =
         Boolean(searchTerm.trim()) || selectedVendorIds.length > 0 || selectedCategoryIds.length > 0;
 
+    const bulkVendorId = useMemo(() => {
+        if (selectedVendorIds.length !== 1) {
+            return null;
+        }
+
+        const parsedValue = Number(selectedVendorIds[0]);
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+    }, [selectedVendorIds]);
+
+    const bulkCategoryId = useMemo(() => {
+        if (selectedCategoryIds.length !== 1) {
+            return null;
+        }
+
+        const parsedValue = Number(selectedCategoryIds[0]);
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+    }, [selectedCategoryIds]);
+
+    const canBulkReimport = bulkVendorId !== null && bulkCategoryId !== null;
+    const bulkReimportDisabledMessage =
+        selectedVendorIds.length !== 1
+            ? "Select exactly one vendor to enable bulk re-import."
+            : selectedCategoryIds.length !== 1
+                ? "Select exactly one category to enable bulk re-import."
+                : "Bulk AI re-import will run for the selected vendor and category only.";
+
+    const setProductReimportState = (productId: number, isActive: boolean) => {
+        if (!isMountedRef.current) {
+            return;
+        }
+
+        setActiveReimportProductIds((current) => {
+            if (isActive) {
+                return current.includes(productId) ? current : [...current, productId];
+            }
+
+            return current.filter((existingId) => existingId !== productId);
+        });
+    };
+
+    const monitorImportJob = async ({
+        jobId,
+        loadingMessage,
+        successFallback,
+        failureFallback,
+    }: {
+        jobId: string;
+        loadingMessage: string;
+        successFallback: string;
+        failureFallback: string;
+    }) => {
+        const toastId = showLoadingToast(loadingMessage);
+
+        try {
+            for (let attempt = 0; attempt < IMPORT_JOB_MAX_ATTEMPTS; attempt += 1) {
+                const statusResponse = await productService.getImportJobStatus(jobId);
+                const jobStatus = getImportJobStatusValue(statusResponse.data);
+
+                if (jobStatus === "done") {
+                    await refetch();
+                    finishToastSuccess(
+                        toastId,
+                        getImportJobMessage(statusResponse.data, successFallback)
+                    );
+                    return;
+                }
+
+                if (jobStatus === "failed") {
+                    await refetch();
+                    finishToastError(
+                        toastId,
+                        getImportJobMessage(statusResponse.data, failureFallback)
+                    );
+                    return;
+                }
+
+                await sleep(IMPORT_JOB_POLL_INTERVAL_MS);
+            }
+
+            updateToast(toastId, `Import job ${jobId} is still running in the background.`, {
+                type: "info",
+                isLoading: false,
+                autoClose: 5000,
+            });
+        } catch (jobError) {
+            finishToastError(
+                toastId,
+                getActionErrorMessage(jobError, "Failed to track the re-import job.")
+            );
+        }
+    };
+
     const handleVendorChange = (value: string | string[]) => {
         const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
         setSelectedVendorIds(normalized);
@@ -1268,6 +1446,79 @@ export function ProductReviewWorkspace() {
             await approveProduct.mutateAsync({ id: productId, status: "active" });
         } catch (approveError) {
             console.error("Failed to approve product", approveError);
+        }
+    };
+
+    const handleReimportProduct = async (productId: number) => {
+        if (isBulkReimporting || activeReimportProductIds.includes(productId)) {
+            return;
+        }
+
+        setProductReimportState(productId, true);
+
+        try {
+            const response = await reimportProduct.mutateAsync(productId);
+            const jobId = getImportJobId(response.data);
+
+            if (!jobId) {
+                showErrorToast(`Re-import started for product #${productId}, but no job id was returned.`);
+                return;
+            }
+
+            await monitorImportJob({
+                jobId,
+                loadingMessage: `Re-importing product #${productId} with AI...`,
+                successFallback: `Product #${productId} finished re-importing.`,
+                failureFallback: `Product #${productId} failed to re-import.`,
+            });
+        } catch (reimportError) {
+            showErrorToast(
+                getActionErrorMessage(reimportError, `Failed to start re-import for product #${productId}.`)
+            );
+        } finally {
+            setProductReimportState(productId, false);
+        }
+    };
+
+    const handleBulkReimport = async () => {
+        if (!canBulkReimport) {
+            showErrorToast("Select exactly one vendor and one category to bulk re-import review products.");
+            return;
+        }
+
+        if (isBulkReimporting || activeReimportProductIds.length > 0) {
+            return;
+        }
+
+        setIsBulkReimporting(true);
+
+        try {
+            const payload: BulkReviewReimportAiDto = {
+                vendor_id: bulkVendorId,
+                category_id: bulkCategoryId,
+            };
+            const response = await bulkReviewReimport.mutateAsync(payload);
+            const jobId = getImportJobId(response.data);
+
+            if (!jobId) {
+                showErrorToast("Bulk review re-import started, but no job id was returned.");
+                return;
+            }
+
+            await monitorImportJob({
+                jobId,
+                loadingMessage: "Re-importing the filtered review queue with AI...",
+                successFallback: "Bulk review re-import finished.",
+                failureFallback: "Bulk review re-import failed.",
+            });
+        } catch (bulkError) {
+            showErrorToast(
+                getActionErrorMessage(bulkError, "Failed to start the bulk review re-import.")
+            );
+        } finally {
+            if (isMountedRef.current) {
+                setIsBulkReimporting(false);
+            }
         }
     };
 
@@ -1401,6 +1652,27 @@ export function ProductReviewWorkspace() {
                             />
                         </div>
                     </div>
+
+                    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p className="text-xs font-medium text-slate-500">
+                            {bulkReimportDisabledMessage}
+                        </p>
+
+                        <Button
+                            variant="outline"
+                            color="var(--color-primary2)"
+                            onClick={() => void handleBulkReimport()}
+                            disabled={!canBulkReimport || isBulkReimporting || activeReimportProductIds.length > 0}
+                            className="rounded-full px-4"
+                        >
+                            {isBulkReimporting ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                            )}
+                            {isBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
+                        </Button>
+                    </div>
                 </section>
 
                 {!isLoading && queueItems.length === 0 ? (
@@ -1416,10 +1688,15 @@ export function ProductReviewWorkspace() {
                                 key={item.product.id}
                                 item={item}
                                 onApprove={handleApproveProduct}
+                                onReimport={handleReimportProduct}
                                 onSavePrice={handleSavePrice}
                                 onDelete={handleDeleteRequest}
                                 isApproving={
                                     approveProduct.isPending && approveProduct.variables?.id === item.product.id
+                                }
+                                isBulkReimporting={isBulkReimporting}
+                                isReimporting={
+                                    activeReimportProductIds.includes(item.product.id)
                                 }
                                 isSavingPrice={
                                     updateProduct.isPending && updateProduct.variables?.id === item.product.id

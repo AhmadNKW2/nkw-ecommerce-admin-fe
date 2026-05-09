@@ -18,7 +18,9 @@ import {
   ProductDetail,
   CreateProductDto,
   UpdateProductDto,
+  BulkReviewReimportAiDto,
   ProductFilters,
+  ProductImportJobStart,
   ProductNamesFilters,
   ProductNameSummary,
   ProductStatus,
@@ -316,6 +318,30 @@ export function useUpdateProductWorkflowStatus(
 
       options?.onSuccess?.(response, variables, ...rest);
     },
+    ...options,
+  });
+}
+
+/**
+ * Hook to re-run AI import for an existing product
+ */
+export function useReimportProductAi(
+  options?: UseMutationOptions<ApiResponse<ProductImportJobStart>, ApiError, string | number>
+) {
+  return useMutation({
+    mutationFn: (id: string | number) => productService.reimportProductAi(id),
+    ...options,
+  });
+}
+
+/**
+ * Hook to start background AI re-import for the filtered review queue
+ */
+export function useBulkReviewReimportAi(
+  options?: UseMutationOptions<ApiResponse<ProductImportJobStart>, ApiError, BulkReviewReimportAiDto>
+) {
+  return useMutation({
+    mutationFn: (data: BulkReviewReimportAiDto) => productService.bulkReimportReviewProductsAi(data),
     ...options,
   });
 }

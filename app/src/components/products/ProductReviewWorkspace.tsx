@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useJobTracker } from "../../providers/job-tracker-provider";
 import Image from "next/image";
 import {
     AlertCircle,
@@ -32,6 +33,7 @@ import {
     finishToastError,
     finishToastSuccess,
     showErrorToast,
+    showSuccessToast,
     showLoadingToast,
     updateToast,
 } from "@/lib/toast";
@@ -1179,6 +1181,7 @@ function ReviewEmptyState({
 }
 
 export function ProductReviewWorkspace() {
+    const { addJob, activeJobs } = useJobTracker();
     const { setShowOverlay } = useLoading();
     const {
         page: storedPage,
@@ -1225,6 +1228,18 @@ export function ProductReviewWorkspace() {
     const [activeReimportProductIds, setActiveReimportProductIds] = useState<number[]>([]);
     const [isBulkReimporting, setIsBulkReimporting] = useState(false);
     const isMountedRef = useRef(true);
+
+    // Sync button loading state with Tracker:
+    const activeBulkJob = activeJobs.find(job => job.loadingMessage === "Re-importing the filtered review queue with AI...");
+    const computedIsBulkReimporting = isBulkReimporting || !!activeBulkJob;
+
+    const computedActiveReimportProductIds = [
+        ...activeReimportProductIds,
+        ...activeJobs
+            .filter(job => job.loadingMessage.startsWith("Re-importing product #"))
+            .map(job => parseInt(job.loadingMessage.match(/#(\d+)/)?.[1] || "0", 10))
+            .filter(id => id > 0)
+    ];
 
     const { data, isLoading, isFetching, isError, error, refetch } = useProducts(queryParams);
     const approveProduct = useUpdateProductWorkflowStatus();
@@ -1349,58 +1364,6 @@ export function ProductReviewWorkspace() {
         });
     };
 
-    const monitorImportJob = async ({
-        jobId,
-        loadingMessage,
-        successFallback,
-        failureFallback,
-    }: {
-        jobId: string;
-        loadingMessage: string;
-        successFallback: string;
-        failureFallback: string;
-    }) => {
-        const toastId = showLoadingToast(loadingMessage);
-
-        try {
-            for (let attempt = 0; attempt < IMPORT_JOB_MAX_ATTEMPTS; attempt += 1) {
-                const statusResponse = await productService.getImportJobStatus(jobId);
-                const jobStatus = getImportJobStatusValue(statusResponse.data);
-
-                if (jobStatus === "done") {
-                    await refetch();
-                    finishToastSuccess(
-                        toastId,
-                        getImportJobMessage(statusResponse.data, successFallback)
-                    );
-                    return;
-                }
-
-                if (jobStatus === "failed") {
-                    await refetch();
-                    finishToastError(
-                        toastId,
-                        getImportJobMessage(statusResponse.data, failureFallback)
-                    );
-                    return;
-                }
-
-                await sleep(IMPORT_JOB_POLL_INTERVAL_MS);
-            }
-
-            updateToast(toastId, `Import job ${jobId} is still running in the background.`, {
-                type: "info",
-                isLoading: false,
-                autoClose: 5000,
-            });
-        } catch (jobError) {
-            finishToastError(
-                toastId,
-                getActionErrorMessage(jobError, "Failed to track the re-import job.")
-            );
-        }
-    };
-
     const handleVendorChange = (value: string | string[]) => {
         const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
         setSelectedVendorIds(normalized);
@@ -1450,7 +1413,7 @@ export function ProductReviewWorkspace() {
     };
 
     const handleReimportProduct = async (productId: number) => {
-        if (isBulkReimporting || activeReimportProductIds.includes(productId)) {
+        if (computedIsBulkReimporting || computedActiveReimportProductIds.includes(productId)) {
             return;
         }
 
@@ -1465,7 +1428,10 @@ export function ProductReviewWorkspace() {
                 return;
             }
 
-            await monitorImportJob({
+            showSuccessToast(`Re-import started for product #${productId}.`);
+
+            addJob({
+                type: 'import',
                 jobId,
                 loadingMessage: `Re-importing product #${productId} with AI...`,
                 successFallback: `Product #${productId} finished re-importing.`,
@@ -1486,7 +1452,7 @@ export function ProductReviewWorkspace() {
             return;
         }
 
-        if (isBulkReimporting || activeReimportProductIds.length > 0) {
+        if (computedIsBulkReimporting || computedActiveReimportProductIds.length > 0) {
             return;
         }
 
@@ -1505,7 +1471,8 @@ export function ProductReviewWorkspace() {
                 return;
             }
 
-            await monitorImportJob({
+            addJob({
+                type: 'import',
                 jobId,
                 loadingMessage: "Re-importing the filtered review queue with AI...",
                 successFallback: "Bulk review re-import finished.",
@@ -1586,6 +1553,64 @@ export function ProductReviewWorkspace() {
     return (
         <div className="min-h-screen w-full text-slate-950">
             <div className="mx-auto flex w-full max-w-none flex-col gap-6 px-4 py-5 md:px-8 md:py-8">
+                {activeJobs.length > 0 && (
+                    <section className="flex flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
+                        {activeJobs.map((job) => {
+                            const completedCount = job.progress || 0;
+                            const currentIndex = job.currentIndex || 0;
+                            const percentage = job.total && job.total > 0 
+                                ? Math.round((completedCount / job.total) * 100) 
+                                : undefined;
+                            
+                            return (
+                                <div key={job.jobId} className="flex flex-col gap-1.5 w-full">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                                            <span className="text-sm font-medium text-blue-900">
+                                                {job.loadingMessage}
+                                            </span>
+                                        </div>
+                                        {percentage !== undefined && (
+                                            <span className="text-xs font-semibold text-blue-800">
+                                                {percentage}% finished
+                                                {job.total && currentIndex > 0
+                                                    ? ` (product ${currentIndex} of ${job.total})`
+                                                    : ` (${completedCount} / ${job.total})`}
+                                            </span>
+                                        )}
+                                        {percentage === undefined && (
+                                            <span className="text-xs font-semibold text-blue-700">
+                                                Waiting for backend progress...
+                                            </span>
+                                        )}
+                                    </div>
+                                    {percentage !== undefined && (
+                                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-blue-200">
+                                            <div 
+                                                className="h-full bg-blue-600 transition-all duration-300 ease-out" 
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                    {job.currentProduct && (
+                                        <div className="text-xs text-blue-700/80 pl-8">
+                                            Processing
+                                            {job.total && currentIndex > 0 ? ` product ${currentIndex} of ${job.total}` : ""}
+                                            : <span className="font-medium text-blue-800">{job.currentProduct}</span>
+                                        </div>
+                                    )}
+                                    {percentage === undefined && !job.currentProduct && (
+                                        <div className="text-xs text-blue-700/80 pl-8">
+                                            Preparing the backend queue and waiting for the first progress update.
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </section>
+                )}
+
                 <section className="overflow-hidden rounded-[34px] border border-slate-200 bg-white/95 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)]">
                     <div className="flex flex-col gap-4 p-6 md:p-8 xl:flex-row xl:items-center xl:justify-between">
                         <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
@@ -1662,15 +1687,15 @@ export function ProductReviewWorkspace() {
                             variant="outline"
                             color="var(--color-primary2)"
                             onClick={() => void handleBulkReimport()}
-                            disabled={!canBulkReimport || isBulkReimporting || activeReimportProductIds.length > 0}
+                            disabled={!canBulkReimport || computedIsBulkReimporting || computedActiveReimportProductIds.length > 0}
                             className="rounded-full px-4"
                         >
-                            {isBulkReimporting ? (
+                            {computedIsBulkReimporting ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : (
                                 <RefreshCw className="mr-2 h-4 w-4" />
                             )}
-                            {isBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
+                            {computedIsBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
                         </Button>
                     </div>
                 </section>
@@ -1694,9 +1719,9 @@ export function ProductReviewWorkspace() {
                                 isApproving={
                                     approveProduct.isPending && approveProduct.variables?.id === item.product.id
                                 }
-                                isBulkReimporting={isBulkReimporting}
+                                isBulkReimporting={computedIsBulkReimporting}
                                 isReimporting={
-                                    activeReimportProductIds.includes(item.product.id)
+                                    computedActiveReimportProductIds.includes(item.product.id)
                                 }
                                 isSavingPrice={
                                     updateProduct.isPending && updateProduct.variables?.id === item.product.id

@@ -6,6 +6,7 @@ import "nprogress/nprogress.css";
 import { QueryProvider } from "./src/providers/query-provider";
 import { LoadingProvider } from "./src/providers/loading-provider";
 import { AuthProvider } from "./src/contexts/auth.context";
+import { JobTrackerProvider } from "./src/providers/job-tracker-provider";
 import { AppShell } from "./src/components/layout/AppShell";
 import { DevSsrApiLogReset } from "./src/components/common/DevSsrApiLogReset";
 import { ToastContainer, Slide } from "react-toastify";
@@ -43,7 +44,9 @@ export default function RootLayout({
           {process.env.NODE_ENV !== "production" ? <DevSsrApiLogReset /> : null}
           <LoadingProvider>
             <AuthProvider>
-              <AppShell>{children}</AppShell>
+              <JobTrackerProvider>
+                <AppShell>{children}</AppShell>
+              </JobTrackerProvider>
             </AuthProvider>
           </LoadingProvider>
           <ToastContainer

@@ -251,8 +251,16 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       }
     }
 
+    const isSse = upstreamResp.headers.get("content-type")?.includes("text/event-stream");
+
+    if (isSse) {
+      resHeaders.set("Cache-Control", "no-cache, no-transform");
+      resHeaders.set("Connection", "keep-alive");
+    }
+
     if (requestLog) {
-      const responseBody = await readResponseBodyForLog(upstreamResp.clone());
+
+      const responseBody = isSse ? "[SSE Stream]" : await readResponseBodyForLog(upstreamResp.clone());
       await logSsrApiRequestCompleted({
         request: requestLog,
         response: {

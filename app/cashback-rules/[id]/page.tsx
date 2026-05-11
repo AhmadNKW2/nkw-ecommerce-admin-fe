@@ -76,7 +76,7 @@ export default function EditCashbackRulePage() {
       <PageHeader
         icon={<Wallet />}
         title={rule ? `Edit Rule #${rule.id}` : "Edit Rule"}
-        description="Update cashback rule settings"
+        description="Refine how this cashback rule rewards delivered paid orders."
         cancelAction={{ label: "Back", onClick: () => router.push("/cashback-rules"), disabled: updateRule.isPending }}
       />
 

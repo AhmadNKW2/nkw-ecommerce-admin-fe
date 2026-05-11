@@ -21,7 +21,7 @@ export default function CreateCashbackRulePage() {
       <PageHeader
         icon={<Wallet />}
         title="Create Cashback Rule"
-        description="Add a new cashback rule"
+        description="Create a reward rule that can be applied automatically to qualifying delivered paid orders."
         cancelAction={{ label: "Back", onClick: () => router.push("/cashback-rules"), disabled: createRule.isPending }}
       />
 

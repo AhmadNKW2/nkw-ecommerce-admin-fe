@@ -25,6 +25,22 @@ import {
 import { DeleteConfirmationModal } from "../src/components/common/DeleteConfirmationModal";
 import { Wallet, Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
 
+function formatCurrency(value?: number | null) {
+  if (value == null) {
+    return "-";
+  }
+
+  return `${Number(value).toFixed(2)} JOD`;
+}
+
+function formatRewardValue(rule: CashbackRule) {
+  if (rule.type === "percentage") {
+    return `${Number(rule.value).toFixed(2)}%`;
+  }
+
+  return formatCurrency(rule.value);
+}
+
 export default function CashbackRulesPage() {
   const router = useRouter();
   const { setShowOverlay } = useLoading();
@@ -51,6 +67,29 @@ export default function CashbackRulesPage() {
     });
   }, [rules, search]);
 
+  const stats = useMemo(() => {
+    const list = Array.isArray(rules) ? rules : [];
+    const activeCount = list.filter((rule) => rule.isActive).length;
+    const inactiveCount = list.length - activeCount;
+    const strongestRule = list.reduce<CashbackRule | null>((best, candidate) => {
+      if (!best) {
+        return candidate;
+      }
+
+      const bestValue = best.type === "percentage" ? Number(best.value) : Number(best.value) * 100;
+      const candidateValue = candidate.type === "percentage" ? Number(candidate.value) : Number(candidate.value) * 100;
+
+      return candidateValue > bestValue ? candidate : best;
+    }, null);
+
+    return {
+      total: list.length,
+      activeCount,
+      inactiveCount,
+      strongestRule,
+    };
+  }, [rules]);
+
   const handleConfirmDelete = async () => {
     if (!ruleToDelete) return;
     await deleteRule.mutateAsync(ruleToDelete.id);
@@ -62,19 +101,41 @@ export default function CashbackRulesPage() {
       <PageHeader
         icon={<Wallet />}
         title="Cashback Rules"
-        description="Manage cashback rules applied to orders"
+        description="Manage rewards that are applied automatically when delivered paid orders qualify."
         action={{
           label: "Create Rule",
           onClick: () => router.push("/cashback-rules/create"),
         }}
       />
 
+      <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="gap-2">
+          <p className="text-sm text-third">Total rules</p>
+          <p className="text-3xl font-bold text-primary">{stats.total}</p>
+          <p className="text-sm text-third">{filteredRules.length} visible in the current view</p>
+        </Card>
+        <Card className="gap-2">
+          <p className="text-sm text-third">Active rules</p>
+          <p className="text-3xl font-bold text-primary">{stats.activeCount}</p>
+          <p className="text-sm text-third">{stats.inactiveCount} inactive rules remain available for later use</p>
+        </Card>
+        <Card className="gap-2">
+          <p className="text-sm text-third">Strongest rule</p>
+          <p className="text-lg font-semibold text-primary">
+            {stats.strongestRule ? stats.strongestRule.name : "No rule yet"}
+          </p>
+          <p className="text-sm text-third">
+            {stats.strongestRule ? formatRewardValue(stats.strongestRule) : "Create a rule to start rewarding customers."}
+          </p>
+        </Card>
+      </div>
+
       <Card className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <Input
               label="Search"
-              placeholder="Search by id, name, type..."
+              placeholder="Search by id, rule name, or reward type"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               isSearch
@@ -137,11 +198,16 @@ export default function CashbackRulesPage() {
               {filteredRules.map((rule) => (
                 <TableRow key={rule.id} className="hover:bg-primary/5">
                   <TableCell className="font-mono">#{rule.id}</TableCell>
-                  <TableCell className="font-medium">{rule.name}</TableCell>
-                  <TableCell>{String(rule.type)}</TableCell>
-                  <TableCell>{String(rule.value)}</TableCell>
-                  <TableCell>{rule.minOrderAmount ?? "-"}</TableCell>
-                  <TableCell>{rule.maxCashbackAmount ?? "-"}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <p className="font-medium text-primary">{rule.name}</p>
+                      <p className="text-xs text-third">Updated for automated delivered-order rewards</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="capitalize">{String(rule.type)}</TableCell>
+                  <TableCell className="font-medium text-primary">{formatRewardValue(rule)}</TableCell>
+                  <TableCell>{formatCurrency(rule.minOrderAmount ?? 0)}</TableCell>
+                  <TableCell>{formatCurrency(rule.maxCashbackAmount)}</TableCell>
                   <TableCell>
                     <Badge variant={rule.isActive ? "success" : "danger"}>
                       {rule.isActive ? "Active" : "Inactive"}

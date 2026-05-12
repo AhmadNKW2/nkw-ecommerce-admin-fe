@@ -372,8 +372,8 @@ export interface ProductNamesFilters {
 }
 
 export interface BulkReviewReimportAiDto {
-  category_id: number;
-  vendor_id: number;
+  category_id?: number;
+  vendor_id?: number;
 }
 
 export interface ProductImportJobStart {

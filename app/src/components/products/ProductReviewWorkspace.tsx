@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
@@ -107,6 +108,8 @@ const REVIEW_STORAGE_KEY = "products_review";
 const REVIEW_FILTERS_STORAGE_KEY = `${REVIEW_STORAGE_KEY}_filters`;
 const IMPORT_JOB_POLL_INTERVAL_MS = 2500;
 const IMPORT_JOB_MAX_ATTEMPTS = 120;
+const BULK_REIMPORT_LOADING_MESSAGE = "Re-importing review products with AI...";
+const LEGACY_BULK_REIMPORT_LOADING_MESSAGE = "Re-importing the filtered review queue with AI...";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
@@ -1227,10 +1230,17 @@ export function ProductReviewWorkspace() {
     const [priceOverrides, setPriceOverrides] = useState<Partial<Record<number, PriceOverride>>>({});
     const [activeReimportProductIds, setActiveReimportProductIds] = useState<number[]>([]);
     const [isBulkReimporting, setIsBulkReimporting] = useState(false);
+    const [bulkReimportModalOpen, setBulkReimportModalOpen] = useState(false);
+    const [bulkReimportVendorId, setBulkReimportVendorId] = useState("");
+    const [bulkReimportCategoryIds, setBulkReimportCategoryIds] = useState<string[]>([]);
     const isMountedRef = useRef(true);
 
     // Sync button loading state with Tracker:
-    const activeBulkJob = activeJobs.find(job => job.loadingMessage === "Re-importing the filtered review queue with AI...");
+    const activeBulkJob = activeJobs.find(
+        (job) =>
+            job.loadingMessage === BULK_REIMPORT_LOADING_MESSAGE ||
+            job.loadingMessage === LEGACY_BULK_REIMPORT_LOADING_MESSAGE
+    );
     const computedIsBulkReimporting = isBulkReimporting || !!activeBulkJob;
 
     const computedActiveReimportProductIds = [
@@ -1323,32 +1333,17 @@ export function ProductReviewWorkspace() {
 
     const hasActiveFilters =
         Boolean(searchTerm.trim()) || selectedVendorIds.length > 0 || selectedCategoryIds.length > 0;
-
-    const bulkVendorId = useMemo(() => {
-        if (selectedVendorIds.length !== 1) {
-            return null;
-        }
-
-        const parsedValue = Number(selectedVendorIds[0]);
-        return Number.isFinite(parsedValue) ? parsedValue : null;
-    }, [selectedVendorIds]);
-
-    const bulkCategoryId = useMemo(() => {
-        if (selectedCategoryIds.length !== 1) {
-            return null;
-        }
-
-        const parsedValue = Number(selectedCategoryIds[0]);
-        return Number.isFinite(parsedValue) ? parsedValue : null;
-    }, [selectedCategoryIds]);
-
-    const canBulkReimport = bulkVendorId !== null && bulkCategoryId !== null;
-    const bulkReimportDisabledMessage =
-        selectedVendorIds.length !== 1
-            ? "Select exactly one vendor to enable bulk re-import."
-            : selectedCategoryIds.length !== 1
-                ? "Select exactly one category to enable bulk re-import."
-                : "Bulk AI re-import will run for the selected vendor and category only.";
+    const hasAnyActiveReimport = computedIsBulkReimporting || computedActiveReimportProductIds.length > 0;
+    const bulkReimportScopeMessage =
+        bulkReimportVendorId || bulkReimportCategoryIds.length > 0
+            ? "Only review products matching the optional filters below will be re-imported. Leave either field empty to keep it unrestricted."
+            : "All review products will be re-imported. Choose a vendor, a category, or both if you want to narrow the run.";
+    const bulkReimportActionLabel =
+        computedIsBulkReimporting
+            ? "Starting re-import..."
+            : bulkReimportVendorId || bulkReimportCategoryIds.length > 0
+                ? "Re-import selected review products"
+                : "Re-import all review products";
 
     const setProductReimportState = (productId: number, isActive: boolean) => {
         if (!isMountedRef.current) {
@@ -1404,6 +1399,26 @@ export function ProductReviewWorkspace() {
         });
     };
 
+    const openBulkReimportModal = () => {
+        setBulkReimportVendorId(selectedVendorIds.length === 1 ? selectedVendorIds[0] : "");
+        setBulkReimportCategoryIds(selectedCategoryIds.length === 1 ? [selectedCategoryIds[0]] : []);
+        setBulkReimportModalOpen(true);
+    };
+
+    const closeBulkReimportModal = () => {
+        if (!isBulkReimporting) {
+            setBulkReimportModalOpen(false);
+        }
+    };
+
+    const handleBulkReimportVendorChange = (value: string | string[]) => {
+        setBulkReimportVendorId(Array.isArray(value) ? value[0] ?? "" : value);
+    };
+
+    const handleBulkReimportCategoryChange = (ids: string[]) => {
+        setBulkReimportCategoryIds(ids.slice(0, 1));
+    };
+
     const handleApproveProduct = async (productId: number) => {
         try {
             await approveProduct.mutateAsync({ id: productId, status: "active" });
@@ -1447,22 +1462,25 @@ export function ProductReviewWorkspace() {
     };
 
     const handleBulkReimport = async () => {
-        if (!canBulkReimport) {
-            showErrorToast("Select exactly one vendor and one category to bulk re-import review products.");
-            return;
-        }
-
-        if (computedIsBulkReimporting || computedActiveReimportProductIds.length > 0) {
+        if (hasAnyActiveReimport) {
             return;
         }
 
         setIsBulkReimporting(true);
 
         try {
-            const payload: BulkReviewReimportAiDto = {
-                vendor_id: bulkVendorId,
-                category_id: bulkCategoryId,
-            };
+            const payload: BulkReviewReimportAiDto = {};
+            const parsedVendorId = Number(bulkReimportVendorId);
+            const parsedCategoryId = Number(bulkReimportCategoryIds[0] ?? "");
+
+            if (Number.isInteger(parsedVendorId) && parsedVendorId > 0) {
+                payload.vendor_id = parsedVendorId;
+            }
+
+            if (Number.isInteger(parsedCategoryId) && parsedCategoryId > 0) {
+                payload.category_id = parsedCategoryId;
+            }
+
             const response = await bulkReviewReimport.mutateAsync(payload);
             const jobId = getImportJobId(response.data);
 
@@ -1474,10 +1492,16 @@ export function ProductReviewWorkspace() {
             addJob({
                 type: 'import',
                 jobId,
-                loadingMessage: "Re-importing the filtered review queue with AI...",
+                loadingMessage: BULK_REIMPORT_LOADING_MESSAGE,
                 successFallback: "Bulk review re-import finished.",
                 failureFallback: "Bulk review re-import failed.",
             });
+            showSuccessToast(
+                payload.vendor_id || payload.category_id
+                    ? "Bulk review re-import started for the selected filters."
+                    : "Bulk review re-import started for all review products."
+            );
+            setBulkReimportModalOpen(false);
         } catch (bulkError) {
             showErrorToast(
                 getActionErrorMessage(bulkError, "Failed to start the bulk review re-import.")
@@ -1639,6 +1663,15 @@ export function ProductReviewWorkspace() {
                                 />
                                 Refresh queue
                             </Button>
+                            <Button
+                                variant="outline"
+                                color="var(--color-primary2)"
+                                onClick={openBulkReimportModal}
+                                disabled={hasAnyActiveReimport}
+                                className="rounded-full px-4"
+                            >
+                                {computedIsBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
+                            </Button>
                         </div>
                     </div>
                 </section>
@@ -1678,26 +1711,6 @@ export function ProductReviewWorkspace() {
                         </div>
                     </div>
 
-                    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <p className="text-xs font-medium text-slate-500">
-                            {bulkReimportDisabledMessage}
-                        </p>
-
-                        <Button
-                            variant="outline"
-                            color="var(--color-primary2)"
-                            onClick={() => void handleBulkReimport()}
-                            disabled={!canBulkReimport || computedIsBulkReimporting || computedActiveReimportProductIds.length > 0}
-                            className="rounded-full px-4"
-                        >
-                            {computedIsBulkReimporting ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                            )}
-                            {computedIsBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
-                        </Button>
-                    </div>
                 </section>
 
                 {!isLoading && queueItems.length === 0 ? (
@@ -1747,6 +1760,75 @@ export function ProductReviewWorkspace() {
                         />
                     </Card>
                 ) : null}
+
+                <Modal
+                    isOpen={bulkReimportModalOpen}
+                    onClose={closeBulkReimportModal}
+                    className="self-start w-full max-w-3xl"
+                >
+                    <div className="flex flex-col gap-6">
+                        <div className="space-y-3 pr-8">
+                            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                                <RefreshCw className="h-5 w-5" />
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-2xl font-black tracking-tight text-slate-950">
+                                    Bulk re-import review products
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                            {bulkReimportScopeMessage}
+                        </div>
+
+                        <div className="grid gap-4 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+                            <div className="relative z-20">
+                                <Select
+                                    label="Vendor filter"
+                                    value={bulkReimportVendorId}
+                                    onChange={handleBulkReimportVendorChange}
+                                    options={vendorOptions}
+                                    search={vendorOptions.length > 6}
+                                    multiple={false}
+                                    placeholder="All vendors"
+                                    disabled={computedIsBulkReimporting || vendorOptions.length === 0}
+                                />
+                            </div>
+
+                            <div className="relative z-10">
+                                <CategoryTreeSelect
+                                    categories={categoriesData.data ?? []}
+                                    selectedIds={bulkReimportCategoryIds}
+                                    onChange={handleBulkReimportCategoryChange}
+                                    singleSelect={true}
+                                    label="Category filter"
+                                    disabled={computedIsBulkReimporting || (categoriesData.data ?? []).length === 0}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button
+                                variant="outline"
+                                color="var(--color-primary2)"
+                                onClick={closeBulkReimportModal}
+                                disabled={isBulkReimporting}
+                                className="rounded-full px-4"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                color="var(--color-primary2)"
+                                onClick={() => void handleBulkReimport()}
+                                disabled={hasAnyActiveReimport}
+                                className="rounded-full px-5"
+                            >
+                                {bulkReimportActionLabel}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
 
                 <DeleteConfirmationModal
                     isOpen={deleteModalOpen}

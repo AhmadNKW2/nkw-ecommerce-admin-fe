@@ -63,7 +63,7 @@ export const productAttributeValueSchema = z.object({
 export const productAttributeSchema = z.object({
   id: z.string(),
   name: z.string(),
-  values: z.array(productAttributeValueSchema),
+  values: z.array(productAttributeValueSchema).length(1, "Each attribute must have exactly one value"),
   order: z.number(),
 });
 
@@ -76,7 +76,7 @@ export const productSpecificationSelectionValueSchema = z.object({
 export const productSpecificationSelectionSchema = z.object({
   id: z.string(),
   name: z.string(),
-  values: z.array(productSpecificationSelectionValueSchema),
+  values: z.array(productSpecificationSelectionValueSchema).min(1, "Each specification must have at least one value"),
   order: z.number(),
 });
 

@@ -68,18 +68,18 @@ export function buildProductAttributesPayload(
       return [];
     }
 
-    const attributeValueIds = Array.from(
-      new Set(
-        attribute.values
-          .map((value) => parseInt(value.id, 10))
-          .filter((valueId) => !Number.isNaN(valueId))
-      )
-    );
+    const firstAttributeValueId = attribute.values
+      .map((value) => parseInt(value.id, 10))
+      .find((valueId) => !Number.isNaN(valueId));
+
+    if (firstAttributeValueId === undefined) {
+      return [];
+    }
 
     return [
       {
         attribute_id: attributeId,
-        attribute_value_ids: attributeValueIds,
+        attribute_value_ids: [firstAttributeValueId],
       },
     ];
   });

@@ -64,15 +64,6 @@ export const AttributesSection: React.FC<AttributesSectionProps> = ({
         [availableAttributes]
     );
 
-    // Calculate total combinations
-    const calculateCombinations = () => {
-        if (attributes.length === 0) return 0;
-        return attributes.reduce((total, attr) => {
-            const valueCount = attr.values.length;
-            return valueCount > 0 ? total * valueCount : total;
-        }, 1);
-    };
-
     const handleAttributesSelectChange = (values: string | string[]) => {
         const selectedIds = Array.isArray(values)
             ? values.filter(Boolean)
@@ -149,9 +140,9 @@ export const AttributesSection: React.FC<AttributesSectionProps> = ({
                 const newValue: AttributeValue = {
                     id: actualValueId,
                     value: value.trim(),
-                    order: attr.values.length,
+                    order: 0,
                 };
-                return { ...attr, values: [...attr.values, newValue] };
+                return { ...attr, values: [newValue] };
             }
             return attr;
         });
@@ -172,9 +163,6 @@ export const AttributesSection: React.FC<AttributesSectionProps> = ({
 
         onChange(updated);
     };
-
-    const totalCombinations = calculateCombinations();
-
     return (
         <Card>
             <div className="flex items-center justify-between">
@@ -186,10 +174,10 @@ export const AttributesSection: React.FC<AttributesSectionProps> = ({
                         <p className="text-sm text-red-500 mt-1">{errors['attributes']}</p>
                     )}
                 </div>
-                {totalCombinations > 0 && (
+                {attributes.length > 0 && (
                     <div className="text-primary rounded-r1">
-                        <span className="font-semibold">{totalCombinations}</span> variant
-                        {totalCombinations !== 1 ? "s" : ""} will be created
+                        <span className="font-semibold">{attributes.length}</span> attribute
+                        {attributes.length !== 1 ? "s" : ""} selected
                     </div>
                 )}
             </div>
@@ -395,7 +383,9 @@ const AttributeCard: React.FC<AttributeCardProps> = ({
     }, [availableAttr, allAttributes]);
 
     const handleValuesChange = (values: string | string[]) => {
-        const newValues = Array.isArray(values) ? values : [values];
+        const newValues = (Array.isArray(values) ? values : [values])
+            .filter(Boolean)
+            .slice(0, 1);
         
         // Build the complete new values array with proper IDs and order
         const updatedValues: AttributeValue[] = newValues.map((value, index) => {

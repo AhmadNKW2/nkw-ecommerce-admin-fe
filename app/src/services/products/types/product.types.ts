@@ -412,7 +412,7 @@ export interface ProductImportJobStatus {
 //  Product Creation DTOs
 export interface ProductAttributeInput {
   attribute_id: number;
-  attribute_value_ids?: number[];
+  attribute_value_ids?: number[]; // Exactly one value id is expected.
 }
 
 export interface SinglePricingInput {

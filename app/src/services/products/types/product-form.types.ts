@@ -97,7 +97,7 @@ export const productFormSchema = z.object({
           value: z.string(),
           order: z.number(),
         })
-      ),
+      ).length(1, "Each attribute must have exactly one value"),
       order: z.number(),
     })
   ).optional(),
@@ -112,7 +112,7 @@ export const productFormSchema = z.object({
           label: z.string(),
           order: z.number(),
         })
-      ),
+      ).min(1, "Each specification must have at least one value"),
       order: z.number(),
     })
   ).optional(),

@@ -610,6 +610,7 @@ export default function EditProductPage() {
 
           // Filter out parents
           const leafValues = allSelectedValues.filter(v => !parentValueIds.has(String(v.id)));
+          const primaryLeafValues = leafValues.slice(0, 1);
 
           // The UI expects `values` in the form object.
           // We map these leaf values to the structure required.
@@ -619,7 +620,7 @@ export default function EditProductPage() {
           // `AttributesSection` uses `selectedValues = attribute.values.map(v => v.value)`.
           // So we need to reconstruct the full path string for `value`.
           
-          const enrichedValues = leafValues.map(lv => {
+          const enrichedValues = primaryLeafValues.map(lv => {
                // Reconstruct path
                // We have the leaf ID. We can traverse up `attributesData` to build the string.
                let currentId = String(lv.id);
@@ -707,7 +708,8 @@ export default function EditProductPage() {
           id: v.id.toString(),
           value: v.value_en,
           order: idx,
-        })) || [];
+        }))
+        .slice(0, 1) || [];
 
       return {
         id: attrId,

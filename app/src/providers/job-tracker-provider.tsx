@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { API_CONFIG } from "../lib/constants";
+import { httpClient } from "../lib/api/http-client";
+import { sessionManager } from "../lib/session/session-manager";
+import { authService } from "../services/auth/api/auth.service";
 import { showErrorToast, showSuccessToast, showWarningToast } from "../lib/toast";
 
 type JobType = "import" | "action";
@@ -100,6 +103,7 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
   const pollIntervalsRef = useRef(new Map<string, number>());
   const pollingInFlightRef = useRef(new Set<string>());
   const settledJobsRef = useRef(new Set<string>());
+  const authRefreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Re-hydrate jobs from localStorage on mount
   useEffect(() => {
@@ -163,6 +167,72 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
       
       return prev.map(j => j.jobId === jobId ? { ...j, progress, total, currentProduct, currentIndex } : j);
     });
+  };
+
+  const refreshJobTrackingSession = async (): Promise<boolean> => {
+    if (authRefreshPromiseRef.current) {
+      return authRefreshPromiseRef.current;
+    }
+
+    authRefreshPromiseRef.current = (async () => {
+      try {
+        const response = await authService.refreshToken();
+
+        if (!response.success || !response.data) {
+          return false;
+        }
+
+        if (response.data.access_token) {
+          httpClient.setAuthToken(response.data.access_token);
+        }
+
+        if (typeof response.data.expires_in === "number") {
+          const sessionInfo = sessionManager.getSessionInfo();
+
+          sessionManager.setSessionInfo({
+            ...(sessionInfo ?? { rememberMe: false }),
+            expiresAt: Date.now() + response.data.expires_in * 1000,
+            lastActivity: Date.now(),
+          });
+
+          sessionManager.broadcastEvent({
+            type: "session_refresh",
+            timestamp: Date.now(),
+          });
+        }
+
+        return true;
+      } catch {
+        return false;
+      } finally {
+        authRefreshPromiseRef.current = null;
+      }
+    })();
+
+    return authRefreshPromiseRef.current;
+  };
+
+  const fetchJobStatus = async (
+    job: JobMeta,
+    allowRefresh = true,
+  ): Promise<Response> => {
+    const response = await fetch(getJobStatusEndpoint(job), {
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (response.status === 401 && allowRefresh) {
+      const refreshed = await refreshJobTrackingSession();
+
+      if (refreshed) {
+        return fetchJobStatus(job, false);
+      }
+    }
+
+    return response;
   };
 
   const activeJobIds = activeJobs.map(j => j.jobId).join(",");
@@ -248,13 +318,7 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
     pollingInFlightRef.current.add(job.jobId);
 
     try {
-      const response = await fetch(getJobStatusEndpoint(job), {
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-        },
-      });
+      const response = await fetchJobStatus(job);
 
       if (response.status === 404) {
         stopTrackingJob(job.jobId);
@@ -325,6 +389,7 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
       es.onerror = () => {
         es.close();
         eventSourcesRef.current.delete(job.jobId);
+        void pollJobStatus(job);
       };
     });
   }, [activeJobIds]);

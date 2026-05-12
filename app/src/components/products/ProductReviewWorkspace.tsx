@@ -1231,12 +1231,15 @@ export function ProductReviewWorkspace() {
     const [activeReimportProductIds, setActiveReimportProductIds] = useState<number[]>([]);
     const [isBulkReimporting, setIsBulkReimporting] = useState(false);
     const [bulkReimportModalOpen, setBulkReimportModalOpen] = useState(false);
+    const [importStatusModalOpen, setImportStatusModalOpen] = useState(false);
     const [bulkReimportVendorId, setBulkReimportVendorId] = useState("");
     const [bulkReimportCategoryIds, setBulkReimportCategoryIds] = useState<string[]>([]);
     const isMountedRef = useRef(true);
 
+    const importJobs = useMemo(() => activeJobs.filter((job) => job.type === "import"), [activeJobs]);
+
     // Sync button loading state with Tracker:
-    const activeBulkJob = activeJobs.find(
+    const activeBulkJob = importJobs.find(
         (job) =>
             job.loadingMessage === BULK_REIMPORT_LOADING_MESSAGE ||
             job.loadingMessage === LEGACY_BULK_REIMPORT_LOADING_MESSAGE
@@ -1245,7 +1248,7 @@ export function ProductReviewWorkspace() {
 
     const computedActiveReimportProductIds = [
         ...activeReimportProductIds,
-        ...activeJobs
+        ...importJobs
             .filter(job => job.loadingMessage.startsWith("Re-importing product #"))
             .map(job => parseInt(job.loadingMessage.match(/#(\d+)/)?.[1] || "0", 10))
             .filter(id => id > 0)
@@ -1345,6 +1348,84 @@ export function ProductReviewWorkspace() {
                 ? "Re-import selected review products"
                 : "Re-import all review products";
 
+    const renderImportJobStatusCards = (
+        jobs: typeof importJobs,
+        options?: {
+            showJobId?: boolean;
+            emptyMessage?: string;
+        }
+    ) => {
+        if (jobs.length === 0) {
+            return options?.emptyMessage ? (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center text-sm font-medium text-slate-500">
+                    {options.emptyMessage}
+                </div>
+            ) : null;
+        }
+
+        return jobs.map((job) => {
+            const completedCount = job.progress || 0;
+            const currentIndex = job.currentIndex || 0;
+            const percentage = job.total && job.total > 0
+                ? Math.round((completedCount / job.total) * 100)
+                : undefined;
+
+            return (
+                <div key={job.jobId} className="flex flex-col gap-1.5 w-full rounded-[18px] border border-blue-200/70 bg-white/70 px-4 py-3">
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            <div className="min-w-0">
+                                <div className="text-sm font-medium text-blue-900">
+                                    {job.loadingMessage}
+                                </div>
+                                {options?.showJobId ? (
+                                    <div className="text-xs text-blue-700/80">
+                                        Job ID: {job.jobId}
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        {percentage !== undefined ? (
+                            <span className="text-xs font-semibold text-blue-800">
+                                {percentage}% finished
+                                {job.total && currentIndex > 0
+                                    ? ` (product ${currentIndex} of ${job.total})`
+                                    : ` (${completedCount} / ${job.total})`}
+                            </span>
+                        ) : (
+                            <span className="text-xs font-semibold text-blue-700">
+                                Waiting for backend progress...
+                            </span>
+                        )}
+                    </div>
+
+                    {percentage !== undefined ? (
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-blue-200">
+                            <div
+                                className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                                style={{ width: `${percentage}%` }}
+                            />
+                        </div>
+                    ) : null}
+
+                    {job.currentProduct ? (
+                        <div className="text-xs text-blue-700/80">
+                            Processing
+                            {job.total && currentIndex > 0 ? ` product ${currentIndex} of ${job.total}` : ""}
+                            : <span className="font-medium text-blue-800"> {job.currentProduct}</span>
+                        </div>
+                    ) : percentage === undefined ? (
+                        <div className="text-xs text-blue-700/80">
+                            Preparing the backend queue and waiting for the first progress update.
+                        </div>
+                    ) : null}
+                </div>
+            );
+        });
+    };
+
     const setProductReimportState = (productId: number, isActive: boolean) => {
         if (!isMountedRef.current) {
             return;
@@ -1409,6 +1490,14 @@ export function ProductReviewWorkspace() {
         if (!isBulkReimporting) {
             setBulkReimportModalOpen(false);
         }
+    };
+
+    const openImportStatusModal = () => {
+        setImportStatusModalOpen(true);
+    };
+
+    const closeImportStatusModal = () => {
+        setImportStatusModalOpen(false);
     };
 
     const handleBulkReimportVendorChange = (value: string | string[]) => {
@@ -1577,61 +1666,9 @@ export function ProductReviewWorkspace() {
     return (
         <div className="min-h-screen w-full text-slate-950">
             <div className="mx-auto flex w-full max-w-none flex-col gap-6 px-4 py-5 md:px-8 md:py-8">
-                {activeJobs.length > 0 && (
+                {importJobs.length > 0 && (
                     <section className="flex flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
-                        {activeJobs.map((job) => {
-                            const completedCount = job.progress || 0;
-                            const currentIndex = job.currentIndex || 0;
-                            const percentage = job.total && job.total > 0 
-                                ? Math.round((completedCount / job.total) * 100) 
-                                : undefined;
-                            
-                            return (
-                                <div key={job.jobId} className="flex flex-col gap-1.5 w-full">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                                            <span className="text-sm font-medium text-blue-900">
-                                                {job.loadingMessage}
-                                            </span>
-                                        </div>
-                                        {percentage !== undefined && (
-                                            <span className="text-xs font-semibold text-blue-800">
-                                                {percentage}% finished
-                                                {job.total && currentIndex > 0
-                                                    ? ` (product ${currentIndex} of ${job.total})`
-                                                    : ` (${completedCount} / ${job.total})`}
-                                            </span>
-                                        )}
-                                        {percentage === undefined && (
-                                            <span className="text-xs font-semibold text-blue-700">
-                                                Waiting for backend progress...
-                                            </span>
-                                        )}
-                                    </div>
-                                    {percentage !== undefined && (
-                                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-blue-200">
-                                            <div 
-                                                className="h-full bg-blue-600 transition-all duration-300 ease-out" 
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
-                                    )}
-                                    {job.currentProduct && (
-                                        <div className="text-xs text-blue-700/80 pl-8">
-                                            Processing
-                                            {job.total && currentIndex > 0 ? ` product ${currentIndex} of ${job.total}` : ""}
-                                            : <span className="font-medium text-blue-800">{job.currentProduct}</span>
-                                        </div>
-                                    )}
-                                    {percentage === undefined && !job.currentProduct && (
-                                        <div className="text-xs text-blue-700/80 pl-8">
-                                            Preparing the backend queue and waiting for the first progress update.
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                        {renderImportJobStatusCards(importJobs)}
                     </section>
                 )}
 
@@ -1671,6 +1708,14 @@ export function ProductReviewWorkspace() {
                                 className="rounded-full px-4"
                             >
                                 {computedIsBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                color="var(--color-primary2)"
+                                onClick={openImportStatusModal}
+                                className="rounded-full px-4"
+                            >
+                                View import status
                             </Button>
                         </div>
                     </div>
@@ -1778,7 +1823,7 @@ export function ProductReviewWorkspace() {
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
                             {bulkReimportScopeMessage}
                         </div>
 
@@ -1825,6 +1870,41 @@ export function ProductReviewWorkspace() {
                                 className="rounded-full px-5"
                             >
                                 {bulkReimportActionLabel}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+
+                <Modal
+                    isOpen={importStatusModalOpen}
+                    onClose={closeImportStatusModal}
+                    className="self-start w-full max-w-4xl"
+                >
+                    <div className="flex flex-col gap-6">
+                        <div className="space-y-2 pr-8">
+                            <h2 className="text-2xl font-black tracking-tight text-slate-950">
+                                View import status
+                            </h2>
+                            <p className="text-sm leading-7 text-slate-600">
+                                Tracked import jobs from this browser continue updating here after refresh or re-login while the backend job is still running.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-4 rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 md:p-5">
+                            {renderImportJobStatusCards(importJobs, {
+                                showJobId: true,
+                                emptyMessage: "No import jobs are currently being tracked in this browser.",
+                            })}
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Button
+                                variant="outline"
+                                color="var(--color-primary2)"
+                                onClick={closeImportStatusModal}
+                                className="rounded-full px-5"
+                            >
+                                Close
                             </Button>
                         </div>
                     </div>

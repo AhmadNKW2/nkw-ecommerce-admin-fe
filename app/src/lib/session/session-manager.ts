@@ -18,7 +18,7 @@ export const SESSION_CONFIG = {
   INACTIVITY_WARNING_MS: 2 * 60 * 1000, // 2 minutes before expiry - show warning
   ACTIVITY_CHECK_INTERVAL_MS: 30 * 1000, // Check activity every 30 seconds
   TOKEN_REFRESH_BUFFER_MS: 2 * 60 * 1000, // Refresh token 2 minutes before expiry
-  DEFAULT_SESSION_DURATION_MS: 15 * 60 * 1000, // 15 minutes default
+  DEFAULT_SESSION_DURATION_MS: 60 * 60 * 1000, // 60 minutes default
   REMEMBER_ME_DURATION_MS: 30 * 24 * 60 * 60 * 1000, // 30 days
 } as const;
 

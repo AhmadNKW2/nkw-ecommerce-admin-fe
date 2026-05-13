@@ -116,6 +116,13 @@ export const linkedProductSummarySchema = z.object({
 export type LinkedProductSummary = z.infer<typeof linkedProductSummarySchema>;
 export type ProductNameSummary = Pick<LinkedProductSummary, "id" | "name_en" | "name_ar">;
 
+export const originalVendorCategorySchema = z.object({
+  id: z.number().optional().nullable(),
+  name: z.string().optional().nullable(),
+});
+
+export type OriginalVendorCategory = z.infer<typeof originalVendorCategorySchema>;
+
 // Product Schema for validation (matches backend)
 export const productSchema = z.object({
   id: z.number(),
@@ -129,6 +136,8 @@ export const productSchema = z.object({
   category_ids: z.array(z.number()).optional(), // Multiple categories
   category: categorySchema.optional().nullable(),
   categories: z.array(categorySchema).optional(), // Multiple category objects
+  original_vendor_categories: z.array(originalVendorCategorySchema).optional(),
+  original_vendor_categories_ids: z.array(z.number()).optional(),
   vendor_id: z.number().optional().nullable(),
   vendor: vendorSchema.optional().nullable(),
   brand_id: z.number().optional().nullable(),

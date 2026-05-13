@@ -509,8 +509,103 @@ const isProductOutOfStock = (product: ProductLike) => {
         : product.is_out_of_stock === true;
 };
 
-const getCategoryName = (product: ProductLike) => {
-    return product.categories?.[0]?.name_en || product.category?.name_en || null;
+const getCategoryLabel = (category?: {
+    id?: number | null;
+    name?: string | null;
+    name_en?: string | null;
+    name_ar?: string | null;
+} | null) => {
+    const englishName = typeof category?.name_en === "string" ? category.name_en.trim() : "";
+    if (englishName) {
+        return englishName;
+    }
+
+    const arabicName = typeof category?.name_ar === "string" ? category.name_ar.trim() : "";
+    if (arabicName) {
+        return arabicName;
+    }
+
+    const genericName = typeof category?.name === "string" ? category.name.trim() : "";
+    if (genericName) {
+        return genericName;
+    }
+
+    const id = Number(category?.id);
+    if (Number.isInteger(id) && id > 0) {
+        return `Category #${id}`;
+    }
+
+    return null;
+};
+
+const getAssignedCategoryLabels = (product: ProductLike) => {
+    const labelsByKey = new Map<string, string>();
+
+    const addCategory = (category?: {
+        id?: number | null;
+        name?: string | null;
+        name_en?: string | null;
+        name_ar?: string | null;
+    } | null) => {
+        const label = getCategoryLabel(category);
+        if (!label) {
+            return;
+        }
+
+        const id = Number(category?.id);
+        const key = Number.isInteger(id) && id > 0 ? `id:${id}` : label.toLocaleLowerCase();
+
+        if (!labelsByKey.has(key)) {
+            labelsByKey.set(key, label);
+        }
+    };
+
+    if (Array.isArray(product.categories)) {
+        product.categories.forEach((category) => addCategory(category));
+    }
+
+    if (labelsByKey.size === 0) {
+        addCategory(product.category);
+    }
+
+    return Array.from(labelsByKey.values());
+};
+
+const getOriginalVendorCategoryLabels = (product: ProductLike) => {
+    const labelsByKey = new Map<string, string>();
+
+    const addOriginalCategory = (category?: { id?: number | null; name?: string | null } | null) => {
+        const id = Number(category?.id);
+        const hasValidId = Number.isInteger(id) && id > 0;
+        const name = typeof category?.name === "string" ? category.name.trim() : "";
+
+        if (!hasValidId && !name) {
+            return;
+        }
+
+        const key = hasValidId ? `id:${id}` : `name:${name.toLocaleLowerCase()}`;
+        const label = name
+            ? hasValidId
+                ? `${name} (#${id})`
+                : name
+            : `Vendor category #${id}`;
+
+        if (!labelsByKey.has(key)) {
+            labelsByKey.set(key, label);
+        }
+    };
+
+    if (Array.isArray(product.original_vendor_categories)) {
+        product.original_vendor_categories.forEach((category) => addOriginalCategory(category));
+    }
+
+    if (Array.isArray(product.original_vendor_categories_ids)) {
+        product.original_vendor_categories_ids.forEach((id) => {
+            addOriginalCategory({ id });
+        });
+    }
+
+    return Array.from(labelsByKey.values());
 };
 
 const getVendorName = (product: ProductLike) => {
@@ -614,7 +709,7 @@ function InfoTile({
 }: {
     icon: React.ReactNode;
     label: string;
-    value: string;
+    value: React.ReactNode;
 }) {
     return (
         <div className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-[0_12px_28px_-24px_rgba(15,23,42,0.3)]">
@@ -622,7 +717,32 @@ function InfoTile({
                 <span className="text-primary">{icon}</span>
                 <span>{label}</span>
             </div>
-            <p className="mt-4 text-[15px] font-semibold leading-6 text-slate-900">{value}</p>
+            <div className="mt-4 min-w-0 text-[15px] font-semibold leading-6 text-slate-900">{value}</div>
+        </div>
+    );
+}
+
+function LabelList({
+    labels,
+    emptyText,
+}: {
+    labels: string[];
+    emptyText: string;
+}) {
+    if (labels.length === 0) {
+        return <p className="text-sm font-medium text-slate-500">{emptyText}</p>;
+    }
+
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {labels.map((label) => (
+                <span
+                    key={label}
+                    className="inline-flex max-w-full items-center rounded-full border border-primary/12 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold leading-5 text-slate-700"
+                >
+                    <span className="break-words whitespace-normal">{label}</span>
+                </span>
+            ))}
         </div>
     );
 }
@@ -770,7 +890,8 @@ function ProductReviewCard({
     const hasTwoPrices = Boolean(beforePrice && afterPrice);
     const singlePriceValue = beforePrice ?? afterPrice;
     const createdAt = formatProductTimestamp(product.created_at as string | Date | undefined);
-    const categoryName = getCategoryName(product as ProductLike) ?? "No category assigned";
+    const assignedCategoryLabels = getAssignedCategoryLabels(product as ProductLike);
+    const originalVendorCategoryLabels = getOriginalVendorCategoryLabels(product as ProductLike);
     const vendorName = getVendorName(product as ProductLike) ?? "No vendor assigned";
     const brandName = getBrandName(product as ProductLike) ?? "No brand assigned";
     const initialPriceFields = useMemo(
@@ -902,31 +1023,37 @@ function ProductReviewCard({
 
                 <div className="flex min-w-0 flex-col gap-4">
 
-                    <div className="grid gap-2 sm:grid-cols-3">
-                        <div className="rounded-[18px] border border-slate-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.25)]">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                                Vendor
-                            </p>
-                            <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                                {vendorName}
-                            </p>
-                        </div>
-                        <div className="rounded-[18px] border border-slate-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.25)]">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                                Brand
-                            </p>
-                            <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                                {brandName}
-                            </p>
-                        </div>
-                        <div className="rounded-[18px] border border-slate-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.25)]">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                                Category
-                            </p>
-                            <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                                {categoryName}
-                            </p>
-                        </div>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        <InfoTile
+                            icon={<Store className="h-4 w-4" />}
+                            label="Vendor"
+                            value={<p className="truncate text-sm font-semibold text-slate-900">{vendorName}</p>}
+                        />
+                        <InfoTile
+                            icon={<Tag className="h-4 w-4" />}
+                            label="Brand"
+                            value={<p className="truncate text-sm font-semibold text-slate-900">{brandName}</p>}
+                        />
+                        <InfoTile
+                            icon={<Boxes className="h-4 w-4" />}
+                            label="Categories"
+                            value={
+                                <LabelList
+                                    labels={assignedCategoryLabels}
+                                    emptyText="No categories assigned"
+                                />
+                            }
+                        />
+                        <InfoTile
+                            icon={<Package className="h-4 w-4" />}
+                            label="Original Categories"
+                            value={
+                                <LabelList
+                                    labels={originalVendorCategoryLabels}
+                                    emptyText="No original categories captured"
+                                />
+                            }
+                        />
                     </div>
                 </div>
 

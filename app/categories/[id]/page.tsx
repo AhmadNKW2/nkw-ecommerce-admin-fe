@@ -159,8 +159,8 @@ export default function EditCategoryPage() {
           description_ar: descriptionAr || undefined,
           visible: visible,
           parent_id: parentId,
-          // attribute_ids,
-          // specification_ids,
+          attribute_ids,
+          specification_ids,
           // Only send new file if one was uploaded
           image: image?.file || undefined,
           product_changes: buildUpdateProductChanges(originalProductIds, product_ids),

@@ -100,8 +100,8 @@ export default function CreateCategoryPage() {
         parent_id: parentId,
         image: image?.file || undefined,
         product_changes: buildCreateProductChanges(product_ids),
-        // attribute_ids,
-        // specification_ids,
+        attribute_ids,
+        specification_ids,
       });
       
       router.push("/categories");

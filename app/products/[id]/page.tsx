@@ -1234,6 +1234,12 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
     const topLevelPrice = parseOptionalNumber((product as any)?.price);
     const topLevelCost = parseOptionalNumber((product as any)?.cost);
     const topLevelSalePrice = parseOptionalNumber((product as any)?.sale_price);
+    const topLevelOriginalVendorPrice = parseOptionalNumber(
+      (product as any)?.original_vendor_price,
+    );
+    const topLevelOriginalVendorSalePrice = parseOptionalNumber(
+      (product as any)?.original_vendor_sale_price,
+    );
 
     if (topLevelPrice !== undefined || topLevelSalePrice !== undefined || topLevelCost !== undefined) {
       const resolvedPrice = topLevelPrice ?? topLevelSalePrice;
@@ -1241,6 +1247,9 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
       if (resolvedPrice !== undefined) {
         return {
           cost: topLevelCost,
+          originalVendorPrice: topLevelOriginalVendorPrice ?? resolvedPrice,
+          originalVendorSalePrice:
+            topLevelOriginalVendorSalePrice ?? topLevelSalePrice,
           price: resolvedPrice,
           isSale: topLevelSalePrice !== undefined,
           salePrice: topLevelSalePrice,
@@ -1253,11 +1262,18 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
       const groups = Object.values((product as any).price_groups);
       if (groups.length > 0) {
         const pg: any = groups[0];
+        const groupPrice = pg.price ? parseFloat(pg.price) : undefined;
+        const groupSalePrice = pg.sale_price ? parseFloat(pg.sale_price) : undefined;
+
         return {
           cost: pg.cost !== undefined && pg.cost !== null ? parseFloat(pg.cost) : undefined,
-          price: parseFloat(pg.price),
+          originalVendorPrice:
+            topLevelOriginalVendorPrice ?? groupPrice,
+          originalVendorSalePrice:
+            topLevelOriginalVendorSalePrice ?? groupSalePrice,
+          price: groupPrice ?? 0,
           isSale: !!pg.sale_price,
-          salePrice: pg.sale_price ? parseFloat(pg.sale_price) : undefined,
+          salePrice: groupSalePrice,
         };
       }
     }
@@ -1266,11 +1282,18 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
     const prices = (product as any)?.prices;
     if (prices && prices.length > 0) {
       const pricing = prices[0];
+      const arrayPrice = pricing.price ? parseFloat(pricing.price) : undefined;
+      const arraySalePrice = pricing.sale_price ? parseFloat(pricing.sale_price) : undefined;
+
       return {
         cost: pricing.cost !== undefined && pricing.cost !== null ? parseFloat(pricing.cost) : undefined,
-        price: parseFloat(pricing.price),
+        originalVendorPrice:
+          topLevelOriginalVendorPrice ?? arrayPrice,
+        originalVendorSalePrice:
+          topLevelOriginalVendorSalePrice ?? arraySalePrice,
+        price: arrayPrice ?? 0,
         isSale: !!pricing.sale_price,
-        salePrice: pricing.sale_price ? parseFloat(pricing.sale_price) : undefined,
+        salePrice: arraySalePrice,
       };
     }
     

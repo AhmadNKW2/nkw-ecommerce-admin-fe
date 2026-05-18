@@ -34,6 +34,8 @@ export interface ProductSpecificationSelection {
 // Pricing Configuration
 export interface Pricing {
   cost?: number;
+  originalVendorPrice?: number;
+  originalVendorSalePrice?: number;
   price: number;
   isSale?: boolean;
   salePrice?: number;
@@ -120,6 +122,8 @@ export const productFormSchema = z.object({
   // Pricing
   pricing: z.object({
     cost: z.number().min(0).optional(),
+    originalVendorPrice: z.number().min(0).optional(),
+    originalVendorSalePrice: z.number().min(0).optional(),
     price: z.number().min(0),
     isSale: z.boolean().optional(),
     salePrice: z.number().min(0).optional(),

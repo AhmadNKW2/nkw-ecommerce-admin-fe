@@ -194,4 +194,11 @@ export const queryKeys = {
     detail: (id: string | number) =>
       [...queryKeys.partners.details(), id] as const,
   },
+
+  // Settings
+  settings: {
+    all: ["settings"] as const,
+    seo: () => [...queryKeys.settings.all, "seo"] as const,
+    pricingRules: () => [...queryKeys.settings.all, "pricing-rules"] as const,
+  },
 } as const;

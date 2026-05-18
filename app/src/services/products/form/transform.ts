@@ -171,6 +171,14 @@ export function transformFormDataToDto(
     visible: data.visible,
   };
 
+  if (!data.pricing) {
+    throw new Error("Pricing is required");
+  }
+
+  if (data.pricing.originalVendorPrice === undefined) {
+    throw new Error("Original vendor price is required");
+  }
+
   // Optional fields
   const vendorId = parseOptionalId(data.vendorId);
   const brandId = parseOptionalId(data.brandId);
@@ -184,11 +192,11 @@ export function transformFormDataToDto(
     dto.attributes = attributesPayload;
   }
 
-  if (data.pricing) {
-    dto.cost = data.pricing.cost;
-    dto.price = data.pricing.price;
-    dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
-  }
+  dto.cost = data.pricing.cost;
+  dto.original_vendor_price = data.pricing.originalVendorPrice;
+  dto.original_vendor_sale_price = data.pricing.originalVendorSalePrice ?? null;
+  dto.price = data.pricing.price;
+  dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
 
   if (data.weightDimensions) {
     dto.weight = data.weightDimensions.weight;

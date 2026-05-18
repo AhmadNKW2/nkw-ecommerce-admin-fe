@@ -347,6 +347,27 @@ export const sidebarConfig = {
             </svg>
           ),
         },
+        {
+          href: '/settings',
+          label: 'SEO Settings',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l.7 2.151a1 1 0 00.95.69h2.262c.969 0 1.371 1.24.588 1.81l-1.83 1.33a1 1 0 00-.364 1.118l.699 2.151c.3.921-.755 1.688-1.539 1.118l-1.83-1.33a1 1 0 00-1.176 0l-1.83 1.33c-.783.57-1.838-.197-1.539-1.118l.699-2.151a1 1 0 00-.364-1.118l-1.83-1.33c-.783-.57-.38-1.81.588-1.81h2.262a1 1 0 00.95-.69l.7-2.151z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v7M9 19h6"
+              />
+            </svg>
+          ),
+        },
       ],
     },
     {

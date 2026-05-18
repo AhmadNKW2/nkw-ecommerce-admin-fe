@@ -154,6 +154,8 @@ export const productSchema = z.object({
   cost: z.union([z.number(), z.string()]).optional().nullable(),
   price: z.union([z.string(), z.array(z.any()), z.any()]).optional().nullable(),
   sale_price: z.string().optional().nullable(),
+  original_vendor_price: z.union([z.number(), z.string()]).optional().nullable(),
+  original_vendor_sale_price: z.union([z.number(), z.string()]).optional().nullable(),
   weight: z.union([z.number(), z.string()]).optional().nullable(),
   length: z.union([z.number(), z.string()]).optional().nullable(),
   width: z.union([z.number(), z.string()]).optional().nullable(),
@@ -555,6 +557,8 @@ export interface CreateProductDto {
   cost?: number;
   price?: number;
   sale_price?: number | null;
+  original_vendor_price?: number | null;
+  original_vendor_sale_price?: number | null;
   weight?: number;
   length?: number;
   width?: number;
@@ -670,6 +674,8 @@ export interface UpdateProductDto {
   cost?: number;
   price?: number;
   sale_price?: number | null;
+  original_vendor_price?: number | null;
+  original_vendor_sale_price?: number | null;
   weight?: number;
   length?: number;
   width?: number;

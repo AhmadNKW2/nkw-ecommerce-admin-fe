@@ -9,6 +9,7 @@ import { Toggle } from "../src/components/ui/toggle";
 import { Button } from "../src/components/ui/button";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { showErrorToast } from "../src/lib/toast";
+import { productService } from "../src/services/products/api/product.service";
 import {
   useCreateProductPriceRule,
   useDeleteProductPriceRule,
@@ -36,6 +37,7 @@ type FormState = {
   google_verification: string;
   robots_index: boolean;
   robots_follow: boolean;
+  show_sale_pricing: boolean;
 };
 
 const emptyFormState: FormState = {
@@ -50,6 +52,7 @@ const emptyFormState: FormState = {
   google_verification: "",
   robots_index: true,
   robots_follow: true,
+  show_sale_pricing: true,
 };
 
 type ProductPriceRuleDraft = {
@@ -113,6 +116,7 @@ export default function SettingsPage() {
       google_verification: data.google_verification ?? "",
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
+      show_sale_pricing: data.show_sale_pricing ?? true,
     });
   }, [data]);
 
@@ -242,6 +246,9 @@ export default function SettingsPage() {
     repriceExistingProducts.isPending;
 
   const handleSave = async () => {
+    const shouldReindexProducts =
+      data?.show_sale_pricing !== undefined &&
+      data.show_sale_pricing !== formState.show_sale_pricing;
     const payload: UpdateSeoSettingsDto = {
       site_name_en: formState.site_name_en,
       site_name_ar: formState.site_name_ar,
@@ -254,9 +261,22 @@ export default function SettingsPage() {
       google_verification: formState.google_verification || null,
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
+      show_sale_pricing: formState.show_sale_pricing,
     };
 
     await updateSeoSettings.mutateAsync(payload);
+
+    if (shouldReindexProducts) {
+      try {
+        await productService.reindexProducts();
+      } catch (reindexError) {
+        showErrorToast(
+          reindexError instanceof Error
+            ? reindexError.message
+            : "Settings were saved, but product reindex did not start.",
+        );
+      }
+    }
   };
 
   if (isError) {
@@ -412,6 +432,20 @@ export default function SettingsPage() {
               <Toggle
                 checked={formState.robots_follow}
                 onChange={(value) => setField("robots_follow", value)}
+                disabled={isLoading || updateSeoSettings.isPending}
+              />
+            </div>
+
+            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+              <div>
+                <p className="font-medium">Show Sale Pricing</p>
+                <p className="text-sm text-gray-500">
+                  When disabled, storefront cards, search, product pages, and cart flows show the sale price as the default price without sale styling.
+                </p>
+              </div>
+              <Toggle
+                checked={formState.show_sale_pricing}
+                onChange={(value) => setField("show_sale_pricing", value)}
                 disabled={isLoading || updateSeoSettings.isPending}
               />
             </div>

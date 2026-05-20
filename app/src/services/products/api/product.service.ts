@@ -123,6 +123,14 @@ export interface UpdateStockDto {
 class ProductService extends BaseService<Product> {
   protected endpoint = "/products";
 
+  async reindexProducts(rebuild = false): Promise<ApiResponse<{ job_id: string; message: string }>> {
+    return httpClient.post<ApiResponse<{ job_id: string; message: string }>>(
+      `${this.endpoint}/reindex${rebuild ? "?rebuild=true" : ""}`,
+      undefined,
+      { headers: { "x-skip-request-toast": "1" } },
+    );
+  }
+
   /**
    * Get all products with filters and pagination
    */

@@ -11,6 +11,7 @@ export interface SeoSettings {
   google_verification: string | null;
   robots_index: boolean;
   robots_follow: boolean;
+  show_sale_pricing: boolean;
   created_at?: string;
   updated_at?: string;
 }

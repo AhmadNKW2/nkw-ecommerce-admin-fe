@@ -1,7 +1,11 @@
 import React from "react";
 import { Input } from "../../ui/input";
-import { WeightDimensions } from "../../../services/products/types/product-form.types";
-import { Card } from "@/components/ui/card";
+import {
+    DIMENSION_UNITS,
+    WEIGHT_UNITS,
+    WeightDimensions,
+} from "../../../services/products/types/product-form.types";
+import { Card, Select } from "@/components/ui";
 
 interface WeightDimensionsProps {
     weightDimensions?: WeightDimensions;
@@ -14,13 +18,23 @@ export function WeightDimensionsSection({
     onChange,
     errors,
 }: WeightDimensionsProps) {
+    const weightUnitOptions = WEIGHT_UNITS.map((unit) => ({
+        value: unit,
+        label: unit.toUpperCase(),
+    }));
+    const dimensionUnitOptions = DIMENSION_UNITS.map((unit) => ({
+        value: unit,
+        label: unit.toUpperCase(),
+    }));
+
     const handleFieldChange = (field: keyof WeightDimensions, value: number | undefined | string) => {
         onChange({
             weight: weightDimensions?.weight,
             length: weightDimensions?.length,
             width: weightDimensions?.width,
             height: weightDimensions?.height,
-            unit: weightDimensions?.unit || "cm",
+            weightUnit: weightDimensions?.weightUnit || "kg",
+            dimensionUnit: weightDimensions?.dimensionUnit || "cm",
             [field]: value
         });
     };
@@ -31,9 +45,9 @@ export function WeightDimensionsSection({
                 Weight & Dimensions (Optional)
             </h2>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Weight (kg)</label>
+                    <label className="text-sm font-medium text-gray-700">Weight</label>
                     <Input
                         type="number"
                         min="0"
@@ -44,7 +58,19 @@ export function WeightDimensionsSection({
                     />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Length (cm)</label>
+                    <Select
+                        id="weightUnit"
+                        label="Weight Unit"
+                        value={weightDimensions?.weightUnit || "kg"}
+                        onChange={(value) => handleFieldChange("weightUnit", value as string)}
+                        options={weightUnitOptions}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Length</label>
                     <Input
                         type="number"
                         min="0"
@@ -55,7 +81,7 @@ export function WeightDimensionsSection({
                     />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Width (cm)</label>
+                    <label className="text-sm font-medium text-gray-700">Width</label>
                     <Input
                         type="number"
                         min="0"
@@ -66,7 +92,7 @@ export function WeightDimensionsSection({
                     />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Height (cm)</label>
+                    <label className="text-sm font-medium text-gray-700">Height</label>
                     <Input
                         type="number"
                         min="0"
@@ -74,6 +100,15 @@ export function WeightDimensionsSection({
                         value={weightDimensions?.height ?? ""}
                         onChange={(e) => handleFieldChange("height", parseFloat(e.target.value) || undefined)}
                         placeholder="0.0"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Select
+                        id="dimensionUnit"
+                        label="Dimension Unit"
+                        value={weightDimensions?.dimensionUnit || "cm"}
+                        onChange={(value) => handleFieldChange("dimensionUnit", value as string)}
+                        options={dimensionUnitOptions}
                     />
                 </div>
             </div>

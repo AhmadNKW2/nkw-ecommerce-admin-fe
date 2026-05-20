@@ -1185,6 +1185,11 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
     const topLevelLength = parseOptionalNumber((product as any)?.length);
     const topLevelWidth = parseOptionalNumber((product as any)?.width);
     const topLevelHeight = parseOptionalNumber((product as any)?.height);
+    const topLevelWeightUnit: "g" | "kg" =
+      (product as any)?.weight_unit === "g" ? "g" : "kg";
+    const topLevelDimensionUnit = ["mm", "cm", "m"].includes((product as any)?.dimension_unit)
+      ? ((product as any)?.dimension_unit as "mm" | "cm" | "m")
+      : "cm";
 
     if (
       topLevelWeight !== undefined ||
@@ -1197,6 +1202,8 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
         length: topLevelLength,
         width: topLevelWidth,
         height: topLevelHeight,
+        weightUnit: topLevelWeightUnit,
+        dimensionUnit: topLevelDimensionUnit,
       };
     }
 
@@ -1210,6 +1217,8 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
         length: singleWeight.length ? parseFloat(singleWeight.length) : undefined,
         width: singleWeight.width ? parseFloat(singleWeight.width) : undefined,
         height: singleWeight.height ? parseFloat(singleWeight.height) : undefined,
+        weightUnit: topLevelWeightUnit,
+        dimensionUnit: topLevelDimensionUnit,
       };
     }
 
@@ -1223,6 +1232,8 @@ const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
             length: wg.dimensions?.length ? parseFloat(wg.dimensions.length) : undefined,
             width: wg.dimensions?.width ? parseFloat(wg.dimensions.width) : undefined,
             height: wg.dimensions?.height ? parseFloat(wg.dimensions.height) : undefined,
+            weightUnit: topLevelWeightUnit,
+            dimensionUnit: topLevelDimensionUnit,
           };
        }
     }

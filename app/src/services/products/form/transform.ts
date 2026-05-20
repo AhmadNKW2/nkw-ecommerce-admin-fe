@@ -203,6 +203,18 @@ export function transformFormDataToDto(
     dto.length = data.weightDimensions.length;
     dto.width = data.weightDimensions.width;
     dto.height = data.weightDimensions.height;
+
+    if (data.weightDimensions.weight !== undefined) {
+      dto.weight_unit = data.weightDimensions.weightUnit ?? "kg";
+    }
+
+    if (
+      data.weightDimensions.length !== undefined ||
+      data.weightDimensions.width !== undefined ||
+      data.weightDimensions.height !== undefined
+    ) {
+      dto.dimension_unit = data.weightDimensions.dimensionUnit ?? "cm";
+    }
   }
 
   const mediaFiles: MediaUploadData = {};

@@ -41,13 +41,20 @@ export interface Pricing {
   salePrice?: number;
 }
 
+export const WEIGHT_UNITS = ["g", "kg"] as const;
+export type WeightUnit = (typeof WEIGHT_UNITS)[number];
+
+export const DIMENSION_UNITS = ["mm", "cm", "m"] as const;
+export type DimensionUnit = (typeof DIMENSION_UNITS)[number];
+
 // Weight & Dimensions
 export interface WeightDimensions {
   weight?: number;
   length?: number;
   width?: number;
   height?: number;
-  unit?: string;
+  weightUnit?: WeightUnit;
+  dimensionUnit?: DimensionUnit;
 }
 
 // Media Configuration
@@ -135,7 +142,8 @@ export const productFormSchema = z.object({
     length: z.number().min(0).optional(),
     width: z.number().min(0).optional(),
     height: z.number().min(0).optional(),
-    unit: z.string().optional(),
+    weightUnit: z.enum(WEIGHT_UNITS).optional(),
+    dimensionUnit: z.enum(DIMENSION_UNITS).optional(),
   }).optional(),
 
   // Media

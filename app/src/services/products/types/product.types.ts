@@ -157,9 +157,11 @@ export const productSchema = z.object({
   original_vendor_price: z.union([z.number(), z.string()]).optional().nullable(),
   original_vendor_sale_price: z.union([z.number(), z.string()]).optional().nullable(),
   weight: z.union([z.number(), z.string()]).optional().nullable(),
+  weight_unit: z.enum(["g", "kg"]).optional().nullable(),
   length: z.union([z.number(), z.string()]).optional().nullable(),
   width: z.union([z.number(), z.string()]).optional().nullable(),
   height: z.union([z.number(), z.string()]).optional().nullable(),
+  dimension_unit: z.enum(["mm", "cm", "m"]).optional().nullable(),
   stock: stockSummarySchema.optional().nullable(),
   quantity: z.number().optional().nullable(),
   low_stock_threshold: z.number().optional().nullable(),
@@ -560,9 +562,11 @@ export interface CreateProductDto {
   original_vendor_price?: number | null;
   original_vendor_sale_price?: number | null;
   weight?: number;
+  weight_unit?: "g" | "kg";
   length?: number;
   width?: number;
   height?: number;
+  dimension_unit?: "mm" | "cm" | "m";
   quantity?: number;
   low_stock_threshold?: number;
   is_out_of_stock?: boolean;

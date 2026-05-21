@@ -49,6 +49,8 @@ interface ProductListPageProps {
   fixedStatus?: ProductStatus;
 }
 
+const NO_CATEGORY_FILTER_VALUE = "none";
+
 const formatPriceValue = (value: number) => {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -245,7 +247,9 @@ export function ProductListPage({
     queryParams.brand_ids?.split(",") || []
   );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
-    queryParams.category_ids?.split(",") || []
+    queryParams.categoryId === NO_CATEGORY_FILTER_VALUE
+      ? [NO_CATEGORY_FILTER_VALUE]
+      : queryParams.category_ids?.split(",") || []
   );
   const [selectedCreatedByIds, setSelectedCreatedByIds] = useState<string[]>(
     queryParams.created_by?.split(",") || []
@@ -430,8 +434,21 @@ export function ProductListPage({
   };
 
   const handleCategoryChange = (ids: string[]) => {
-    setSelectedCategoryIds(ids);
-    handleFilterChange({ category_ids: ids.length > 0 ? ids.join(",") : undefined });
+    const normalizedIds = Array.from(new Set(ids.filter(Boolean)));
+    const hasNoCategory = normalizedIds.includes(NO_CATEGORY_FILTER_VALUE);
+    const categoryIds = normalizedIds.filter((id) => id !== NO_CATEGORY_FILTER_VALUE);
+
+    if (hasNoCategory && categoryIds.length === 0) {
+      setSelectedCategoryIds([NO_CATEGORY_FILTER_VALUE]);
+      handleFilterChange({ categoryId: NO_CATEGORY_FILTER_VALUE, category_ids: undefined });
+      return;
+    }
+
+    setSelectedCategoryIds(categoryIds);
+    handleFilterChange({
+      categoryId: undefined,
+      category_ids: categoryIds.length > 0 ? categoryIds.join(",") : undefined,
+    });
   };
 
   const handleCreatedByChange = (value: string | string[]) => {
@@ -620,8 +637,10 @@ export function ProductListPage({
                   categories={categoriesData.data ?? []}
                   selectedIds={selectedCategoryIds}
                   onChange={handleCategoryChange}
+                  exclusiveOption={{ value: NO_CATEGORY_FILTER_VALUE, label: "No Category" }}
                   singleSelect={false}
                   label="Category"
+                  placeholder="All Categories"
                   disabled={categoryOptions.length === 0}
                 />
               </div>

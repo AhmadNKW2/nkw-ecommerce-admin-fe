@@ -362,6 +362,7 @@ export interface ProductFilters {
   page?: number;
   limit?: number;
   status?: ProductStatus;
+  categoryId?: string | number;
   category_ids?: string;
   vendor_id?: string | number;
   vendor_ids?: string;

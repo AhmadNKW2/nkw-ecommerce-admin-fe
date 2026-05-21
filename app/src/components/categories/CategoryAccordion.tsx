@@ -105,88 +105,84 @@ const SortableParentCategory: React.FC<SortableParentCategoryProps> = ({
           isDragging ? "ring-2 ring-primary shadow-lg" : ""
         }`}
       >
-        <AccordionTrigger className="hover:no-underline py-4">
-          <div className="flex items-center gap-3 w-full">
-            {/* Drag Handle */}
-            <div
-              className={`cursor-grab active:cursor-grabbing p-2 rounded-lg transition-all duration-200 ${
-                isDragging
-                  ? "bg-primary/20 shadow-sm"
-                  : "hover:bg-primary/10 hover:shadow-sm"
-              }`}
-              {...dndAttributes}
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical
-                className={`h-5 w-5 transition-colors duration-200 ${
-                  isDragging ? "text-primary" : "text-primary/50"
+        <div className="flex items-center gap-2 py-4">
+          <AccordionTrigger className="hover:no-underline py-0 flex-1">
+            <div className="flex items-center gap-3 w-full">
+              {/* Drag Handle */}
+              <div
+                className={`cursor-grab active:cursor-grabbing p-2 rounded-lg transition-all duration-200 ${
+                  isDragging
+                    ? "bg-primary/20 shadow-sm"
+                    : "hover:bg-primary/10 hover:shadow-sm"
                 }`}
-              />
-            </div>
-
-            {/* Display Index */}
-            <div className="w-8 text-center font-mono text-sm text-gray-500">
-              {displayIndex}
-            </div>
-
-            <div className="flex items-center gap-3 flex-1">
-              {category.image ? (
-                <img
-                  src={category.image}
-                  alt={category.name_en}
-                  className="w-12 h-12 rounded-lg object-cover border border-primary/20"
+                {...dndAttributes}
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GripVertical
+                  className={`h-5 w-5 transition-colors duration-200 ${
+                    isDragging ? "text-primary" : "text-primary/50"
+                  }`}
                 />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Folder className="w-5 h-5 text-primary" />
+              </div>
+
+              {/* Display Index */}
+              <div className="w-8 text-center font-mono text-sm text-gray-500">
+                {displayIndex}
+              </div>
+
+              <div className="flex items-center gap-3 flex-1">
+                {category.image ? (
+                  <img
+                    src={category.image}
+                    alt={category.name_en}
+                    className="w-12 h-12 rounded-lg object-cover border border-primary/20"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <Folder className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div className="flex flex-col items-start">
+                  <span className="font-semibold text-gray-900">
+                    {category.name_en}
+                  </span>
+                  <span className="text-sm text-gray-500">{category.name_ar}</span>
                 </div>
-              )}
-              <div className="flex flex-col items-start">
-                <span className="font-semibold text-gray-900">
-                  {category.name_en}
-                </span>
-                <span className="text-sm text-gray-500">{category.name_ar}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasChildren && (
+                  <Badge variant="secondary">{children.length} subcategories</Badge>
+                )}
+                <Badge variant={category.visible ? "success" : "danger"}>
+                  {category.visible ? "Visible" : "Hidden"}
+                </Badge>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {hasChildren && (
-                <Badge variant="secondary">{children.length} subcategories</Badge>
-              )}
-              <Badge variant={category.visible ? "success" : "danger"}>
-                {category.visible ? "Visible" : "Hidden"}
-              </Badge>
-            </div>
-            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-              <IconButton
-                variant="view"
-                asDiv
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView(category);
-                }}
-                title="View category"
-              />
-              <IconButton
-                variant="edit"
-                href={`/categories/${category.id}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-                title="Edit category"
-              />
-              <IconButton
-                variant="delete"
-                asDiv
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(category);
-                }}
-                title="Delete category"
-              />
-            </div>
+          </AccordionTrigger>
+
+          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <IconButton
+              variant="view"
+              onClick={() => {
+                onView(category);
+              }}
+              title="View category"
+            />
+            <IconButton
+              variant="edit"
+              href={`/categories/${category.id}`}
+              title="Edit category"
+            />
+            <IconButton
+              variant="delete"
+              onClick={() => {
+                onDelete(category);
+              }}
+              title="Delete category"
+            />
           </div>
-        </AccordionTrigger>
+        </div>
 
         <AccordionContent>
           {hasChildren ? (
@@ -346,13 +342,13 @@ const SortableSubcategory: React.FC<SortableSubcategoryProps> = ({
   const children = allChildren[subcategory.id] || [];
   const hasChildren = children.length > 0;
 
-  const content = (
-    <div
-      className={`flex items-center justify-between w-full p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-        isDragging ? "ring-2 ring-primary bg-primary/5 shadow-lg" : ""
-      }`}
-    >
-      <div className="flex items-center gap-3">
+  const rowClassName = `flex items-center gap-2 w-full p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+    isDragging ? "ring-2 ring-primary bg-primary/5 shadow-lg" : ""
+  }`;
+
+  const triggerContent = (
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-3 min-w-0">
         {/* Drag Handle */}
         <div
           className={`cursor-grab active:cursor-grabbing p-1.5 rounded-lg transition-all duration-200 ${
@@ -401,33 +397,31 @@ const SortableSubcategory: React.FC<SortableSubcategoryProps> = ({
         <Badge variant={subcategory.visible ? "success" : "danger"}>
           {subcategory.visible ? "Visible" : "Hidden"}
         </Badge>
-        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <IconButton
-            variant="view"
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(subcategory);
-            }}
-            title="View subcategory"
-          />
-          <IconButton
-            variant="edit"
-            href={`/categories/${subcategory.id}`}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            title="Edit subcategory"
-          />
-          <IconButton
-            variant="delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(subcategory);
-            }}
-            title="Delete subcategory"
-          />
-        </div>
       </div>
+    </div>
+  );
+
+  const actionButtons = (
+    <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+      <IconButton
+        variant="view"
+        onClick={() => {
+          onView(subcategory);
+        }}
+        title="View subcategory"
+      />
+      <IconButton
+        variant="edit"
+        href={`/categories/${subcategory.id}`}
+        title="Edit subcategory"
+      />
+      <IconButton
+        variant="delete"
+        onClick={() => {
+          onDelete(subcategory);
+        }}
+        title="Delete subcategory"
+      />
     </div>
   );
 
@@ -436,9 +430,12 @@ const SortableSubcategory: React.FC<SortableSubcategoryProps> = ({
       <div ref={setNodeRef} style={style}>
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value={`item-${subcategory.id}`} className="border-0">
-            <AccordionTrigger className="hover:no-underline py-0 pr-2">
-              {content}
-            </AccordionTrigger>
+            <div className={rowClassName}>
+              <AccordionTrigger className="hover:no-underline py-0 pr-0 flex-1">
+                {triggerContent}
+              </AccordionTrigger>
+              {actionButtons}
+            </div>
             <AccordionContent>
               <SubcategoryList
                 parentId={subcategory.id}
@@ -461,7 +458,10 @@ const SortableSubcategory: React.FC<SortableSubcategoryProps> = ({
 
   return (
     <div ref={setNodeRef} style={style}>
-      {content}
+      <div className={rowClassName}>
+        <div className="flex-1">{triggerContent}</div>
+        {actionButtons}
+      </div>
     </div>
   );
 };

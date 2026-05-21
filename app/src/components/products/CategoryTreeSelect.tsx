@@ -15,6 +15,10 @@ interface CategoryTreeSelectProps {
   recentCategories?: Category[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  exclusiveOption?: {
+    value: string;
+    label: string;
+  };
   singleSelect?: boolean;
   label?: string;
   error?: string | boolean;
@@ -31,6 +35,7 @@ interface CategoryTreeNodeProps {
   searchTerm?: string;
   forceShow?: boolean;
   isLast?: boolean;
+  exclusiveValues?: string[];
 }
 
 const CategoryTreeNode: React.FC<CategoryTreeNodeProps> = ({
@@ -42,6 +47,7 @@ const CategoryTreeNode: React.FC<CategoryTreeNodeProps> = ({
   searchTerm = "",
   forceShow = false,
   isLast = false,
+  exclusiveValues = [],
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const isSelected = selectedIds.includes(category.id.toString());
@@ -78,6 +84,7 @@ const CategoryTreeNode: React.FC<CategoryTreeNodeProps> = ({
     } else {
       let newSelected = [...selectedIds];
       if (checked) {
+        newSelected = newSelected.filter((id) => !exclusiveValues.includes(id));
         newSelected.push(category.id.toString());
       } else {
         newSelected = newSelected.filter((id) => id !== category.id.toString());
@@ -197,6 +204,7 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
   recentCategories,
   selectedIds,
   onChange,
+  exclusiveOption,
   singleSelect = false,
   label,
   error,
@@ -292,11 +300,28 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
     };
   }, [isOpen, updatePanelPosition]);
 
-  const selectedCategories = useMemo(() => {
+  const selectedItems = useMemo(() => {
     return selectedIds
-      .map((id) => findCategoryInTree(categories, id))
-      .filter((c): c is Category => !!c);
-  }, [categories, selectedIds]);
+      .map((id) => {
+        if (exclusiveOption && id === exclusiveOption.value) {
+          return {
+            id,
+            label: exclusiveOption.label,
+          };
+        }
+
+        const category = findCategoryInTree(categories, id);
+        if (!category) {
+          return null;
+        }
+
+        return {
+          id,
+          label: category.name_en,
+        };
+      })
+      .filter((item): item is { id: string; label: string } => !!item);
+  }, [categories, exclusiveOption, selectedIds]);
 
   const handleRemove = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -345,6 +370,36 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                 </div>
               ) : (
                 <>
+                  {exclusiveOption && (!searchTerm || exclusiveOption.label.toLowerCase().includes(searchTerm.toLowerCase())) && (
+                    <div className="mb-2">
+                      <div
+                        className="flex items-center hover:bg-gray-50 rounded-md pr-2 transition-colors cursor-pointer"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onChange(
+                            selectedIds.includes(exclusiveOption.value)
+                              ? []
+                              : [exclusiveOption.value]
+                          );
+                        }}
+                      >
+                        <div
+                          className="flex items-center justify-center py-2 pl-1 pr-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={selectedIds.includes(exclusiveOption.value)}
+                            onChange={(checked) => {
+                              onChange(checked ? [exclusiveOption.value] : []);
+                            }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-700 truncate flex-1 py-2 font-medium">
+                          {exclusiveOption.label}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {!searchTerm && recentCategories && recentCategories.length > 0 && (
                     <div className="mb-4">
                       <div className="text-xs font-semibold text-muted-foreground mb-2 px-1 uppercase tracking-wider">
@@ -358,6 +413,7 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                           onChange={onChange}
                           singleSelect={singleSelect}
                           searchTerm={searchTerm}
+                          exclusiveValues={exclusiveOption ? [exclusiveOption.value] : []}
                         />
                       ))}
                     </div>
@@ -376,6 +432,7 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
                         onChange={onChange}
                         singleSelect={singleSelect}
                         searchTerm={searchTerm}
+                        exclusiveValues={exclusiveOption ? [exclusiveOption.value] : []}
                       />
                     ))}
                   </div>
@@ -432,18 +489,18 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
             }}
         >
           <div className="flex flex-wrap gap-1.5 flex-1 overflow-hidden">
-            {selectedCategories.length > 0 ? (
-              selectedCategories.map((category) => (
+            {selectedItems.length > 0 ? (
+              selectedItems.map((item) => (
                 <Badge 
-                  key={category.id} 
+                  key={item.id} 
                   variant="default" 
                   className="pl-2 pr-1 py-0.5 h-6 text-xs font-medium flex items-center gap-1 hover:bg-secondary/20 transition-colors"
                 >
-                  <span className="truncate max-w-37.5">{category.name_en}</span>
+                  <span className="truncate max-w-37.5">{item.label}</span>
                   <div 
                     role="button"
                     className="rounded-full p-0.5 hover:bg-secondary/30 cursor-pointer"
-                    onClick={(e) => handleRemove(e, category.id.toString())}
+                    onClick={(e) => handleRemove(e, item.id)}
                   >
                     <X className="h-3 w-3" />
                   </div>

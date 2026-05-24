@@ -47,16 +47,12 @@ const parseOptionalId = (value: string | undefined) => {
 
 const normalizeTags = (tags: ProductFormData["tags"]): string[] => {
   return Array.from(
-    new Set(
-      (tags || [])
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    )
+    new Set((tags || []).map((tag) => tag.trim()).filter(Boolean)),
   );
 };
 
 export function buildProductAttributesPayload(
-  attributes: ProductFormData["attributes"]
+  attributes: ProductFormData["attributes"],
 ): ProductAttributeInput[] {
   if (!attributes || attributes.length === 0) {
     return [];
@@ -86,7 +82,7 @@ export function buildProductAttributesPayload(
 }
 
 export function buildProductSpecificationsPayload(
-  specifications: ProductFormData["specifications"]
+  specifications: ProductFormData["specifications"],
 ): ProductSpecificationInputDto[] {
   if (!specifications || specifications.length === 0) {
     return [];
@@ -102,8 +98,8 @@ export function buildProductSpecificationsPayload(
       new Set(
         specification.values
           .map((value) => parseInt(value.id, 10))
-          .filter((valueId) => !Number.isNaN(valueId))
-      )
+          .filter((valueId) => !Number.isNaN(valueId)),
+      ),
     );
 
     if (specificationValueIds.length === 0) {
@@ -122,7 +118,7 @@ export function buildProductSpecificationsPayload(
 /**
  * Transform frontend ProductFormData to CreateProductDto (without media)
  * and extract media files for separate upload
- * 
+ *
  * The flow is:
  * 1. Call this function to get DTO and media files
  * 2. Upload media files via mediaService.uploadMedia()
@@ -131,17 +127,19 @@ export function buildProductSpecificationsPayload(
  */
 export function transformFormDataToDto(
   data: ProductFormData,
-  options: TransformFormDataOptions = {}
+  options: TransformFormDataOptions = {},
 ): { dto: CreateProductDto; mediaFiles: MediaUploadData } {
   const { includeEmptyRelations = false } = options;
-  const specificationsPayload = buildProductSpecificationsPayload(data.specifications);
+  const specificationsPayload = buildProductSpecificationsPayload(
+    data.specifications,
+  );
   const attributesPayload = buildProductAttributesPayload(data.attributes);
   const linkedProductIds = Array.from(
     new Set(
       (data.linked_product_ids || [])
         .map((id) => parseInt(id, 10))
-        .filter((id) => !Number.isNaN(id))
-    )
+        .filter((id) => !Number.isNaN(id)),
+    ),
   );
   const normalizedTags = normalizeTags(data.tags);
 
@@ -151,10 +149,10 @@ export function transformFormDataToDto(
     sku: normalizeOptionalString(data.sku),
     record: normalizeOptionalString(data.record) ?? null,
     status: data.status,
-    short_description_en: data.shortDescriptionEn || '',
-    short_description_ar: data.shortDescriptionAr || '',
-    long_description_en: data.longDescriptionEn || '',
-    long_description_ar: data.longDescriptionAr || '',
+    short_description_en: data.shortDescriptionEn || "",
+    short_description_ar: data.shortDescriptionAr || "",
+    long_description_en: data.longDescriptionEn || "",
+    long_description_ar: data.longDescriptionAr || "",
     category_ids: (data.categoryIds || [])
       .map((id) => parseInt(id, 10))
       .filter((id) => !Number.isNaN(id)),
@@ -230,14 +228,20 @@ export function transformFormDataToDto(
  * Call this after uploading media files to get the media_id references
  */
 export function buildMediaArray(
-  uploadedMedia: UploadedMediaReference[]
+  uploadedMedia: UploadedMediaReference[],
 ): MediaInputDto[] {
-  const sortedMedia = [...uploadedMedia].sort((left, right) => left.sortOrder - right.sortOrder);
+  const sortedMedia = [...uploadedMedia].sort((left, right) => {
+    if (left.isPrimary === right.isPrimary) {
+      return left.sortOrder - right.sortOrder;
+    }
+
+    return left.isPrimary ? -1 : 1;
+  });
   const hasExplicitPrimary = sortedMedia.some((media) => media.isPrimary);
 
   return sortedMedia.map((media, index) => ({
     media_id: media.mediaId,
     is_primary: hasExplicitPrimary ? media.isPrimary : index === 0,
-    sort_order: media.sortOrder,
+    sort_order: index,
   }));
 }

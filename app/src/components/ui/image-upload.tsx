@@ -66,7 +66,7 @@ const SortableImageItem = ({ item, onRemove, onSetPrimary, onPreview, hasPrimary
             style={style}
             {...attributes}
             {...listeners}
-            className={`w-40 h-40 relative group border rounded-r1 overflow-hidden border-primary/20 ${hasPrimary && item.isPrimary ? 'border-primary ring-2 ring-primary' : ''} `}
+            className={`w-40 h-40 relative group border rounded-r1 overflow-hidden border-primary/20 ${hasPrimary && item.type === "image" && item.isPrimary ? 'border-primary ring-2 ring-primary' : ''} `}
         >
             {item.type === "image" ? (
                 <Image
@@ -88,7 +88,7 @@ const SortableImageItem = ({ item, onRemove, onSetPrimary, onPreview, hasPrimary
 
             <div className="flex justify-center items-center gap-1 absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
 
-                {hasPrimary && onSetPrimary && !item.isPrimary && (
+                {hasPrimary && onSetPrimary && item.type === "image" && !item.isPrimary && (
                     <button
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
@@ -186,6 +186,30 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     const hasSingleImage = !isMulti && currentValue.length > 0;
     const singleImage = hasSingleImage ? currentValue[0] : null;
 
+    const getFirstImageId = (items: ImageUploadItem[]) =>
+        [...items]
+            .sort((a, b) => a.order - b.order)
+            .find((item) => item.type === "image")?.id;
+
+    const normalizePrimaryImageState = (
+        items: ImageUploadItem[],
+        fallbackPrimaryImageId?: string,
+    ) => {
+        if (!hasPrimary) {
+            return items;
+        }
+
+        const currentPrimaryImageId = items.find(
+            (item) => item.isPrimary && item.type === "image",
+        )?.id;
+        const primaryImageId = currentPrimaryImageId ?? fallbackPrimaryImageId;
+
+        return items.map((item) => ({
+            ...item,
+            isPrimary: !!primaryImageId && item.type === "image" && item.id === primaryImageId,
+        }));
+    };
+
     const sizeClasses = {
         sm: "w-24 h-24",
         md: "w-40 h-40",
@@ -207,25 +231,28 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         if (!files || files.length === 0 || !onChange) return;
 
         const filesToProcess = isMulti ? Array.from(files) : [files[0]];
-        const hasAnyPrimary = currentValue.some((m) => m.isPrimary);
-        const shouldSetFirstAsPrimary =
-            autoSetPrimaryOnFirstAdd && hasPrimary && !hasAnyPrimary && currentValue.length === 0;
 
         const newMediaItems: ImageUploadItem[] = filesToProcess.map((file, index) => ({
             id: `media-${Date.now()}-${index}`,
             file: file,
             preview: URL.createObjectURL(file),
             type: file.type.startsWith("video") ? "video" : "image",
-            isPrimary: shouldSetFirstAsPrimary && index === 0,
+            isPrimary: false,
             order: currentValue.length + index,
         }));
 
+        const nextItems = isMulti ? [...currentValue, ...newMediaItems] : newMediaItems;
+        const updatedItems = normalizePrimaryImageState(
+            nextItems,
+            autoSetPrimaryOnFirstAdd ? getFirstImageId(nextItems) : undefined,
+        );
+
         if (isMulti) {
-            onChange([...currentValue, ...newMediaItems]);
+            onChange(updatedItems);
         } else {
             // For single mode, replace existing
             currentValue.forEach((m) => URL.revokeObjectURL(m.preview));
-            onChange(newMediaItems);
+            onChange(updatedItems);
         }
     };
 
@@ -239,14 +266,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
         let filtered = currentValue.filter((m) => m.id !== mediaId);
 
-        // If the removed media was primary, set the first remaining as primary
-        if (hasPrimary && mediaToRemove?.isPrimary && filtered.length > 0) {
-            const sortedByOrder = [...filtered].sort((a, b) => a.order - b.order);
-            const firstItemId = sortedByOrder[0].id;
-            filtered = filtered.map((m) => ({
-                ...m,
-                isPrimary: m.id === firstItemId,
-            }));
+        if (hasPrimary && filtered.length > 0) {
+            filtered = normalizePrimaryImageState(filtered, getFirstImageId(filtered));
         }
 
         onChange(filtered);
@@ -255,9 +276,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     const handleSetPrimary = (mediaId: string) => {
         if (!hasPrimary || !onChange) return;
 
+        const targetMedia = currentValue.find((m) => m.id === mediaId);
+        if (!targetMedia || targetMedia.type !== "image") return;
+
         let updated = currentValue.map((m) => ({
             ...m,
-            isPrimary: m.id === mediaId,
+            isPrimary: m.type === "image" && m.id === mediaId,
         }));
 
         const targetIndex = updated.findIndex((m) => m.id === mediaId);

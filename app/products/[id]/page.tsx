@@ -1246,10 +1246,10 @@ export default function EditProductPage() {
   };
 
   // Transform single media (non-variant) - for products without variant-based media
-  const transformSingleMedia = () => {
+  const transformSingleMedia = (): NonNullable<ProductFormData["media"]> => {
     const sortMediaWithPrimaryFirst = (
-      media: Array<{ order: number; isPrimary: boolean }>,
-    ) => {
+      media: NonNullable<ProductFormData["media"]>,
+    ): NonNullable<ProductFormData["media"]> => {
       return [...media].sort((left, right) => {
         if (left.isPrimary === right.isPrimary) {
           return left.order - right.order;

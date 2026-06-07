@@ -38,6 +38,7 @@ type FormState = {
   robots_index: boolean;
   robots_follow: boolean;
   show_sale_pricing: boolean;
+  free_delivery_amount: number;
 };
 
 const emptyFormState: FormState = {
@@ -53,6 +54,7 @@ const emptyFormState: FormState = {
   robots_index: true,
   robots_follow: true,
   show_sale_pricing: true,
+  free_delivery_amount: 50,
 };
 
 type ProductPriceRuleDraft = {
@@ -117,6 +119,7 @@ export default function SettingsPage() {
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
       show_sale_pricing: data.show_sale_pricing ?? true,
+      free_delivery_amount: data.free_delivery_amount ?? 50,
     });
   }, [data]);
 
@@ -262,6 +265,7 @@ export default function SettingsPage() {
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
       show_sale_pricing: formState.show_sale_pricing,
+      free_delivery_amount: Number(formState.free_delivery_amount) || 0,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -448,6 +452,23 @@ export default function SettingsPage() {
                 onChange={(value) => setField("show_sale_pricing", value)}
                 disabled={isLoading || updateSeoSettings.isPending}
               />
+            </div>
+
+            <div className="flex flex-col bg-gray-50 rounded-lg p-4 gap-2">
+              <div>
+                <p className="font-medium">Free Delivery Amount (JOD)</p>
+                <p className="text-sm text-gray-500">
+                  The minimum order amount required to unlock free delivery.
+                </p>
+              </div>
+              <div className="w-48 mt-1">
+                <Input
+                  type="number"
+                  value={formState.free_delivery_amount}
+                  onChange={(event) => setField("free_delivery_amount", event.target.value)}
+                  disabled={isLoading || updateSeoSettings.isPending}
+                />
+              </div>
             </div>
           </div>
         </div>

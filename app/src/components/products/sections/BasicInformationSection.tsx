@@ -356,8 +356,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     id="metaTitleEn"
                     label="Meta Title (English)"
                     value={formData.metaTitleEn || ""}
-                    readOnly
-                    className="bg-gray-50 cursor-default"
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                     error={errors.metaTitleEn}
                 />
 
@@ -365,8 +365,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     id="metaTitleAr"
                     label="Meta Title (Arabic)"
                     value={formData.metaTitleAr || ""}
-                    readOnly
-                    className="bg-gray-50 cursor-default"
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                     isRtl
                     error={errors.metaTitleAr}
                 />
@@ -375,8 +375,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     id="metaDescriptionEn"
                     label="Meta Description (English)"
                     value={formData.metaDescriptionEn || ""}
-                    readOnly
-                    className="bg-gray-50 cursor-default"
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                     error={errors.metaDescriptionEn}
                 />
 
@@ -384,8 +384,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     id="metaDescriptionAr"
                     label="Meta Description (Arabic)"
                     value={formData.metaDescriptionAr || ""}
-                    readOnly
-                    className="bg-gray-50 cursor-default"
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                     isRtl
                     error={errors.metaDescriptionAr}
                 />

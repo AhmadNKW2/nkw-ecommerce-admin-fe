@@ -465,7 +465,14 @@ export default function SettingsPage() {
                 <Input
                   type="number"
                   value={formState.free_delivery_amount}
-                  onChange={(event) => setField("free_delivery_amount", event.target.value)}
+                  onChange={(event) =>
+                    setField(
+                      "free_delivery_amount",
+                      Number.isNaN(event.target.valueAsNumber)
+                        ? 0
+                        : event.target.valueAsNumber,
+                    )
+                  }
                   disabled={isLoading || updateSeoSettings.isPending}
                 />
               </div>

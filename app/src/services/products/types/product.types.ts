@@ -363,10 +363,14 @@ export interface ProductFilters {
   limit?: number;
   status?: ProductStatus;
   categoryId?: string | number;
+  vendorId?: string | number;
   category_ids?: string;
   vendor_id?: string | number;
   vendor_ids?: string;
+  has_no_vendor?: boolean;
+  brandId?: string | number;
   brand_ids?: string;
+  has_no_brand?: boolean;
   created_by?: string;
   minPrice?: number;
   maxPrice?: number;

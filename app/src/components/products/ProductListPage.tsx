@@ -50,6 +50,75 @@ interface ProductListPageProps {
 }
 
 const NO_CATEGORY_FILTER_VALUE = "none";
+const NO_VENDOR_FILTER_VALUE = "__no_vendor__";
+const NO_BRAND_FILTER_VALUE = "__no_brand__";
+
+const normalizeStoredFilterId = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const normalized = String(value).trim();
+  return normalized ? normalized : undefined;
+};
+
+const normalizeStoredMultiFilter = (multiValue: unknown, ...singleValues: unknown[]) => {
+  if (typeof multiValue === "string" && multiValue.trim()) {
+    return multiValue;
+  }
+
+  if (Array.isArray(multiValue)) {
+    const values = multiValue
+      .map((value) => normalizeStoredFilterId(value))
+      .filter((value): value is string => Boolean(value));
+
+    if (values.length > 0) {
+      return values.join(",");
+    }
+  }
+
+  for (const singleValue of singleValues) {
+    const normalized = normalizeStoredFilterId(singleValue);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+};
+
+const normalizeStoredProductFilters = (
+  rawFilters: unknown,
+  storedPage: number,
+  storedLimit: number,
+  fixedStatus?: ProductStatus
+): ProductFilters => {
+  if (!rawFilters || typeof rawFilters !== "object") {
+    return {
+      page: storedPage,
+      limit: storedLimit,
+      status: fixedStatus,
+    };
+  }
+
+  const parsed = rawFilters as ProductFilters;
+
+  return {
+    ...parsed,
+    page: storedPage,
+    limit: storedLimit,
+    status: fixedStatus ?? parsed.status,
+    vendor_ids: normalizeStoredMultiFilter(
+      parsed.vendor_ids,
+      parsed.vendor_id,
+      parsed.vendorId
+    ),
+    vendor_id: undefined,
+    vendorId: undefined,
+    brand_ids: normalizeStoredMultiFilter(parsed.brand_ids, parsed.brandId),
+    brandId: undefined,
+  };
+};
 
 const formatPriceValue = (value: number) => {
   return value.toLocaleString("en-US", {
@@ -198,12 +267,12 @@ export function ProductListPage({
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          return {
-            ...parsed,
-            page: storedPage,
-            limit: storedLimit,
-            status: fixedStatus ?? parsed.status,
-          };
+          return normalizeStoredProductFilters(
+            parsed,
+            storedPage,
+            storedLimit,
+            fixedStatus
+          );
         } catch {
           // Ignore parse errors.
         }
@@ -241,10 +310,16 @@ export function ProductListPage({
   const [startDate, setStartDate] = useState(queryParams.start_date || "");
   const [endDate, setEndDate] = useState(queryParams.end_date || "");
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>(
-    queryParams.vendor_ids?.split(",") || []
+    [
+      ...(queryParams.has_no_vendor ? [NO_VENDOR_FILTER_VALUE] : []),
+      ...(queryParams.vendor_ids?.split(",") || []),
+    ]
   );
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>(
-    queryParams.brand_ids?.split(",") || []
+    [
+      ...(queryParams.has_no_brand ? [NO_BRAND_FILTER_VALUE] : []),
+      ...(queryParams.brand_ids?.split(",") || []),
+    ]
   );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
     queryParams.categoryId === NO_CATEGORY_FILTER_VALUE
@@ -282,14 +357,20 @@ export function ProductListPage({
   const categoriesData = useCategories();
   const { data: adminsData } = useCustomers({ role: ["admin", "constant_token_admin", "catalog_manager"], limit: 100 } as any);
 
-  const vendorOptions = (vendorsData?.data ?? []).map((vendor: any) => ({
-    value: String(vendor.id),
-    label: vendor.name_en || vendor.name || String(vendor.id),
-  }));
-  const brandOptions = (brandsData?.data ?? []).map((brand: any) => ({
-    value: String(brand.id),
-    label: brand.name_en || brand.name || String(brand.id),
-  }));
+  const vendorOptions = [
+    { value: NO_VENDOR_FILTER_VALUE, label: "No Vendor" },
+    ...(vendorsData?.data ?? []).map((vendor: any) => ({
+      value: String(vendor.id),
+      label: vendor.name_en || vendor.name || String(vendor.id),
+    })),
+  ];
+  const brandOptions = [
+    { value: NO_BRAND_FILTER_VALUE, label: "No Brand" },
+    ...(brandsData?.data ?? []).map((brand: any) => ({
+      value: String(brand.id),
+      label: brand.name_en || brand.name || String(brand.id),
+    })),
+  ];
   const categoryOptions = (categoriesData.data ?? []).map((category: any) => ({
     value: String(category.id),
     label: category.name_en || category.name || String(category.id),
@@ -422,15 +503,28 @@ export function ProductListPage({
   };
 
   const handleVendorChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
+    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
+    const hasNoVendor = normalized.includes(NO_VENDOR_FILTER_VALUE);
+    const vendorIds = normalized.filter((id) => id !== NO_VENDOR_FILTER_VALUE);
     setSelectedVendorIds(normalized);
-    handleFilterChange({ vendor_ids: normalized.length > 0 ? normalized.join(",") : undefined });
+    handleFilterChange({
+      vendor_id: undefined,
+      vendorId: undefined,
+      vendor_ids: vendorIds.length > 0 ? vendorIds.join(",") : undefined,
+      has_no_vendor: hasNoVendor || undefined,
+    });
   };
 
   const handleBrandChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
+    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
+    const hasNoBrand = normalized.includes(NO_BRAND_FILTER_VALUE);
+    const brandIds = normalized.filter((id) => id !== NO_BRAND_FILTER_VALUE);
     setSelectedBrandIds(normalized);
-    handleFilterChange({ brand_ids: normalized.length > 0 ? normalized.join(",") : undefined });
+    handleFilterChange({
+      brandId: undefined,
+      brand_ids: brandIds.length > 0 ? brandIds.join(",") : undefined,
+      has_no_brand: hasNoBrand || undefined,
+    });
   };
 
   const handleCategoryChange = (ids: string[]) => {
@@ -640,7 +734,6 @@ export function ProductListPage({
                   exclusiveOption={{ value: NO_CATEGORY_FILTER_VALUE, label: "No Category" }}
                   singleSelect={false}
                   label="Category"
-                  placeholder="All Categories"
                   disabled={categoryOptions.length === 0}
                 />
               </div>

@@ -346,9 +346,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     id="referenceLink"
                     label="Reference Link"
                     value={formData.referenceLink || ""}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        onChange("referenceLink", e.target.value)
-                    }
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
                     error={errors.referenceLink}
                 />
 

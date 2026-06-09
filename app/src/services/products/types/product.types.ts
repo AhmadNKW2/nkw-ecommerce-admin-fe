@@ -686,9 +686,11 @@ export interface UpdateProductDto {
   original_vendor_price?: number | null;
   original_vendor_sale_price?: number | null;
   weight?: number;
+  weight_unit?: "g" | "kg";
   length?: number;
   width?: number;
   height?: number;
+  dimension_unit?: "mm" | "cm" | "m";
   quantity?: number;
   low_stock_threshold?: number;
   is_out_of_stock?: boolean;

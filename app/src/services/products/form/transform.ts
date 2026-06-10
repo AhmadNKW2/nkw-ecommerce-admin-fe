@@ -29,6 +29,15 @@ export interface UploadedMediaReference {
 
 interface TransformFormDataOptions {
   includeEmptyRelations?: boolean;
+  availableAttributes?: HierarchyDefinition[];
+  availableSpecifications?: HierarchyDefinition[];
+}
+
+interface HierarchyDefinition {
+  id: string;
+  values?: Array<{
+    id: string;
+  }>;
 }
 
 const normalizeOptionalString = (value: string | undefined) => {
@@ -53,10 +62,26 @@ const normalizeTags = (tags: ProductFormData["tags"]): string[] => {
 
 export function buildProductAttributesPayload(
   attributes: ProductFormData["attributes"],
+  availableAttributes?: HierarchyDefinition[],
 ): ProductAttributeInput[] {
   if (!attributes || attributes.length === 0) {
     return [];
   }
+
+  const attributeValueOwnerMap = new Map<number, number>();
+  availableAttributes?.forEach((attribute) => {
+    const attributeId = parseInt(attribute.id, 10);
+    if (Number.isNaN(attributeId)) {
+      return;
+    }
+
+    attribute.values?.forEach((value) => {
+      const valueId = parseInt(value.id, 10);
+      if (!Number.isNaN(valueId)) {
+        attributeValueOwnerMap.set(valueId, attributeId);
+      }
+    });
+  });
 
   return attributes.flatMap((attribute) => {
     const attributeId = parseInt(attribute.id, 10);
@@ -74,7 +99,7 @@ export function buildProductAttributesPayload(
 
     return [
       {
-        attribute_id: attributeId,
+        attribute_id: attributeValueOwnerMap.get(firstAttributeValueId) ?? attributeId,
         attribute_value_ids: [firstAttributeValueId],
       },
     ];
@@ -83,36 +108,59 @@ export function buildProductAttributesPayload(
 
 export function buildProductSpecificationsPayload(
   specifications: ProductFormData["specifications"],
+  availableSpecifications?: HierarchyDefinition[],
 ): ProductSpecificationInputDto[] {
   if (!specifications || specifications.length === 0) {
     return [];
   }
 
-  return specifications.flatMap((specification) => {
+  const specificationValueOwnerMap = new Map<number, number>();
+  availableSpecifications?.forEach((specification) => {
     const specificationId = parseInt(specification.id, 10);
     if (Number.isNaN(specificationId)) {
-      return [];
+      return;
     }
 
-    const specificationValueIds = Array.from(
-      new Set(
-        specification.values
-          .map((value) => parseInt(value.id, 10))
-          .filter((valueId) => !Number.isNaN(valueId)),
-      ),
-    );
-
-    if (specificationValueIds.length === 0) {
-      return [];
-    }
-
-    return [
-      {
-        specification_id: specificationId,
-        specification_value_ids: specificationValueIds,
-      },
-    ];
+    specification.values?.forEach((value) => {
+      const valueId = parseInt(value.id, 10);
+      if (!Number.isNaN(valueId)) {
+        specificationValueOwnerMap.set(valueId, specificationId);
+      }
+    });
   });
+
+  const groupedValues = new Map<number, Set<number>>();
+
+  specifications.forEach((specification) => {
+    const fallbackSpecificationId = parseInt(specification.id, 10);
+
+    specification.values.forEach((value) => {
+      const valueId = parseInt(value.id, 10);
+      if (Number.isNaN(valueId)) {
+        return;
+      }
+
+      const ownerSpecificationId =
+        specificationValueOwnerMap.get(valueId) ?? fallbackSpecificationId;
+
+      if (Number.isNaN(ownerSpecificationId)) {
+        return;
+      }
+
+      if (!groupedValues.has(ownerSpecificationId)) {
+        groupedValues.set(ownerSpecificationId, new Set<number>());
+      }
+
+      groupedValues.get(ownerSpecificationId)?.add(valueId);
+    });
+  });
+
+  return Array.from(groupedValues.entries()).map(
+    ([specificationId, valueIds]) => ({
+      specification_id: specificationId,
+      specification_value_ids: Array.from(valueIds),
+    }),
+  );
 }
 
 /**
@@ -129,11 +177,19 @@ export function transformFormDataToDto(
   data: ProductFormData,
   options: TransformFormDataOptions = {},
 ): { dto: CreateProductDto; mediaFiles: MediaUploadData } {
-  const { includeEmptyRelations = false } = options;
+  const {
+    includeEmptyRelations = false,
+    availableAttributes,
+    availableSpecifications,
+  } = options;
   const specificationsPayload = buildProductSpecificationsPayload(
     data.specifications,
+    availableSpecifications,
   );
-  const attributesPayload = buildProductAttributesPayload(data.attributes);
+  const attributesPayload = buildProductAttributesPayload(
+    data.attributes,
+    availableAttributes,
+  );
   const linkedProductIds = Array.from(
     new Set(
       (data.linked_product_ids || [])

@@ -381,6 +381,7 @@ export interface ProductFilters {
   end_date?: string;
   visible?: boolean | string;
   in_stock?: boolean | string;
+  has_duplicate_reference_link?: boolean | string;
 }
 
 export interface ProductNamesFilters {

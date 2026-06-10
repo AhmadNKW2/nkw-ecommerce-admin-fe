@@ -1653,6 +1653,8 @@ export default function EditProductPage() {
     try {
       const { dto, mediaFiles } = transformFormDataToDto(data, {
         includeEmptyRelations: true,
+        availableAttributes: attributes,
+        availableSpecifications: specifications,
       });
       const productMedia = mediaFiles.singleMedia || [];
       const totalUploads = productMedia.filter((media) => !!media.file).length;

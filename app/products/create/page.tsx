@@ -80,7 +80,10 @@ export default function CreateProductPage() {
   const handleSubmit = async (data: ProductFormData) => {
     const toastId = showLoadingToast("Creating product...");
     try {
-      const { dto, mediaFiles } = transformFormDataToDto(data);
+      const { dto, mediaFiles } = transformFormDataToDto(data, {
+        availableAttributes: attributes,
+        availableSpecifications: specifications,
+      });
       const productMedia = mediaFiles.singleMedia || [];
       const totalUploads = productMedia.filter((media) => !!media.file).length;
 

@@ -573,6 +573,17 @@ export function ProductListPage({
     handleFilterChange({ visible });
   };
 
+  const handleDuplicateReferenceLinkChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    let hasDuplicateReferenceLink = undefined;
+    if (normalized === "true") {
+      hasDuplicateReferenceLink = true;
+    } else if (normalized === "false") {
+      hasDuplicateReferenceLink = false;
+    }
+    handleFilterChange({ has_duplicate_reference_link: hasDuplicateReferenceLink });
+  };
+
   const handleClearAllFilters = () => {
     setSearchTerm("");
     setMinPrice("");
@@ -838,6 +849,26 @@ export function ProductListPage({
                   onClear={() => handleVisibilityChange("")}
                   multiple={false}
                   placeholder="All Visibility"
+                />
+              </div>
+              <div className="relative flex-1">
+                <Select
+                  label="Reference Links"
+                  value={
+                    queryParams.has_duplicate_reference_link === true
+                      ? "true"
+                      : queryParams.has_duplicate_reference_link === false
+                        ? "false"
+                        : ""
+                  }
+                  onChange={handleDuplicateReferenceLinkChange}
+                  options={[
+                    { value: "true", label: "Duplicated Reference Links" },
+                    { value: "false", label: "No Duplicated Reference Links" },
+                  ]}
+                  onClear={() => handleDuplicateReferenceLinkChange("")}
+                  multiple={false}
+                  placeholder="All Reference Links"
                 />
               </div>
               <div className="relative flex-1">

@@ -347,8 +347,40 @@ export const sidebarConfig = {
             </svg>
           ),
         },
+      ],
+    },
+    {
+      label: 'Settings',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6V4m0 16v-2m8-6h-2M6 12H4m12.95 4.95-1.414-1.414M8.464 8.464 7.05 7.05m9.9 0-1.414 1.414M8.464 15.536 7.05 16.95M12 16a4 4 0 100-8 4 4 0 000 8z"
+          />
+        </svg>
+      ),
+      defaultOpen: false,
+      links: [
         {
           href: '/settings',
+          label: 'Settings Overview',
+          exact: true,
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h10"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/seo',
           label: 'SEO Settings',
           roles: ['admin'] as SidebarRole[],
           icon: (
@@ -357,13 +389,37 @@ export const sidebarConfig = {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l.7 2.151a1 1 0 00.95.69h2.262c.969 0 1.371 1.24.588 1.81l-1.83 1.33a1 1 0 00-.364 1.118l.699 2.151c.3.921-.755 1.688-1.539 1.118l-1.83-1.33a1 1 0 00-1.176 0l-1.83 1.33c-.783.57-1.838-.197-1.539-1.118l.699-2.151a1 1 0 00-.364-1.118l-1.83-1.33c-.783-.57-.38-1.81.588-1.81h2.262a1 1 0 00.95-.69l.7-2.151z"
+                d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
               />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/pricing',
+          label: 'Pricing Rules',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 15v7M9 19h6"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/pricing-audit',
+          label: 'Pricing Audit',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-6m4 6V7m4 10v-3M5 19h14"
               />
             </svg>
           ),

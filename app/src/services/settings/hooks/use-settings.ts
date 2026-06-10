@@ -4,6 +4,10 @@ import { showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
   CreateProductPriceRuleDto,
+  ImportedPricingAuditFilters,
+  ImportedPricingAuditResult,
+  SyncImportedPricingDto,
+  SyncImportedPricingResult,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
@@ -91,6 +95,39 @@ export const useRepriceExistingProducts = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast(
         `Repriced ${response.data.updated_count} products successfully`,
+      );
+    },
+  });
+};
+
+export const useImportedPricingAudit = (
+  params?: ImportedPricingAuditFilters,
+) => {
+  return useQuery({
+    queryKey: queryKeys.settings.pricingAudit(params),
+    queryFn: () => settingsService.getImportedPricingAudit(params),
+    select: (response) => response.data,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useSyncImportedPricing = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: SyncImportedPricingDto) =>
+      settingsService.syncImportedPricing(data),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      const result = response.data;
+      if (result.dry_run) {
+        showSuccessToast(
+          `Dry run completed for ${result.total_found} imported products`,
+        );
+        return;
+      }
+      showSuccessToast(
+        `Imported pricing sync finished: ${result.updated ?? 0} updated, ${result.failed ?? 0} failed`,
       );
     },
   });

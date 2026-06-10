@@ -2,9 +2,13 @@ import { httpClient } from '../../../lib/api/http-client';
 import { ApiResponse } from '../../../types/common.types';
 import {
   CreateProductPriceRuleDto,
+  ImportedPricingAuditFilters,
+  ImportedPricingAuditResult,
   ProductPriceRule,
   RepriceExistingProductsResult,
   SeoSettings,
+  SyncImportedPricingDto,
+  SyncImportedPricingResult,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
@@ -12,6 +16,8 @@ import {
 class SettingsService {
   private seoEndpoint = '/settings/seo';
   private pricingRulesEndpoint = '/settings/pricing-rules';
+  private pricingAuditEndpoint = '/products/import-pricing/audit';
+  private pricingSyncEndpoint = '/products/import-pricing/sync';
 
   async getSeoSettings(): Promise<ApiResponse<SeoSettings>> {
     return httpClient.get<ApiResponse<SeoSettings>>(this.seoEndpoint);
@@ -71,6 +77,27 @@ class SettingsService {
     return httpClient.post<ApiResponse<RepriceExistingProductsResult>>(
       `${this.pricingRulesEndpoint}/reprice-existing`,
       undefined,
+      {
+        headers: { 'x-skip-request-toast': '1' },
+      },
+    );
+  }
+
+  async getImportedPricingAudit(
+    params?: ImportedPricingAuditFilters,
+  ): Promise<ApiResponse<ImportedPricingAuditResult>> {
+    return httpClient.get<ApiResponse<ImportedPricingAuditResult>>(
+      this.pricingAuditEndpoint,
+      params,
+    );
+  }
+
+  async syncImportedPricing(
+    data: SyncImportedPricingDto,
+  ): Promise<ApiResponse<SyncImportedPricingResult>> {
+    return httpClient.post<ApiResponse<SyncImportedPricingResult>>(
+      this.pricingSyncEndpoint,
+      data,
       {
         headers: { 'x-skip-request-toast': '1' },
       },

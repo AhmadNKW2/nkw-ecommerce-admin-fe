@@ -45,3 +45,72 @@ export interface RepriceExistingProductsResult {
   percentage: number;
   message: string;
 }
+
+export interface ImportedPricingAuditFilters {
+  page?: number;
+  limit?: number;
+  mismatch_only?: boolean;
+  product_ids?: string;
+}
+
+export interface ImportedPricingSnapshot {
+  original_vendor_price: number | null;
+  original_vendor_sale_price: number | null;
+  price: number | null;
+  sale_price: number | null;
+}
+
+export interface ImportedPricingAuditItem {
+  product_id: number;
+  name_en: string | null;
+  status: string | null;
+  input_shape: string;
+  input_pricing: {
+    new_price: unknown;
+    old_price: unknown;
+    price: unknown;
+    sale_price: unknown;
+  };
+  current: ImportedPricingSnapshot;
+  expected: ImportedPricingSnapshot | null;
+  mismatch_fields: string[];
+  is_mismatch: boolean;
+  error: string | null;
+}
+
+export interface ImportedPricingAuditResult {
+  data: ImportedPricingAuditItem[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    total_scanned: number;
+    total_mismatches: number;
+  };
+}
+
+export interface SyncImportedPricingDto {
+  product_ids: number[];
+  dry_run?: boolean;
+}
+
+export interface SyncImportedPricingResultItem {
+  product_id: number;
+  status: string;
+  reason?: string;
+  error?: string;
+  mismatch_fields?: string[];
+}
+
+export interface SyncImportedPricingResult {
+  dry_run: boolean;
+  requested_product_ids: number[];
+  missing_product_ids: number[];
+  total_requested: number;
+  total_found: number;
+  total_mismatches?: number;
+  updated?: number;
+  failed?: number;
+  skipped?: number;
+  results: Array<SyncImportedPricingResultItem | ImportedPricingAuditItem>;
+}

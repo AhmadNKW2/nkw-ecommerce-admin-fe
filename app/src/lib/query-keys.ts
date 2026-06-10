@@ -200,5 +200,7 @@ export const queryKeys = {
     all: ["settings"] as const,
     seo: () => [...queryKeys.settings.all, "seo"] as const,
     pricingRules: () => [...queryKeys.settings.all, "pricing-rules"] as const,
+    pricingAudit: (params?: Record<string, any>) =>
+      [...queryKeys.settings.all, "pricing-audit", params] as const,
   },
 } as const;

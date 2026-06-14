@@ -12,11 +12,12 @@ import {
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
 
-export const useSeoSettings = () => {
+export const useSeoSettings = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: queryKeys.settings.seo(),
     queryFn: () => settingsService.getSeoSettings(),
     select: (response) => response.data,
+    enabled: options?.enabled ?? true,
     refetchOnWindowFocus: false,
   });
 };

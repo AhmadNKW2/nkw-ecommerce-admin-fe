@@ -3,8 +3,8 @@
  */
 
 export const APP_CONFIG = {
-  name: "Ordonsooq Admin",
-  description: "Admin Panel for Ordonsooq",
+  name: "Admin Dashboard",
+  description: "Admin panel for storefront management",
 } as const;
 
 export const API_CONFIG = {
@@ -13,7 +13,10 @@ export const API_CONFIG = {
 } as const;
 
 export const STOREFRONT_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_STOREFRONT_URL || "https://ordonsooq.com",
+  baseUrl:
+    process.env.NEXT_PUBLIC_STOREFRONT_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000",
 } as const;
 
 export const QUERY_CONFIG = {

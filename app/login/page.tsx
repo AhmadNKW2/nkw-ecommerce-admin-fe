@@ -27,6 +27,12 @@ export default function LoginPage() {
     setShowOverlay(isLoading);
   }, [isLoading, setShowOverlay]);
 
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.title = "Admin Dashboard";
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -111,7 +117,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm ">
-          <p>Ordonsooq Admin Dashboard</p>
+          <p>Admin Dashboard</p>
         </div>
       </Card>
     </div>

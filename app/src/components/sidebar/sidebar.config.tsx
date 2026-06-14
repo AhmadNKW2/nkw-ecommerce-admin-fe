@@ -5,7 +5,7 @@ export type SidebarRole = 'admin' | 'catalog_manager';
 
 export const sidebarConfig = {
   header: {
-    title: 'ordonsooq Admin',
+    title: 'Admin Dashboard',
     subtitle: 'Management Console',
     logo: (
       <div className="w-8 h-8 bg-primary rounded-r1 flex items-center justify-center">

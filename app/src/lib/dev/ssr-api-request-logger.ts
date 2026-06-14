@@ -39,7 +39,7 @@ interface SsrApiLogStore {
 }
 
 declare global {
-  var __ORDONSOOQ_SSR_API_LOG_STORE__: SsrApiLogStore | undefined;
+  var __SSR_API_LOG_STORE__: SsrApiLogStore | undefined;
 }
 
 const SSR_API_LOG_DIRECTORY = path.join(process.cwd(), "dev-logs");
@@ -53,15 +53,15 @@ const SSR_API_REQUESTS_WITH_RESPONSES_LOG_FILE = path.join(
 );
 
 function getStore(): SsrApiLogStore {
-  if (!globalThis.__ORDONSOOQ_SSR_API_LOG_STORE__) {
-    globalThis.__ORDONSOOQ_SSR_API_LOG_STORE__ = {
+  if (!globalThis.__SSR_API_LOG_STORE__) {
+    globalThis.__SSR_API_LOG_STORE__ = {
       nextId: 1,
       generation: 1,
       writeQueue: Promise.resolve(),
     };
   }
 
-  return globalThis.__ORDONSOOQ_SSR_API_LOG_STORE__;
+  return globalThis.__SSR_API_LOG_STORE__;
 }
 
 async function ensureLogDirectory() {

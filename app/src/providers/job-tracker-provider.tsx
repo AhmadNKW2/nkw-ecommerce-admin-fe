@@ -25,6 +25,7 @@ const getNumericResultValue = (result: Record<string, unknown> | null | undefine
 };
 
 const JOB_STATUS_POLL_INTERVAL_MS = 1500;
+const ACTIVE_JOBS_STORAGE_KEY = "storefront_active_jobs";
 
 const parseJobStatus = (value: unknown): ParsedJobStatus | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -108,7 +109,7 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
   // Re-hydrate jobs from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("ordonsooq_active_jobs");
+      const stored = localStorage.getItem(ACTIVE_JOBS_STORAGE_KEY);
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
@@ -126,9 +127,9 @@ export const JobTrackerProvider = ({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (hasInitialized.current) {
       if (activeJobs.length === 0) {
-        localStorage.removeItem("ordonsooq_active_jobs");
+        localStorage.removeItem(ACTIVE_JOBS_STORAGE_KEY);
       } else {
-        localStorage.setItem("ordonsooq_active_jobs", JSON.stringify(activeJobs));
+        localStorage.setItem(ACTIVE_JOBS_STORAGE_KEY, JSON.stringify(activeJobs));
       }
     } else {
       hasInitialized.current = true;

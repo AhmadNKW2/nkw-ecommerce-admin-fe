@@ -57,6 +57,7 @@ interface CategoryFormProps {
   product_ids: number[];
   attributeIds: string[];
   specificationIds: string[];
+  copyFromCategoryId: string;
   onNameEnChange: (value: string) => void;
   onNameArChange: (value: string) => void;
   onDescriptionEnChange?: (value: string) => void;
@@ -67,6 +68,7 @@ interface CategoryFormProps {
   onProductIdsChange: (value: number[]) => void;
   onAttributeIdsChange: (value: string[]) => void;
   onSpecificationIdsChange: (value: string[]) => void;
+  onCopyFromCategoryIdChange: (value: string) => void;
   formErrors: {
     name_en?: string;
     name_ar?: string;
@@ -97,6 +99,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   product_ids,
   attributeIds,
   specificationIds,
+  copyFromCategoryId,
   onNameEnChange,
   onNameArChange,
   onDescriptionEnChange,
@@ -107,6 +110,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   onProductIdsChange,
   onAttributeIdsChange,
   onSpecificationIdsChange,
+  onCopyFromCategoryIdChange,
   formErrors,
   parentCategories = [],
   allAttributes = [],
@@ -238,6 +242,18 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
         <h2 className="text-lg font-semibold">Category Attributes & Specifications</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="md:col-span-2">
+            <CategoryTreeSelect
+              label="Same Attributes & Specifications of Category"
+              categories={availableParents}
+              selectedIds={copyFromCategoryId ? [copyFromCategoryId] : []}
+              onChange={(ids) => onCopyFromCategoryIdChange(ids[0] || "")}
+              singleSelect={true}
+              placeholder="Select category to copy from"
+              disabled={availableParents.length === 0}
+            />
+          </div>
+
           <Select
             label="Attributes"
             value={attributeIds}

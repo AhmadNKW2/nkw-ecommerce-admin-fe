@@ -4,9 +4,10 @@
  * Create Category Page
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import {
+  useCategory,
   useCategories,
   useCreateCategory,
 } from "../../src/services/categories/hooks/use-categories";
@@ -18,6 +19,22 @@ import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { validateCategoryForm } from "../../src/lib/validations";
 import { ProductItem } from "../../src/components/common/ProductsTableSection";
 import { buildCreateProductChanges } from "@/lib/product-changes";
+
+const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
+  const normalizedIds = Array.isArray(directIds)
+    ? directIds.filter((id): id is number => typeof id === "number")
+    : [];
+
+  const relationIds = Array.isArray(relations)
+    ? relations
+        .map((item) =>
+          typeof item === "object" && item !== null && "id" in item ? (item as { id?: unknown }).id : undefined
+        )
+        .filter((id): id is number => typeof id === "number")
+    : [];
+
+  return [...new Set([...normalizedIds, ...relationIds])];
+};
 
 export default function CreateCategoryPage() {
   const router = useRouter();
@@ -33,6 +50,7 @@ export default function CreateCategoryPage() {
   const [product_ids, setProductIds] = useState<number[]>([]);
   const [attribute_ids, setAttributeIds] = useState<number[]>([]);
   const [specification_ids, setSpecificationIds] = useState<number[]>([]);
+  const [copyFromCategoryId, setCopyFromCategoryId] = useState("");
   const [formErrors, setFormErrors] = useState<{
     name_en?: string;
     name_ar?: string;
@@ -46,6 +64,10 @@ export default function CreateCategoryPage() {
   const { data: attributes = [] } = useAttributes();
   const { data: productsData } = useProducts({ limit: 1000 });
   const { data: specifications = [] } = useSpecifications();
+  const sourceCategoryId = Number(copyFromCategoryId);
+  const { data: sourceCategory } = useCategory(sourceCategoryId, {
+    enabled: sourceCategoryId > 0,
+  });
   const createCategory = useCreateCategory();
 
   // Transform products for the ProductsTableSection
@@ -67,6 +89,24 @@ export default function CreateCategoryPage() {
   const assignedProducts: ProductItem[] = useMemo(() => {
     return allProducts.filter((p) => product_ids.includes(p.id));
   }, [allProducts, product_ids]);
+
+  useEffect(() => {
+    if (!copyFromCategoryId || !sourceCategory) {
+      return;
+    }
+
+    const nextAttributeIds = extractLinkedIds(
+      (sourceCategory as any).attribute_ids,
+      (sourceCategory as any).attributes
+    );
+    const nextSpecificationIds = extractLinkedIds(
+      (sourceCategory as any).specification_ids,
+      (sourceCategory as any).specifications
+    );
+
+    setAttributeIds(nextAttributeIds);
+    setSpecificationIds(nextSpecificationIds);
+  }, [copyFromCategoryId, sourceCategory]);
 
   const validate = () => {
     const result = validateCategoryForm({
@@ -123,6 +163,7 @@ export default function CreateCategoryPage() {
       product_ids={product_ids}
       attributeIds={attribute_ids.map(String)}
       specificationIds={specification_ids.map(String)}
+      copyFromCategoryId={copyFromCategoryId}
       onNameEnChange={(value) => {
         setNameEn(value);
         if (formErrors.name_en) {
@@ -153,6 +194,7 @@ export default function CreateCategoryPage() {
       onProductIdsChange={setProductIds}
       onAttributeIdsChange={(value) => setAttributeIds(value.map(Number))}
       onSpecificationIdsChange={(value) => setSpecificationIds(value.map(Number))}
+      onCopyFromCategoryIdChange={setCopyFromCategoryId}
       formErrors={formErrors}
       parentCategories={categories || []}
       allAttributes={attributes}

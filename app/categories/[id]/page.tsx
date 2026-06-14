@@ -58,6 +58,7 @@ export default function EditCategoryPage() {
   const [product_ids, setProductIds] = useState<number[]>([]);
   const [attribute_ids, setAttributeIds] = useState<number[]>([]);
   const [specification_ids, setSpecificationIds] = useState<number[]>([]);
+  const [copyFromCategoryId, setCopyFromCategoryId] = useState("");
   const [formErrors, setFormErrors] = useState<{
     name_en?: string;
     name_ar?: string;
@@ -79,6 +80,10 @@ export default function EditCategoryPage() {
   const { data: attributes = [] } = useAttributes();
   const { data: allCategories } = useCategories();
   const { data: specifications = [] } = useSpecifications();
+  const sourceCategoryId = Number(copyFromCategoryId);
+  const { data: sourceCategory } = useCategory(sourceCategoryId, {
+    enabled: sourceCategoryId > 0,
+  });
 
   const updateCategory = useUpdateCategory();
 
@@ -116,6 +121,7 @@ export default function EditCategoryPage() {
       setParentId(category.parent_id || null);
       setAttributeIds(extractLinkedIds((category as any).attribute_ids, (category as any).attributes));
       setSpecificationIds(extractLinkedIds((category as any).specification_ids, (category as any).specifications));
+      setCopyFromCategoryId("");
     }
   }, [category]);
 
@@ -125,6 +131,19 @@ export default function EditCategoryPage() {
       setProductIds((category as any).products.map((p: { id: number }) => p.id));
     }
   }, [category]);
+
+  useEffect(() => {
+    if (!copyFromCategoryId || !sourceCategory) {
+      return;
+    }
+
+    setAttributeIds(
+      extractLinkedIds((sourceCategory as any).attribute_ids, (sourceCategory as any).attributes)
+    );
+    setSpecificationIds(
+      extractLinkedIds((sourceCategory as any).specification_ids, (sourceCategory as any).specifications)
+    );
+  }, [copyFromCategoryId, sourceCategory]);
 
   const validate = () => {
     const result = validateCategoryForm({
@@ -250,6 +269,7 @@ export default function EditCategoryPage() {
       product_ids={product_ids}
       attributeIds={attribute_ids.map(String)}
       specificationIds={specification_ids.map(String)}
+      copyFromCategoryId={copyFromCategoryId}
       onNameEnChange={(value) => {
         setNameEn(value);
         if (formErrors.name_en) {
@@ -280,6 +300,7 @@ export default function EditCategoryPage() {
       onProductIdsChange={setProductIds}
       onAttributeIdsChange={(value) => setAttributeIds(value.map(Number))}
       onSpecificationIdsChange={(value) => setSpecificationIds(value.map(Number))}
+      onCopyFromCategoryIdChange={setCopyFromCategoryId}
       formErrors={formErrors}
       parentCategories={allCategories || []}
       allAttributes={attributes}

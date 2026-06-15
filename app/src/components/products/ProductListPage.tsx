@@ -732,7 +732,6 @@ export function ProductListPage({
               value={searchTerm}
               onChange={(event) => handleSearchChange(event.target.value)}
               label="Search"
-              placeholder="Search by ID, name, SKU, or description"
               variant="search"
               maxLength={150}
             />

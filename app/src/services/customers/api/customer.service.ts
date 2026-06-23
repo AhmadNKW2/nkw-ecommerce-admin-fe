@@ -22,15 +22,18 @@ class CustomerService {
    * GET /api/users
    */
   async getCustomers(filters?: CustomerFilters): Promise<CustomerListResponse> {
-    // Intercept array roles to bypass backend single-enum validation restrictions
-    if (filters?.role && Array.isArray(filters.role)) {
-      const rolesStr = filters.role.join(',');
-      const filtersWithoutRole = { ...filters };
-      delete filtersWithoutRole.role;
-      return httpClient.get<CustomerListResponse>(this.endpoint, { ...filtersWithoutRole, roles: rolesStr });
+    if (!filters) {
+      return httpClient.get<CustomerListResponse>(this.endpoint);
     }
 
-    return httpClient.get<CustomerListResponse>(this.endpoint, filters);
+    const { role, ...rest } = filters;
+    const params: Record<string, unknown> = { ...rest };
+
+    if (role) {
+      params.roles = Array.isArray(role) ? role.join(",") : role;
+    }
+
+    return httpClient.get<CustomerListResponse>(this.endpoint, params);
   }
 
   /**

@@ -56,6 +56,8 @@ import {
     UpdateProductDto,
 } from "@/services/products/types/product.types";
 import { useVendors } from "@/services/vendors/hooks/use-vendors";
+import { useProductFieldToggles } from "@/services/settings/hooks/use-settings";
+import type { ProductFieldToggles } from "@/services/settings/types/settings.types";
 
 type ProductLike = Product & Record<string, any>;
 
@@ -658,15 +660,32 @@ const formatProductTimestamp = (value?: string | Date | null) => {
     };
 };
 
-const buildReviewSnapshot = (product: ProductLike): ReviewSnapshot => {
+const buildReviewSnapshot = (
+    product: ProductLike,
+    toggles?: {
+        vendors_enabled?: boolean;
+        attributes_enabled?: boolean;
+        specifications_enabled?: boolean;
+    },
+): ReviewSnapshot => {
+    const vendorsEnabled = toggles?.vendors_enabled ?? true;
+    const attributesEnabled = toggles?.attributes_enabled ?? true;
+    const specificationsEnabled = toggles?.specifications_enabled ?? true;
+
     return {
         imageUrl: getProductImageUrl(product),
         displayPrice: getProductDisplayPrice(product),
         visible: Boolean(product.visible ?? product.is_active),
         outOfStock: isProductOutOfStock(product),
-        referenceUrl: normalizeExternalUrl(product.reference_link),
-        attributes: normalizeAttributeGroups(product.attributes),
-        specifications: normalizeSpecificationGroups(product.specifications),
+        referenceUrl: vendorsEnabled
+            ? normalizeExternalUrl(product.reference_link)
+            : null,
+        attributes: attributesEnabled
+            ? normalizeAttributeGroups(product.attributes)
+            : [],
+        specifications: specificationsEnabled
+            ? normalizeSpecificationGroups(product.specifications)
+            : [],
     };
 };
 
@@ -873,6 +892,7 @@ function ProductReviewCard({
     isBulkReimporting,
     isReimporting,
     isSavingPrice,
+    toggles,
 }: {
     item: QueueItem;
     onApprove: (productId: number) => Promise<void>;
@@ -883,8 +903,13 @@ function ProductReviewCard({
     isBulkReimporting: boolean;
     isReimporting: boolean;
     isSavingPrice: boolean;
+    toggles: ProductFieldToggles;
 }) {
     const { product, snapshot } = item;
+    const vendorsEnabled = toggles.vendors_enabled;
+    const attributesEnabled = toggles.attributes_enabled;
+    const specificationsEnabled = toggles.specifications_enabled;
+    const referenceLinkVisibleAdmin = toggles.reference_link_visible_admin;
     const beforePrice = snapshot.displayPrice?.price ?? null;
     const afterPrice = snapshot.displayPrice?.salePrice ?? null;
     const hasTwoPrices = Boolean(beforePrice && afterPrice);
@@ -999,9 +1024,11 @@ function ProductReviewCard({
                                 <Badge variant={snapshot.outOfStock ? "warning" : "success"}>
                                     {snapshot.outOfStock ? "Out of stock" : "In Stock"}
                                 </Badge>
+                                {referenceLinkVisibleAdmin && (
                                 <Badge variant={snapshot.referenceUrl ? "success" : "warning"}>
                                     {snapshot.referenceUrl ? "Reference linked" : "Reference missing"}
                                 </Badge>
+                                )}
                                 <Badge variant={snapshot.visible ? "success" : "danger"}>
                                     {snapshot.visible ? "Visible" : "Hidden"}
                                 </Badge>
@@ -1024,11 +1051,13 @@ function ProductReviewCard({
                 <div className="flex min-w-0 flex-col gap-4">
 
                     <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        {vendorsEnabled && (
                         <InfoTile
                             icon={<Store className="h-4 w-4" />}
                             label="Vendor"
                             value={<p className="truncate text-sm font-semibold text-slate-900">{vendorName}</p>}
                         />
+                        )}
                         <InfoTile
                             icon={<Tag className="h-4 w-4" />}
                             label="Brand"
@@ -1058,6 +1087,7 @@ function ProductReviewCard({
                 </div>
 
                 <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                    {attributesEnabled && (
                     <ProductGroupSection
                         title="Attributes"
                         groups={snapshot.attributes}
@@ -1067,6 +1097,8 @@ function ProductReviewCard({
                         iconClassName="bg-secondary"
                         chipClassName="border-secondary/15 bg-secondary/10"
                     />
+                    )}
+                    {specificationsEnabled && (
                     <ProductGroupSection
                         title="Specifications"
                         groups={snapshot.specifications}
@@ -1076,6 +1108,7 @@ function ProductReviewCard({
                         iconClassName="bg-primary"
                         chipClassName="border-primary/12 bg-primary/8"
                     />
+                    )}
                 </div>
             </section>
 
@@ -1320,6 +1353,22 @@ export function ProductReviewWorkspace() {
         setLimit: setStoredLimit,
     } = useSessionStoragePage(REVIEW_STORAGE_KEY);
 
+    // Product field toggles — drive review snapshot zeroing and tile/badge/group
+    // visibility. Fall back to true on every flag while loading or on error so
+    // the review workspace renders everything by default (matches the
+    // all-enabled contract).
+    const { data: productFieldToggles } = useProductFieldToggles();
+    const reviewToggles: ProductFieldToggles = productFieldToggles ?? {
+        id: 0,
+        vendors_enabled: true,
+        attributes_enabled: true,
+        specifications_enabled: true,
+        weight_and_dimensions_enabled: true,
+        reference_link_visible_admin: true,
+        meta_title_visible_admin: true,
+        meta_description_visible_admin: true,
+    };
+
     const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
         if (typeof window !== "undefined") {
             const stored = sessionStorage.getItem(REVIEW_FILTERS_STORAGE_KEY);
@@ -1456,10 +1505,10 @@ export function ProductReviewWorkspace() {
 
             return {
                 product: nextProduct as Product,
-                snapshot: buildReviewSnapshot(nextProduct),
+                snapshot: buildReviewSnapshot(nextProduct, reviewToggles),
             };
         });
-    }, [priceOverrides, products]);
+    }, [priceOverrides, products, reviewToggles]);
 
     const hasActiveFilters =
         Boolean(searchTerm.trim()) || selectedVendorIds.length > 0 || selectedCategoryIds.length > 0;
@@ -1911,6 +1960,7 @@ export function ProductReviewWorkspace() {
                                 isSavingPrice={
                                     updateProduct.isPending && updateProduct.variables?.id === item.product.id
                                 }
+                                toggles={reviewToggles}
                             />
                         ))}
                     </div>

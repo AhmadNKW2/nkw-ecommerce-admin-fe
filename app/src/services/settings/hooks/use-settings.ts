@@ -8,6 +8,7 @@ import {
   ImportedPricingAuditResult,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
+  UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
@@ -31,6 +32,30 @@ export const useUpdateSeoSettings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast('SEO settings updated successfully');
+    },
+  });
+};
+
+export const useProductFieldToggles = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: queryKeys.settings.productFields(),
+    queryFn: () => settingsService.getProductFieldToggles(),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? true,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+};
+
+export const useUpdateProductFieldToggles = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateProductFieldTogglesDto) =>
+      settingsService.updateProductFieldToggles(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      showSuccessToast('Product field settings updated successfully');
     },
   });
 };

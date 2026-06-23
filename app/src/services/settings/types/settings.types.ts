@@ -21,6 +21,25 @@ export type UpdateSeoSettingsDto = Partial<
   Omit<SeoSettings, 'id' | 'created_at' | 'updated_at'>
 >;
 
+export interface ProductFieldToggles {
+  id: number;
+  // Disabling toggles — enforced by BE on create/update, hide UI on both frontends.
+  vendors_enabled: boolean;
+  attributes_enabled: boolean;
+  specifications_enabled: boolean;
+  weight_and_dimensions_enabled: boolean;
+  // Appearance-only toggles — admin dashboard UI only; BE ignores them.
+  reference_link_visible_admin: boolean;
+  meta_title_visible_admin: boolean;
+  meta_description_visible_admin: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type UpdateProductFieldTogglesDto = Partial<
+  Omit<ProductFieldToggles, 'id' | 'created_at' | 'updated_at'>
+>;
+
 export interface ProductPriceRule {
   id: number;
   min_vendor_price: number;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Search, Settings2 } from "lucide-react";
+import { BarChart3, Boxes, Search, Settings2 } from "lucide-react";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { SettingsNav } from "../src/components/settings/SettingsNav";
 import { Card } from "../src/components/ui/card";
@@ -11,6 +11,13 @@ const settingCards = [
     description:
       "Manage site identity, social defaults, robots behavior, sale visibility, and free delivery amount.",
     icon: Search,
+  },
+  {
+    href: "/settings/product-fields",
+    title: "Product Fields",
+    description:
+      "Enable or disable product fields (vendors, attributes, specifications, weight & dimensions) across the storefront and dashboard, and hide admin-only inputs (reference link, meta title, meta description).",
+    icon: Boxes,
   },
   {
     href: "/settings/pricing",

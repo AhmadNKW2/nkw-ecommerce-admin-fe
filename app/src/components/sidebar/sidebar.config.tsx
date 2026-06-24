@@ -364,22 +364,6 @@ export const sidebarConfig = {
       defaultOpen: false,
       links: [
         {
-          href: '/settings',
-          label: 'Settings Overview',
-          exact: true,
-          roles: ['admin'] as SidebarRole[],
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h10"
-              />
-            </svg>
-          ),
-        },
-        {
           href: '/settings/seo',
           label: 'SEO Settings',
           roles: ['admin'] as SidebarRole[],
@@ -405,21 +389,6 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z"
-              />
-            </svg>
-          ),
-        },
-        {
-          href: '/settings/pricing-audit',
-          label: 'Pricing Audit',
-          roles: ['admin'] as SidebarRole[],
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 17v-6m4 6V7m4 10v-3M5 19h14"
               />
             </svg>
           ),

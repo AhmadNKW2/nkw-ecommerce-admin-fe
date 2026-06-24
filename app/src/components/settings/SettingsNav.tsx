@@ -4,10 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const settingsLinks = [
-  { href: "/settings", label: "Overview", exact: true },
   { href: "/settings/seo", label: "SEO" },
   { href: "/settings/pricing", label: "Pricing Rules" },
-  { href: "/settings/pricing-audit", label: "Pricing Audit" },
 ];
 
 export function SettingsNav() {
@@ -17,9 +15,7 @@ export function SettingsNav() {
     <div className="w-full rounded-r1 border border-primary/20 bg-white p-2 shadow-s1">
       <div className="flex flex-wrap gap-2">
         {settingsLinks.map((link) => {
-          const isActive = link.exact
-            ? pathname === link.href
-            : pathname === link.href || pathname.startsWith(`${link.href}/`);
+          const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
           return (
             <Link

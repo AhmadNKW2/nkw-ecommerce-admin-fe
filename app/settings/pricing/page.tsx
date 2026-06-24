@@ -1,25 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { AlertCircle, BarChart3, Percent, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertCircle, Percent, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
 import { Card } from "../../src/components/ui/card";
 import { Input } from "../../src/components/ui/input";
 import { Toggle } from "../../src/components/ui/toggle";
 import { Button } from "../../src/components/ui/button";
+import { Select } from "../../src/components/ui/select";
 import { showErrorToast } from "../../src/lib/toast";
 import {
+  useBulkUpdateProductPricing,
   useCreateProductPriceRule,
   useDeleteProductPriceRule,
   useProductPriceRules,
-  useRepriceExistingProducts,
   useUpdateProductPriceRule,
 } from "../../src/services/settings/hooks/use-settings";
 import {
+  BulkUpdateProductPricingDto,
   CreateProductPriceRuleDto,
   ProductPriceRule,
 } from "../../src/services/settings/types/settings.types";
+import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
 import { useEffect, useState } from "react";
 
 type ProductPriceRuleDraft = {
@@ -49,6 +51,18 @@ const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => ({
   is_active: rule.is_active ?? true,
 });
 
+type BulkPricingFormState = {
+  action: BulkUpdateProductPricingDto["action"];
+  percentage: string;
+  vendorIds: string[];
+};
+
+const defaultBulkPricingFormState: BulkPricingFormState = {
+  action: "increase",
+  percentage: "0",
+  vendorIds: [],
+};
+
 export default function PricingSettingsPage() {
   const {
     data: pricingRules,
@@ -57,11 +71,15 @@ export default function PricingSettingsPage() {
     error,
     refetch,
   } = useProductPriceRules();
+  const { data: vendorsData } = useVendors();
   const createProductPriceRule = useCreateProductPriceRule();
   const updateProductPriceRule = useUpdateProductPriceRule();
   const deleteProductPriceRule = useDeleteProductPriceRule();
-  const repriceExistingProducts = useRepriceExistingProducts();
+  const bulkUpdateProductPricing = useBulkUpdateProductPricing();
   const [ruleDrafts, setRuleDrafts] = useState<ProductPriceRuleDraft[]>([]);
+  const [bulkPricingForm, setBulkPricingForm] = useState<BulkPricingFormState>(
+    defaultBulkPricingFormState,
+  );
 
   useEffect(() => {
     if (!pricingRules) {
@@ -165,39 +183,50 @@ export default function PricingSettingsPage() {
     setRuleDrafts((prev) => [...prev, createEmptyRuleDraft()]);
   };
 
-  const handleRepriceExistingProducts = async () => {
+  const handleBulkPricingChange = <K extends keyof BulkPricingFormState>(
+    field: K,
+    value: BulkPricingFormState[K],
+  ) => {
+    setBulkPricingForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmitBulkPricing = async () => {
+    const percentage = Number(bulkPricingForm.percentage);
+
     if (
-      !window.confirm(
-        "This is the legacy bulk reprice action. It uses current catalog prices, not product_input_jsons.input_json. Continue only if you explicitly want the legacy behavior.",
-      )
+      bulkPricingForm.action !== "reset" &&
+      (!Number.isFinite(percentage) || percentage < 0 || percentage > 100)
     ) {
+      showErrorToast("Percentage must be between 0 and 100.");
       return;
     }
 
-    await repriceExistingProducts.mutateAsync();
+    const payload: BulkUpdateProductPricingDto = {
+      action: bulkPricingForm.action,
+      vendor_ids: bulkPricingForm.vendorIds.map((value) => Number(value)),
+      ...(bulkPricingForm.action === "reset" ? {} : { percentage }),
+    };
+
+    await bulkUpdateProductPricing.mutateAsync(payload);
   };
 
   const isRuleMutationPending =
     createProductPriceRule.isPending ||
     updateProductPriceRule.isPending ||
     deleteProductPriceRule.isPending ||
-    repriceExistingProducts.isPending;
+    bulkUpdateProductPricing.isPending;
+
+  const vendorOptions = (vendorsData?.data ?? []).map((vendor: any) => ({
+    value: String(vendor.id),
+    label: vendor.name_en || vendor.name || String(vendor.id),
+  }));
 
   return (
     <div className="flex flex-col justify-center items-center gap-5 p-5">
       <PageHeader
         icon={<Percent />}
         title="Pricing Rules"
-        description="Manage vendor-price rules and use the pricing audit tools for imported products."
-        extraActions={
-          <Link
-            href="/settings/pricing-audit"
-            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary/10"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Pricing Audit
-          </Link>
-        }
+        description="Manage vendor-price rules and apply bulk pricing changes by vendor when needed."
       />
 
       <SettingsNav />
@@ -205,41 +234,71 @@ export default function PricingSettingsPage() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Imported Pricing Workflow</h2>
+            <h2 className="text-lg font-semibold">Bulk Product Pricing</h2>
             <p className="mt-1 max-w-3xl text-sm text-gray-500">
-              Product imports derive expected pricing from the vendor-source values,
-              apply the matching rule, round down to the nearest 0.10, and force
-              sale below regular price when needed.
+              Apply a percentage increase or decrease to current product prices, or
+              reset products back to their stored original vendor prices.
             </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/settings/pricing-audit"
-              className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary/10"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Open Audit
-            </Link>
-            <Button
-              variant="outline"
-              onClick={handleRepriceExistingProducts}
-              disabled={isLoading || isRuleMutationPending}
-            >
-              <span className="inline-flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" />
-                {repriceExistingProducts.isPending
-                  ? "Repricing..."
-                  : "Legacy Bulk Reprice"}
-              </span>
-            </Button>
           </div>
         </div>
 
-        <div className="rounded-r1 bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
-          Use `Pricing Audit` for the new source-of-truth workflow based on
-          `product_input_jsons.input_json`. The legacy bulk reprice action above
-          still exists, but it uses current catalog values and is kept separate on
-          purpose.
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Select
+            label="Vendors"
+            value={bulkPricingForm.vendorIds}
+            onChange={(value) =>
+              handleBulkPricingChange(
+                "vendorIds",
+                Array.isArray(value) ? value : value ? [value] : [],
+              )
+            }
+            options={vendorOptions}
+            multiple={true}
+            placeholder="All vendors"
+            search={vendorOptions.length > 6}
+            disabled={bulkUpdateProductPricing.isPending || vendorOptions.length === 0}
+          />
+          <Select
+            label="Action"
+            value={bulkPricingForm.action}
+            onChange={(value) =>
+              handleBulkPricingChange(
+                "action",
+                (Array.isArray(value) ? value[0] : value || "increase") as BulkPricingFormState["action"],
+              )
+            }
+            options={[
+              { value: "increase", label: "Add Percentage" },
+              { value: "decrease", label: "Minus Percentage" },
+              { value: "reset", label: "Reset To Original Vendor Prices" },
+            ]}
+            search={false}
+            disabled={bulkUpdateProductPricing.isPending}
+          />
+          <Input
+            label="Percentage"
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={bulkPricingForm.percentage}
+            onChange={(event) =>
+              handleBulkPricingChange("percentage", event.target.value)
+            }
+            disabled={
+              bulkUpdateProductPricing.isPending ||
+              bulkPricingForm.action === "reset"
+            }
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-r1 border border-primary/10 bg-primary/5 p-4">
+          <p className="text-sm text-gray-600">
+            Leave vendors empty to apply the action to all products.
+          </p>
+          <Button onClick={handleSubmitBulkPricing} disabled={isLoading || isRuleMutationPending}>
+            {bulkUpdateProductPricing.isPending ? "Applying..." : "Apply Pricing Action"}
+          </Button>
         </div>
       </Card>
 

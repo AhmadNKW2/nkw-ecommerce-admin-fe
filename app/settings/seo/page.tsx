@@ -30,6 +30,7 @@ type FormState = {
   robots_index: boolean;
   robots_follow: boolean;
   show_sale_pricing: boolean;
+  free_delivery_enabled: boolean;
   free_delivery_amount: number;
 };
 
@@ -46,6 +47,7 @@ const emptyFormState: FormState = {
   robots_index: true,
   robots_follow: true,
   show_sale_pricing: true,
+  free_delivery_enabled: true,
   free_delivery_amount: 50,
 };
 
@@ -72,6 +74,7 @@ export default function SeoSettingsPage() {
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
       show_sale_pricing: data.show_sale_pricing ?? true,
+      free_delivery_enabled: data.free_delivery_enabled ?? true,
       free_delivery_amount: data.free_delivery_amount ?? 50,
     });
   }, [data]);
@@ -98,6 +101,7 @@ export default function SeoSettingsPage() {
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
       show_sale_pricing: formState.show_sale_pricing,
+      free_delivery_enabled: formState.free_delivery_enabled,
       free_delivery_amount: Number(formState.free_delivery_amount) || 0,
     };
 
@@ -265,7 +269,11 @@ export default function SeoSettingsPage() {
                       : event.target.valueAsNumber,
                   )
                 }
-                disabled={isLoading || updateSeoSettings.isPending}
+                disabled={
+                  isLoading ||
+                  updateSeoSettings.isPending ||
+                  !formState.free_delivery_enabled
+                }
               />
             </div>
           </div>
@@ -292,6 +300,20 @@ export default function SeoSettingsPage() {
             <Toggle
               checked={formState.robots_follow}
               onChange={(value) => setField("robots_follow", value)}
+              disabled={isLoading || updateSeoSettings.isPending}
+            />
+          </div>
+
+          <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+            <div>
+              <p className="font-medium">Enable Free Delivery</p>
+              <p className="text-sm text-gray-500">
+                Controls storefront free-delivery marketing and zero-shipping unlocks.
+              </p>
+            </div>
+            <Toggle
+              checked={formState.free_delivery_enabled}
+              onChange={(value) => setField("free_delivery_enabled", value)}
               disabled={isLoading || updateSeoSettings.isPending}
             />
           </div>

@@ -3,6 +3,7 @@ import { queryKeys } from '../../../lib/query-keys';
 import { showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
+  BulkUpdateProductPricingDto,
   CreateProductPriceRuleDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
@@ -97,6 +98,20 @@ export const useRepriceExistingProducts = () => {
       showSuccessToast(
         `Repriced ${response.data.updated_count} products successfully`,
       );
+    },
+  });
+};
+
+export const useBulkUpdateProductPricing = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: BulkUpdateProductPricingDto) =>
+      settingsService.bulkUpdateProductPricing(data),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      showSuccessToast(response.data.message);
     },
   });
 };

@@ -12,6 +12,7 @@ export interface SeoSettings {
   robots_index: boolean;
   robots_follow: boolean;
   show_sale_pricing: boolean;
+  free_delivery_enabled: boolean;
   free_delivery_amount: number;
   created_at?: string;
   updated_at?: string;
@@ -43,6 +44,20 @@ export type UpdateProductPriceRuleDto = Partial<CreateProductPriceRuleDto>;
 export interface RepriceExistingProductsResult {
   updated_count: number;
   percentage: number;
+  message: string;
+}
+
+export interface BulkUpdateProductPricingDto {
+  action: 'increase' | 'decrease' | 'reset';
+  percentage?: number;
+  vendor_ids?: number[];
+}
+
+export interface BulkUpdateProductPricingResult {
+  action: 'increase' | 'decrease' | 'reset';
+  percentage: number | null;
+  vendor_ids: number[];
+  updated_count: number;
   message: string;
 }
 

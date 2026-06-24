@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const settingsLinks = [
   { href: "/settings/seo", label: "SEO" },
+  { href: "/settings/product-fields", label: "Product Fields" },
   { href: "/settings/pricing", label: "Pricing Rules" },
 ];
 

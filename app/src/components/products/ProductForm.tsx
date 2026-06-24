@@ -13,6 +13,7 @@ import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
 import { STOREFRONT_CONFIG } from "../../lib/constants";
 import { useAttributes } from "../../services/attributes/hooks/use-attributes";
 import { useSpecifications } from "../../services/specifications/hooks/use-specifications";
+import { useProductFieldToggles } from "../../services/settings/hooks/use-settings";
 import { Button } from "../ui/button";
 import { PageHeader } from "../common/PageHeader";
 import {
@@ -113,6 +114,23 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   initialLinkedProducts = [],
 }) => {
   const router = useRouter();
+
+  // Product field toggles — drive section visibility. Fall back to true while
+  // loading or on error so the form renders every section by default (matches
+  // the all-enabled contract) and never blocks product creation.
+  const { data: productFieldToggles } = useProductFieldToggles();
+  const vendorsEnabled = productFieldToggles?.vendors_enabled ?? true;
+  const attributesEnabled = productFieldToggles?.attributes_enabled ?? true;
+  const specificationsEnabled =
+    productFieldToggles?.specifications_enabled ?? true;
+  const weightAndDimensionsEnabled =
+    productFieldToggles?.weight_and_dimensions_enabled ?? true;
+  const referenceLinkVisible =
+    productFieldToggles?.reference_link_visible_admin ?? true;
+  const metaTitleVisible =
+    productFieldToggles?.meta_title_visible_admin ?? true;
+  const metaDescriptionVisible =
+    productFieldToggles?.meta_description_visible_admin ?? true;
 
   // Draft persistence – only active in create mode.
   const { restoredDraft, saveDraft, clearDraft } = useProductFormDraft({
@@ -636,9 +654,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={handleFieldChange}
         currentProductId={productId}
         initialLinkedProducts={initialLinkedProducts}
+        vendorsEnabled={vendorsEnabled}
+        referenceLinkVisible={referenceLinkVisible}
+        metaTitleVisible={metaTitleVisible}
+        metaDescriptionVisible={metaDescriptionVisible}
       />
 
-      {/* Attributes Configuration - Always visible */}
+      {/* Attributes Configuration — hidden when attributes_enabled is false */}
+      {attributesEnabled && (
       <AttributesSection
         attributes={formData.attributes || []}
         availableAttributes={availableAttributeOptions}
@@ -696,7 +719,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         }}
         errors={errors}
       />
+      )}
 
+      {specificationsEnabled && (
       <SpecificationsSection
         specifications={formData.specifications || []}
         availableSpecifications={availableSpecificationOptions}
@@ -710,6 +735,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         }}
         errors={errors}
       />
+      )}
 
       {/* Stock Management */}
       <StockSection
@@ -730,12 +756,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         errors={errors}
       />
 
-      {/* Weight & Dimensions */}
+      {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}
+      {weightAndDimensionsEnabled && (
       <WeightDimensionsSection
         weightDimensions={formData.weightDimensions}
         onChange={(data) => handleFieldChange("weightDimensions", data)}
         errors={errors}
       />
+      )}
 
       {/* Media Management */}
       <MediaSection

@@ -6,11 +6,13 @@ import {
   CreateProductPriceRuleDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
+  ProductFieldToggles,
   ProductPriceRule,
   RepriceExistingProductsResult,
   SeoSettings,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
+  UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
@@ -18,6 +20,7 @@ import {
 class SettingsService {
   private seoEndpoint = '/settings/seo';
   private pricingRulesEndpoint = '/settings/pricing-rules';
+  private productFieldsEndpoint = '/settings/product-fields';
   private pricingAuditEndpoint = '/products/import-pricing/audit';
   private pricingSyncEndpoint = '/products/import-pricing/sync';
 
@@ -31,6 +34,24 @@ class SettingsService {
     return httpClient.patch<ApiResponse<SeoSettings>>(this.seoEndpoint, data, {
       headers: { 'x-skip-request-toast': '1' },
     });
+  }
+
+  async getProductFieldToggles(): Promise<ApiResponse<ProductFieldToggles>> {
+    return httpClient.get<ApiResponse<ProductFieldToggles>>(
+      this.productFieldsEndpoint,
+    );
+  }
+
+  async updateProductFieldToggles(
+    data: UpdateProductFieldTogglesDto,
+  ): Promise<ApiResponse<ProductFieldToggles>> {
+    return httpClient.patch<ApiResponse<ProductFieldToggles>>(
+      this.productFieldsEndpoint,
+      data,
+      {
+        headers: { 'x-skip-request-toast': '1' },
+      },
+    );
   }
 
   async getProductPriceRules(): Promise<ApiResponse<ProductPriceRule[]>> {

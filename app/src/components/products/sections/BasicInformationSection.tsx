@@ -66,6 +66,10 @@ interface BasicInformationSectionProps {
     onChange: (field: string, value: any) => void;
     currentProductId?: string;
     initialLinkedProducts?: LinkedProductSummary[];
+    vendorsEnabled?: boolean;
+    referenceLinkVisible?: boolean;
+    metaTitleVisible?: boolean;
+    metaDescriptionVisible?: boolean;
 }
 
 export const BasicInformationSection: React.FC<BasicInformationSectionProps> = ({
@@ -77,6 +81,10 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
     onChange,
     currentProductId,
     initialLinkedProducts,
+    vendorsEnabled = true,
+    referenceLinkVisible = true,
+    metaTitleVisible = true,
+    metaDescriptionVisible = true,
 }) => {
     // Save to localStorage when selected
     useEffect(() => {
@@ -294,6 +302,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     error={errors.categoryIds}
                 />
 
+                {vendorsEnabled && (
                 <Select
                     id="vendorId"
                     label="Vendor"
@@ -310,6 +319,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     search={true}
                     error={errors.vendorId}
                 />
+                )}
 
                 <Select
                     id="brandId"
@@ -342,6 +352,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     error={errors.status}
                 />
 
+                {referenceLinkVisible && (
                 <Input
                     id="referenceLink"
                     label="Reference Link"
@@ -350,7 +361,10 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     className="bg-gray-100 cursor-not-allowed"
                     error={errors.referenceLink}
                 />
+                )}
 
+                {metaTitleVisible && (
+                <>
                 <Input
                     id="metaTitleEn"
                     label="Meta Title (English)"
@@ -369,7 +383,11 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     isRtl
                     error={errors.metaTitleAr}
                 />
+                </>
+                )}
 
+                {metaDescriptionVisible && (
+                <>
                 <Input
                     id="metaDescriptionEn"
                     label="Meta Description (English)"
@@ -388,6 +406,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     isRtl
                     error={errors.metaDescriptionAr}
                 />
+                </>
+                )}
 
                 <div className="col-span-2">
                     <LinkedProductsField

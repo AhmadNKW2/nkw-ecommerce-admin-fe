@@ -41,7 +41,10 @@ class CustomerService {
    * GET /api/users/:id
    */
   async getCustomer(id: number): Promise<CustomerWithWishlist> {
-    return httpClient.get<CustomerWithWishlist>(`${this.endpoint}/${id}`);
+    const response = await httpClient.get<{ data: CustomerWithWishlist } | CustomerWithWishlist>(
+      `${this.endpoint}/${id}`,
+    );
+    return (response as { data?: CustomerWithWishlist }).data ?? (response as CustomerWithWishlist);
   }
 
   /**

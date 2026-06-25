@@ -72,9 +72,75 @@ export const customerSchema = z.object({
 
 export type Customer = z.infer<typeof customerSchema>;
 
-// Customer with Wishlist (detail response)
+// Customer with full profile (detail response)
+export interface CustomerAddress {
+  id: number;
+  title: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  isDefault: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerCartItem {
+  id: number;
+  product_id: number;
+  variant_id?: number | null;
+  quantity: number;
+  product?: {
+    id: number;
+    name_en: string;
+    name_ar: string;
+    price: number;
+    sale_price?: number | null;
+    image?: string;
+  };
+}
+
+export interface CustomerCart {
+  id: number | null;
+  user_id: number;
+  items: CustomerCartItem[];
+  total_amount: number;
+}
+
+export interface CustomerWallet {
+  balance: number;
+  totalCashback: number;
+}
+
+export interface WalletTransaction {
+  id: number;
+  type: "credit" | "debit";
+  source: string;
+  amount: number;
+  balanceAfter: number;
+  description?: string | null;
+  referenceId?: string | null;
+  createdAt: string;
+}
+
+export interface CustomerOrderSummary {
+  id: number;
+  status: string;
+  paymentMethod?: string;
+  totalAmount: number;
+  createdAt: string;
+  items?: Array<{ id: number; quantity: number; product?: { name_en?: string } }>;
+}
+
 export interface CustomerWithWishlist extends Customer {
   wishlist?: WishlistItem[];
+  addresses?: CustomerAddress[];
+  cart?: CustomerCart;
+  wallet?: CustomerWallet;
+  transactions?: WalletTransaction[];
+  orders?: CustomerOrderSummary[];
 }
 
 // Customer List Response (matches GET /api/users)
@@ -114,6 +180,7 @@ export interface UpdateCustomerDto {
   email?: string;
   firstName?: string;
   lastName?: string;
+  phone?: string | null;
   role?: UserRole;
   isActive?: boolean;
   product_ids?: number[];

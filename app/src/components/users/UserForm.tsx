@@ -29,6 +29,13 @@ import { ProductItem } from "../common/ProductsTableSection";
 import { OrdersTableSection } from "../common/OrdersTableSection";
 import type { Order } from "../../services/orders/types/order.types";
 import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
+import { CustomerProfileSections } from "./CustomerProfileSections";
+import type {
+  CustomerAddress,
+  CustomerCart,
+  CustomerWallet,
+  WalletTransaction,
+} from "../../services/customers/types/customer.types";
 
 interface UserFormProps {
   mode: "create" | "edit";
@@ -37,6 +44,7 @@ interface UserFormProps {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   password: string;
   role: UserRole;
   isActive: boolean;
@@ -53,13 +61,19 @@ interface UserFormProps {
   onWishlistChange?: (productIds: number[]) => void;
   isUpdatingWishlist?: boolean;
   orders?: Order[];
+  addresses?: CustomerAddress[];
+  cart?: CustomerCart;
+  wallet?: CustomerWallet;
+  transactions?: WalletTransaction[];
   formErrors: {
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
     password?: string;
     role?: string;
   };
+  onPhoneChange?: (value: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
   submitButtonText: string;
@@ -77,6 +91,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   firstName,
   lastName,
   email,
+  phone = "",
   password,
   role,
   isActive,
@@ -93,7 +108,12 @@ export const UserForm: React.FC<UserFormProps> = ({
   onWishlistChange,
   isUpdatingWishlist = false,
   orders = [],
+  addresses = [],
+  cart,
+  wallet,
+  transactions = [],
   formErrors,
+  onPhoneChange,
   onSubmit,
   isSubmitting,
   submitButtonText,
@@ -181,6 +201,18 @@ export const UserForm: React.FC<UserFormProps> = ({
             required
           />
 
+          {/* Phone */}
+          {mode === "edit" && onPhoneChange ? (
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={phone}
+              onChange={(e) => onPhoneChange(e.target.value)}
+              error={formErrors.phone}
+              placeholder="+962..."
+            />
+          ) : null}
+
           {/* Password - only shown on create */}
           {mode === "create" && (
             <Input
@@ -217,6 +249,16 @@ export const UserForm: React.FC<UserFormProps> = ({
           </div>
         </div>
       </Card>
+
+      {/* Customer profile overview - edit mode only */}
+      {!isAdmin && mode === "edit" ? (
+        <CustomerProfileSections
+          addresses={addresses}
+          cart={cart}
+          wallet={wallet}
+          transactions={transactions}
+        />
+      ) : null}
 
       {/* Customer Orders Section - Only show for customers */}
       {!isAdmin && mode === 'edit' && (

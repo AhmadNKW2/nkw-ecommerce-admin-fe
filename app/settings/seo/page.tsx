@@ -32,6 +32,7 @@ type FormState = {
   show_sale_pricing: boolean;
   free_delivery_enabled: boolean;
   free_delivery_amount: number;
+  delivery_fee: number;
 };
 
 const emptyFormState: FormState = {
@@ -49,6 +50,7 @@ const emptyFormState: FormState = {
   show_sale_pricing: true,
   free_delivery_enabled: true,
   free_delivery_amount: 50,
+  delivery_fee: 2,
 };
 
 export default function SeoSettingsPage() {
@@ -76,6 +78,7 @@ export default function SeoSettingsPage() {
       show_sale_pricing: data.show_sale_pricing ?? true,
       free_delivery_enabled: data.free_delivery_enabled ?? true,
       free_delivery_amount: data.free_delivery_amount ?? 50,
+      delivery_fee: data.delivery_fee ?? 2,
     });
   }, [data]);
 
@@ -103,6 +106,7 @@ export default function SeoSettingsPage() {
       show_sale_pricing: formState.show_sale_pricing,
       free_delivery_enabled: formState.free_delivery_enabled,
       free_delivery_amount: Number(formState.free_delivery_amount) || 0,
+      delivery_fee: Number(formState.delivery_fee) || 0,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -250,33 +254,6 @@ export default function SeoSettingsPage() {
             maxLength={255}
             disabled={isLoading || updateSeoSettings.isPending}
           />
-          <div className="flex flex-col bg-gray-50 rounded-lg p-4 gap-2">
-            <div>
-              <p className="font-medium">Free Delivery Amount (JOD)</p>
-              <p className="text-sm text-gray-500">
-                The minimum order amount required to unlock free delivery.
-              </p>
-            </div>
-            <div className="w-48 mt-1">
-              <Input
-                type="number"
-                value={formState.free_delivery_amount}
-                onChange={(event) =>
-                  setField(
-                    "free_delivery_amount",
-                    Number.isNaN(event.target.valueAsNumber)
-                      ? 0
-                      : event.target.valueAsNumber,
-                  )
-                }
-                disabled={
-                  isLoading ||
-                  updateSeoSettings.isPending ||
-                  !formState.free_delivery_enabled
-                }
-              />
-            </div>
-          </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -306,20 +283,6 @@ export default function SeoSettingsPage() {
 
           <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
             <div>
-              <p className="font-medium">Enable Free Delivery</p>
-              <p className="text-sm text-gray-500">
-                Controls storefront free-delivery marketing and zero-shipping unlocks.
-              </p>
-            </div>
-            <Toggle
-              checked={formState.free_delivery_enabled}
-              onChange={(value) => setField("free_delivery_enabled", value)}
-              disabled={isLoading || updateSeoSettings.isPending}
-            />
-          </div>
-
-          <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-            <div>
               <p className="font-medium">Show Sale Pricing</p>
               <p className="text-sm text-gray-500">
                 Controls storefront sale styling and compare-at presentation.
@@ -328,6 +291,88 @@ export default function SeoSettingsPage() {
             <Toggle
               checked={formState.show_sale_pricing}
               onChange={(value) => setField("show_sale_pricing", value)}
+              disabled={isLoading || updateSeoSettings.isPending}
+            />
+          </div>
+
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Delivery Settings</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Control the standard delivery fee and free-delivery rules shown on the storefront.
+        </p>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4">
+            <div>
+              <p className="font-medium">Standard Delivery Fee (JOD)</p>
+              <p className="text-sm text-gray-500">
+                Applied to orders that do not qualify for free delivery.
+              </p>
+            </div>
+            <div className="w-48">
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={formState.delivery_fee}
+                onChange={(event) =>
+                  setField(
+                    "delivery_fee",
+                    Number.isNaN(event.target.valueAsNumber)
+                      ? 0
+                      : event.target.valueAsNumber,
+                  )
+                }
+                disabled={isLoading || updateSeoSettings.isPending}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4">
+            <div>
+              <p className="font-medium">Free Delivery Threshold (JOD)</p>
+              <p className="text-sm text-gray-500">
+                Minimum order amount required to unlock free delivery.
+              </p>
+            </div>
+            <div className="w-48">
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={formState.free_delivery_amount}
+                onChange={(event) =>
+                  setField(
+                    "free_delivery_amount",
+                    Number.isNaN(event.target.valueAsNumber)
+                      ? 0
+                      : event.target.valueAsNumber,
+                  )
+                }
+                disabled={
+                  isLoading ||
+                  updateSeoSettings.isPending ||
+                  !formState.free_delivery_enabled
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
+            <div>
+              <p className="font-medium">Enable Free Delivery</p>
+              <p className="text-sm text-gray-500">
+                When enabled, orders above the threshold ship for free.
+              </p>
+            </div>
+            <Toggle
+              checked={formState.free_delivery_enabled}
+              onChange={(value) => setField("free_delivery_enabled", value)}
               disabled={isLoading || updateSeoSettings.isPending}
             />
           </div>

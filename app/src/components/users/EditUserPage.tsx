@@ -13,14 +13,14 @@ import {
   useUpdateCustomer,
   useUpdateUserWishlist,
 } from "../../services/customers/hooks/use-customers";
-import { useOrders } from "../../services/orders/hooks/use-orders";
 import { UserForm } from "./UserForm";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { validateCustomerForm } from "../../lib/validations/customer.schema";
 import { UserRole } from "../../services/customers/types/customer.types";
 import { ProductItem } from "../common/ProductsTableSection";
+import type { Order } from "../../services/orders/types/order.types";
 
 export interface EditUserPageProps {
   userType: "customer" | "admin";
@@ -36,10 +36,10 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const basePath = isAdmin ? "/admins" : "/customers";
   const label = isAdmin ? "Admin" : "Customer";
 
-  // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [productIds, setProductIds] = useState<number[]>([]);
@@ -48,11 +48,11 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
     password?: string;
     role?: string;
   }>({});
 
-  // Get the specific user
   const {
     data: user,
     isLoading,
@@ -64,28 +64,41 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const updateCustomer = useUpdateCustomer();
   const updateWishlist = useUpdateUserWishlist();
 
-  // Fetch orders (optimally we should filter by userId in the API, but for now we filter client-side if API doesn't support it)
-  // Or we can assume listOrders returns all orders.
-  const { data: allOrders } = useOrders();
-  
-  const userOrders = useMemo(() => {
-    if (!allOrders || !Array.isArray(allOrders)) return [];
-    // Filter orders where user.id matches userId or any other linkage
-    return allOrders.filter(o => o.user?.id === userId || (o as any).userId === userId);
-  }, [allOrders, userId]);
+  const userOrders = useMemo<Order[]>(() => {
+    if (!user?.orders) return [];
+    return user.orders.map((order) => ({
+      id: order.id,
+      status: order.status as Order["status"],
+      paymentMethod: order.paymentMethod,
+      totalAmount: String(order.totalAmount),
+      items: (order.items ?? []).map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: 0,
+        product: item.product
+          ? {
+              id: 0,
+              name_en: item.product.name_en ?? "Unknown",
+              name_ar: "",
+              slug: "",
+            }
+          : undefined,
+      })),
+      createdAt: order.createdAt,
+    }));
+  }, [user?.orders]);
 
-  // Get current wishlist product IDs (only for customers)
   const currentWishlistProductIds = useMemo(
-    () => user?.wishlist?.map(item => item.product_id) || [],
-    [user?.wishlist]
+    () => user?.wishlist?.map((item) => item.product_id) || [],
+    [user?.wishlist],
   );
 
-  // Initialize form when user loads
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName || "");
       setLastName(user.lastName || "");
       setEmail(user.email || "");
+      setPhone(user.phone || "");
       setIsActive(user.isActive ?? true);
     }
   }, [user]);
@@ -98,7 +111,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
         email,
         role,
       },
-      false // isCreate = false, password is not required
+      false,
     );
 
     if (!result.isValid) {
@@ -122,6 +135,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
           firstName,
           lastName,
           email,
+          phone: phone.trim() || null,
           role,
           isActive,
           product_ids: productIds.length > 0 ? productIds : undefined,
@@ -129,25 +143,24 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       });
 
       router.push(basePath);
-    } catch (error) {
-      console.error(`Failed to update ${label.toLowerCase()}:`, error);
+    } catch (submitError) {
+      console.error(`Failed to update ${label.toLowerCase()}:`, submitError);
     }
   };
 
   const handleWishlistChange = async (newProductIds: number[]) => {
-    if (isAdmin) return; // Admins don't have wishlists
+    if (isAdmin) return;
     try {
       await updateWishlist.mutateAsync({
         userId,
         currentProductIds: currentWishlistProductIds,
         newProductIds,
       });
-    } catch (error) {
-      console.error("Failed to update wishlist:", error);
+    } catch (wishlistError) {
+      console.error("Failed to update wishlist:", wishlistError);
     }
   };
 
-  // Show loading overlay while data is loading
   useEffect(() => {
     setShowOverlay(isLoading);
   }, [isLoading, setShowOverlay]);
@@ -167,7 +180,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
                   <AlertCircle className="h-8 w-8 text-danger" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mt-4">Error Loading {label}</h3>
+              <h3 className="mt-4 text-xl font-bold">Error Loading {label}</h3>
               <p className="mt-2 max-w-md mx-auto">
                 {error instanceof Error ? error.message : "An error occurred"}
               </p>
@@ -192,7 +205,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
                   <AlertCircle className="h-8 w-8 text-danger" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mt-4">{label} Not Found</h3>
+              <h3 className="mt-4 text-xl font-bold">{label} Not Found</h3>
               <p className="mt-2 max-w-md mx-auto">
                 The {label.toLowerCase()} you&apos;re looking for doesn&apos;t exist.
               </p>
@@ -214,12 +227,17 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       firstName={firstName}
       lastName={lastName}
       email={email}
+      phone={phone}
       password={password}
       role={role}
       isActive={isActive}
       productIds={productIds}
       assignedProducts={assignedProducts}
       wishlist={!isAdmin ? user.wishlist : undefined}
+      addresses={!isAdmin ? user.addresses : undefined}
+      cart={!isAdmin ? user.cart : undefined}
+      wallet={!isAdmin ? user.wallet : undefined}
+      transactions={!isAdmin ? user.transactions : undefined}
       onFirstNameChange={(value) => {
         setFirstName(value);
         if (formErrors.firstName) {
@@ -238,13 +256,19 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
           setFormErrors((prev) => ({ ...prev, email: undefined }));
         }
       }}
+      onPhoneChange={(value) => {
+        setPhone(value);
+        if (formErrors.phone) {
+          setFormErrors((prev) => ({ ...prev, phone: undefined }));
+        }
+      }}
       onPasswordChange={(value) => {
         setPassword(value);
         if (formErrors.password) {
           setFormErrors((prev) => ({ ...prev, password: undefined }));
         }
       }}
-      onRoleChange={() => {}} // Role is fixed
+      onRoleChange={() => {}}
       onIsActiveChange={setIsActive}
       onProductIdsChange={setProductIds}
       onWishlistChange={!isAdmin ? handleWishlistChange : undefined}

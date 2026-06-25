@@ -26,6 +26,7 @@ export interface OrderFilters {
   limit?: number;
   status?: OrderStatus | '';
   search?: string;
+  userId?: number;
 }
 
 export interface OrderMeta {

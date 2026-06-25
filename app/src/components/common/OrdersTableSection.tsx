@@ -69,9 +69,11 @@ export const OrdersTableSection: React.FC<OrdersTableSectionProps> = ({
                 const total =
                   typeof order.total === "number"
                     ? order.total
-                    : typeof (order as any).totalAmount === "number"
-                      ? (order as any).totalAmount
-                      : 0;
+                    : typeof order.totalAmount === "number"
+                      ? order.totalAmount
+                      : typeof order.totalAmount === "string"
+                        ? Number(order.totalAmount)
+                        : 0;
                 
                 const createdDate = order.createdAt || order.created_at;
 
@@ -84,7 +86,7 @@ export const OrdersTableSection: React.FC<OrdersTableSectionProps> = ({
                     </Badge>
                   </TableCell>
                   <TableCell>{order.paymentMethod || "-"}</TableCell>
-                  <TableCell>${typeof total === "number" ? total.toFixed(2) : "-"}</TableCell>
+                  <TableCell>{typeof total === "number" && !Number.isNaN(total) ? `${total.toFixed(2)} JOD` : "-"}</TableCell>
                   <TableCell>{itemsCount}</TableCell>
                   <TableCell>
                     {createdDate ? new Date(createdDate).toLocaleDateString() : "-"}

@@ -114,23 +114,14 @@ export const useUpdateUserWishlist = () => {
       currentProductIds: number[];
       newProductIds: number[];
     }) => {
+      await customerService.updateCustomer(userId, {
+        product_ids: newProductIds,
+      });
+
       const currentSet = new Set(currentProductIds);
       const newSet = new Set(newProductIds);
-
-      // Products to add (in new but not in current)
-      const toAdd = newProductIds.filter(id => !currentSet.has(id));
-      // Products to remove (in current but not in new)
-      const toRemove = currentProductIds.filter(id => !newSet.has(id));
-
-      // Execute all operations
-      const addPromises = toAdd.map(productId =>
-        customerService.addToWishlist(userId, productId)
-      );
-      const removePromises = toRemove.map(productId =>
-        customerService.removeFromWishlist(userId, productId)
-      );
-
-      await Promise.all([...addPromises, ...removePromises]);
+      const toAdd = newProductIds.filter((id) => !currentSet.has(id));
+      const toRemove = currentProductIds.filter((id) => !newSet.has(id));
 
       return { added: toAdd.length, removed: toRemove.length };
     },

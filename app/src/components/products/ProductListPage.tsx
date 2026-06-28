@@ -21,6 +21,7 @@ import { useBrands } from "@/services/brands/hooks/use-brands";
 import { useCategories } from "@/services/categories/hooks/use-categories";
 import { useCustomers } from "@/services/customers/hooks/use-customers";
 import { STOREFRONT_CONFIG } from "@/lib/constants";
+import { normalizeExternalUrl, openReferenceLink } from "@/lib/reference-link";
 import { Package, AlertCircle, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1124,6 +1125,19 @@ export function ProductListPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <IconButton
+                        variant="external"
+                        disabled={!normalizeExternalUrl(product.reference_link)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openReferenceLink(product.reference_link);
+                        }}
+                        title={
+                          normalizeExternalUrl(product.reference_link)
+                            ? "Open reference link"
+                            : "No reference link"
+                        }
+                      />
                       <IconButton
                         variant="view"
                         disabled={!product.slug}

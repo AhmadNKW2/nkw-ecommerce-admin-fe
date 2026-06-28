@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { Input } from "../../ui/input";
+import { normalizeExternalUrl, openReferenceLink } from "../../../lib/reference-link";
 import { RichTextEditor } from "../../ui/rich-text-editor";
 import { Select } from "../../ui/select";
 import { Card } from "@/components/ui";
@@ -360,6 +362,22 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     disabled
                     className="bg-gray-100 cursor-not-allowed"
                     error={errors.referenceLink}
+                    rightElement={
+                        <button
+                            type="button"
+                            onClick={() => openReferenceLink(formData.referenceLink)}
+                            disabled={!normalizeExternalUrl(formData.referenceLink)}
+                            className="rounded-full p-1.5 text-primary2 transition-colors hover:bg-primary2/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Preview reference link"
+                            title={
+                                normalizeExternalUrl(formData.referenceLink)
+                                    ? "Open reference link"
+                                    : "No reference link"
+                            }
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                        </button>
+                    }
                 />
                 )}
 

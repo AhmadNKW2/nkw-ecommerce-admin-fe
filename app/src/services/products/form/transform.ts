@@ -214,7 +214,6 @@ export function transformFormDataToDto(
       .filter((id) => !Number.isNaN(id)),
     reference_link: data.referenceLink?.trim() || null,
     quantity: data.quantity || 0,
-    low_stock_threshold: data.low_stock_threshold || 10,
     is_out_of_stock: data.is_out_of_stock || false,
     meta_title_en: normalizeOptionalString(data.metaTitleEn),
     meta_title_ar: normalizeOptionalString(data.metaTitleAr),
@@ -230,10 +229,15 @@ export function transformFormDataToDto(
   }
 
   if (data.pricing.originalVendorPrice === undefined) {
-    throw new Error("Original vendor price is required");
+    dto.original_vendor_price = data.pricing.price;
+    dto.original_vendor_sale_price = data.pricing.isSale === true
+      ? (data.pricing.salePrice ?? null)
+      : null;
+  } else {
+    dto.original_vendor_price = data.pricing.originalVendorPrice;
+    dto.original_vendor_sale_price = data.pricing.originalVendorSalePrice ?? null;
   }
 
-  // Optional fields
   const vendorId = parseOptionalId(data.vendorId);
   const brandId = parseOptionalId(data.brandId);
 
@@ -247,8 +251,6 @@ export function transformFormDataToDto(
   }
 
   dto.cost = data.pricing.cost;
-  dto.original_vendor_price = data.pricing.originalVendorPrice;
-  dto.original_vendor_sale_price = data.pricing.originalVendorSalePrice ?? null;
   dto.price = data.pricing.price;
   dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
 

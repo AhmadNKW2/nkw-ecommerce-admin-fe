@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../../lib/query-keys';
+import { QUERY_CONFIG } from '../../../lib/constants';
+import {
+  readStoredFeatureToggles,
+  toFeatureToggles,
+  writeStoredFeatureToggles,
+} from '../../../lib/feature-toggles-cache';
 import { showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
@@ -9,6 +15,7 @@ import {
   ImportedPricingAuditResult,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
+  UpdateFeatureTogglesDto,
   UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
@@ -37,29 +44,55 @@ export const useUpdateSeoSettings = () => {
   });
 };
 
-export const useProductFieldToggles = (options?: { enabled?: boolean }) => {
+export async function fetchFeatureToggles() {
+  const response = await settingsService.getFeatureToggles();
+  writeStoredFeatureToggles(response.data);
+  return response;
+}
+
+/** @deprecated Use fetchFeatureToggles */
+export const fetchProductFieldToggles = fetchFeatureToggles;
+
+export const useFeatureToggles = (options?: { enabled?: boolean }) => {
+  const storedToggles = readStoredFeatureToggles();
+
   return useQuery({
-    queryKey: queryKeys.settings.productFields(),
-    queryFn: () => settingsService.getProductFieldToggles(),
+    queryKey: queryKeys.settings.features(),
+    queryFn: fetchFeatureToggles,
     select: (response) => response.data,
     enabled: options?.enabled ?? true,
     refetchOnWindowFocus: false,
-    staleTime: 0,
+    staleTime: QUERY_CONFIG.staleTime,
+    placeholderData: storedToggles
+      ? () => ({
+          data: toFeatureToggles(storedToggles),
+          success: true,
+          message: '',
+        })
+      : undefined,
   });
 };
 
-export const useUpdateProductFieldToggles = () => {
+/** @deprecated Use useFeatureToggles */
+export const useProductFieldToggles = useFeatureToggles;
+
+export const useUpdateFeatureToggles = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdateProductFieldTogglesDto) =>
-      settingsService.updateProductFieldToggles(data),
-    onSuccess: () => {
+    mutationFn: (data: UpdateFeatureTogglesDto) =>
+      settingsService.updateFeatureToggles(data),
+    onSuccess: (response) => {
+      writeStoredFeatureToggles(response.data);
+      queryClient.setQueryData(queryKeys.settings.features(), response);
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-      showSuccessToast('Product field settings updated successfully');
+      showSuccessToast('Feature settings updated successfully');
     },
   });
 };
+
+/** @deprecated Use useUpdateFeatureToggles */
+export const useUpdateProductFieldToggles = useUpdateFeatureToggles;
 
 export const useProductPriceRules = () => {
   return useQuery({

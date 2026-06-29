@@ -574,7 +574,6 @@ export interface CreateProductDto {
   height?: number;
   dimension_unit?: "mm" | "cm" | "m";
   quantity?: number;
-  low_stock_threshold?: number;
   is_out_of_stock?: boolean;
   meta_title_en?: string;
   meta_title_ar?: string;
@@ -693,7 +692,6 @@ export interface UpdateProductDto {
   height?: number;
   dimension_unit?: "mm" | "cm" | "m";
   quantity?: number;
-  low_stock_threshold?: number;
   is_out_of_stock?: boolean;
   meta_title_en?: string;
   meta_title_ar?: string;

@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react';
 import { useAuth } from '../../contexts/auth.context';
 import type { SidebarRole } from './sidebar.config';
+import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-toggles';
+import type { FeatureToggles } from '../../services/settings/types/settings.types';
 
 import {
   Sidebar,
@@ -11,6 +13,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarLink,
+  SidebarLinkSkeleton,
   SidebarDivider,
   useSidebar,
 } from './sidebar';
@@ -22,6 +25,16 @@ interface SidebarLinkItem {
   badge?: string | number;
   exact?: boolean;
   roles?: SidebarRole[];
+  featureToggle?: keyof Pick<
+    FeatureToggles,
+    | 'vendors_enabled'
+    | 'attributes_enabled'
+    | 'specifications_enabled'
+    | 'partners_enabled'
+    | 'cashback_enabled'
+    | 'banners_enabled'
+    | 'import_ai_products_enabled'
+  >;
 }
 
 interface SidebarGroupItem {
@@ -49,14 +62,31 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   const { logout, user } = useAuth();
   const { isCollapsed } = useSidebar();
   const userRole = user?.role;
+  const {
+    isVisibilityPending,
+    isEnabled,
+  } = useResolvedFeatureToggles();
 
-  // Returns true if the current user can see this link
-  const canSeeLink = (link: SidebarLinkItem): boolean => {
-    if (!link.roles) return true; // No restriction — visible to all authenticated users
+  const passesRoleCheck = (link: SidebarLinkItem): boolean => {
+    if (!link.roles) return true;
     if (!userRole) return false;
-    const effectiveRole = userRole === 'constant_token_admin' ? 'admin' : userRole;
+    const effectiveRole =
+      userRole === 'constant_token_admin' ? 'admin' : userRole;
     return link.roles.includes(effectiveRole as SidebarRole);
   };
+
+  const isFeatureToggleEnabled = (link: SidebarLinkItem): boolean => {
+    if (!link.featureToggle) return true;
+    return isEnabled(link.featureToggle);
+  };
+
+  const isFeatureTogglePending = (link: SidebarLinkItem): boolean =>
+    Boolean(link.featureToggle) &&
+    isVisibilityPending &&
+    passesRoleCheck(link);
+
+  const canSeeLink = (link: SidebarLinkItem): boolean =>
+    passesRoleCheck(link) && isFeatureToggleEnabled(link);
 
   const userDisplayName = user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ")
@@ -87,7 +117,11 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
       <SidebarContent>
         {groups.map((group, groupIndex) => {
           const visibleLinks = group.links.filter(canSeeLink);
-          if (visibleLinks.length === 0) return null;
+          const pendingLinks = group.links.filter(isFeatureTogglePending);
+
+          if (visibleLinks.length === 0 && pendingLinks.length === 0) {
+            return null;
+          }
 
           const showDivider = groupIndex === groups.length - 2;
 
@@ -107,6 +141,9 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                     badge={link.badge}
                     exact={link.exact}
                   />
+                ))}
+                {pendingLinks.map((link) => (
+                  <SidebarLinkSkeleton key={`pending-${link.href}`} />
                 ))}
               </SidebarGroup>
               {showDivider && <SidebarDivider />}

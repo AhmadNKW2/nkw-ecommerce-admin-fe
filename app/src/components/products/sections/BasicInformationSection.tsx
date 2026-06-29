@@ -72,6 +72,8 @@ interface BasicInformationSectionProps {
     referenceLinkVisible?: boolean;
     metaTitleVisible?: boolean;
     metaDescriptionVisible?: boolean;
+    statusVisible?: boolean;
+    linkedProductsEnabled?: boolean;
 }
 
 export const BasicInformationSection: React.FC<BasicInformationSectionProps> = ({
@@ -87,6 +89,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
     referenceLinkVisible = true,
     metaTitleVisible = true,
     metaDescriptionVisible = true,
+    statusVisible = true,
+    linkedProductsEnabled = true,
 }) => {
     // Save to localStorage when selected
     useEffect(() => {
@@ -340,6 +344,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     error={errors.brandId}
                 />
 
+                {statusVisible && (
                 <Select
                     id="status"
                     label="Status"
@@ -353,6 +358,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     ]}
                     error={errors.status}
                 />
+                )}
 
                 {referenceLinkVisible && (
                 <Input
@@ -427,6 +433,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                 </>
                 )}
 
+                {linkedProductsEnabled && (
                 <div className="col-span-2">
                     <LinkedProductsField
                         value={formData.linked_product_ids || []}
@@ -438,6 +445,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                         initialSelectedProducts={initialLinkedProducts}
                     />
                 </div>
+                )}
 
                 {/* Visibility Status */}
                 <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">

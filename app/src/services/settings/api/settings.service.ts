@@ -6,12 +6,14 @@ import {
   CreateProductPriceRuleDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
+  FeatureToggles,
   ProductFieldToggles,
   ProductPriceRule,
   RepriceExistingProductsResult,
   SeoSettings,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
+  UpdateFeatureTogglesDto,
   UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
@@ -20,7 +22,7 @@ import {
 class SettingsService {
   private seoEndpoint = '/settings/seo';
   private pricingRulesEndpoint = '/settings/pricing-rules';
-  private productFieldsEndpoint = '/settings/product-fields';
+  private featuresEndpoint = '/settings/features';
   private pricingAuditEndpoint = '/products/import-pricing/audit';
   private pricingSyncEndpoint = '/products/import-pricing/sync';
 
@@ -36,22 +38,32 @@ class SettingsService {
     });
   }
 
-  async getProductFieldToggles(): Promise<ApiResponse<ProductFieldToggles>> {
-    return httpClient.get<ApiResponse<ProductFieldToggles>>(
-      this.productFieldsEndpoint,
-    );
+  async getFeatureToggles(): Promise<ApiResponse<FeatureToggles>> {
+    return httpClient.get<ApiResponse<FeatureToggles>>(this.featuresEndpoint);
   }
 
-  async updateProductFieldToggles(
-    data: UpdateProductFieldTogglesDto,
-  ): Promise<ApiResponse<ProductFieldToggles>> {
-    return httpClient.patch<ApiResponse<ProductFieldToggles>>(
-      this.productFieldsEndpoint,
+  async updateFeatureToggles(
+    data: UpdateFeatureTogglesDto,
+  ): Promise<ApiResponse<FeatureToggles>> {
+    return httpClient.patch<ApiResponse<FeatureToggles>>(
+      this.featuresEndpoint,
       data,
       {
         headers: { 'x-skip-request-toast': '1' },
       },
     );
+  }
+
+  /** @deprecated Use getFeatureToggles */
+  async getProductFieldToggles(): Promise<ApiResponse<ProductFieldToggles>> {
+    return this.getFeatureToggles();
+  }
+
+  /** @deprecated Use updateFeatureToggles */
+  async updateProductFieldToggles(
+    data: UpdateProductFieldTogglesDto,
+  ): Promise<ApiResponse<ProductFieldToggles>> {
+    return this.updateFeatureToggles(data);
   }
 
   async getProductPriceRules(): Promise<ApiResponse<ProductPriceRule[]>> {

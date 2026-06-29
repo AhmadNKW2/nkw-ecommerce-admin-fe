@@ -1588,7 +1588,6 @@ export default function EditProductPage() {
         quantity:
           product.quantity ??
           (product.stock && product.stock[0] ? product.stock[0].quantity : 0),
-        low_stock_threshold: (product as any).low_stock_threshold ?? 10,
         is_out_of_stock:
           (product as any).is_out_of_stock ??
           (product.stock && product.stock[0]

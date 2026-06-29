@@ -34,7 +34,7 @@ export function MediaSection({ media, onChange, errors }: MediaSectionProps) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4 text-emerald-900 border-b border-emerald-100 pb-2">
+      <h2 className="text-lg font-semibold text-emerald-900 border-b border-emerald-100 pb-2">
         Product Media
       </h2>
       <div className="mt-4">

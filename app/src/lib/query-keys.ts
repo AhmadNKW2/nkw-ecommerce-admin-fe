@@ -152,27 +152,6 @@ export const queryKeys = {
   },
 
   // Tags
-  tags: {
-    all: ["tags"] as const,
-    lists: () => [...queryKeys.tags.all, "list"] as const,
-    list: (params?: Record<string, any>) =>
-      [...queryKeys.tags.lists(), params] as const,
-    details: () => [...queryKeys.tags.all, "detail"] as const,
-    detail: (id: string | number) =>
-      [...queryKeys.tags.details(), id] as const,
-  },
-
-  // Search Concepts
-  concepts: {
-    all: ["search-concepts"] as const,
-    lists: () => [...queryKeys.concepts.all, "list"] as const,
-    list: (params?: Record<string, any>) =>
-      [...queryKeys.concepts.lists(), params] as const,
-    details: () => [...queryKeys.concepts.all, "detail"] as const,
-    detail: (id: string) =>
-      [...queryKeys.concepts.details(), id] as const,
-  },
-
   // Notes
   notes: {
     all: ["notes"] as const,
@@ -199,8 +178,11 @@ export const queryKeys = {
   settings: {
     all: ["settings"] as const,
     seo: () => [...queryKeys.settings.all, "seo"] as const,
+    features: () =>
+      [...queryKeys.settings.all, "features"] as const,
+    /** @deprecated Use features */
     productFields: () =>
-      [...queryKeys.settings.all, "product-fields"] as const,
+      [...queryKeys.settings.all, "features"] as const,
     pricingRules: () => [...queryKeys.settings.all, "pricing-rules"] as const,
     pricingAudit: (params?: Record<string, any>) =>
       [...queryKeys.settings.all, "pricing-audit", params] as const,

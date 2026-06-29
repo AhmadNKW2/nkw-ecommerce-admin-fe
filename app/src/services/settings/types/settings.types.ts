@@ -15,6 +15,7 @@ export interface SeoSettings {
   free_delivery_enabled: boolean;
   free_delivery_amount: number;
   delivery_fee: number;
+  low_stock_threshold: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -23,13 +24,18 @@ export type UpdateSeoSettingsDto = Partial<
   Omit<SeoSettings, 'id' | 'created_at' | 'updated_at'>
 >;
 
-export interface ProductFieldToggles {
+export interface FeatureToggles {
   id: number;
-  // Disabling toggles — enforced by BE on create/update, hide UI on both frontends.
+  // Disabling toggles — enforced by BE on create/update, hide UI on admin + storefront.
   vendors_enabled: boolean;
   attributes_enabled: boolean;
   specifications_enabled: boolean;
   weight_and_dimensions_enabled: boolean;
+  partners_enabled: boolean;
+  cashback_enabled: boolean;
+  banners_enabled: boolean;
+  import_ai_products_enabled: boolean;
+  linked_products_enabled: boolean;
   // Appearance-only toggles — admin dashboard UI only; BE ignores them.
   reference_link_visible_admin: boolean;
   meta_title_visible_admin: boolean;
@@ -38,9 +44,15 @@ export interface ProductFieldToggles {
   updated_at?: string;
 }
 
-export type UpdateProductFieldTogglesDto = Partial<
-  Omit<ProductFieldToggles, 'id' | 'created_at' | 'updated_at'>
+/** @deprecated Use FeatureToggles */
+export type ProductFieldToggles = FeatureToggles;
+
+export type UpdateFeatureTogglesDto = Partial<
+  Omit<FeatureToggles, 'id' | 'created_at' | 'updated_at'>
 >;
+
+/** @deprecated Use UpdateFeatureTogglesDto */
+export type UpdateProductFieldTogglesDto = UpdateFeatureTogglesDto;
 
 export interface ProductPriceRule {
   id: number;

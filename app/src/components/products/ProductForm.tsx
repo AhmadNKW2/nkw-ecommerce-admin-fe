@@ -13,7 +13,7 @@ import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
 import { STOREFRONT_CONFIG } from "../../lib/constants";
 import { useAttributes } from "../../services/attributes/hooks/use-attributes";
 import { useSpecifications } from "../../services/specifications/hooks/use-specifications";
-import { useProductFieldToggles } from "../../services/settings/hooks/use-settings";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 import { Button } from "../ui/button";
 import { PageHeader } from "../common/PageHeader";
 import {
@@ -115,22 +115,19 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 }) => {
   const router = useRouter();
 
-  // Product field toggles — drive section visibility. Fall back to true while
-  // loading or on error so the form renders every section by default (matches
-  // the all-enabled contract) and never blocks product creation.
-  const { data: productFieldToggles } = useProductFieldToggles();
-  const vendorsEnabled = productFieldToggles?.vendors_enabled ?? true;
-  const attributesEnabled = productFieldToggles?.attributes_enabled ?? true;
-  const specificationsEnabled =
-    productFieldToggles?.specifications_enabled ?? true;
-  const weightAndDimensionsEnabled =
-    productFieldToggles?.weight_and_dimensions_enabled ?? true;
-  const referenceLinkVisible =
-    productFieldToggles?.reference_link_visible_admin ?? true;
-  const metaTitleVisible =
-    productFieldToggles?.meta_title_visible_admin ?? true;
-  const metaDescriptionVisible =
-    productFieldToggles?.meta_description_visible_admin ?? true;
+  // Feature toggles — hide gated sections until settings are resolved to avoid
+  // a flash of enabled fields that disappear after the API responds.
+  const { isEnabled } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
+  const attributesEnabled = isEnabled("attributes_enabled");
+  const specificationsEnabled = isEnabled("specifications_enabled");
+  const weightAndDimensionsEnabled = isEnabled("weight_and_dimensions_enabled");
+  const referenceLinkVisible = isEnabled("reference_link_visible_admin");
+  const metaTitleVisible = isEnabled("meta_title_visible_admin");
+  const metaDescriptionVisible = isEnabled("meta_description_visible_admin");
+  const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
+  const linkedProductsEnabled = isEnabled("linked_products_enabled");
+  const statusVisible = importAiProductsEnabled;
 
   // Draft persistence – only active in create mode.
   const { restoredDraft, saveDraft, clearDraft } = useProductFormDraft({
@@ -149,7 +146,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     referenceLink: "",
     linked_product_ids: [],
     quantity: 0,
-    low_stock_threshold: 10,
     is_out_of_stock: false,
     shortDescriptionEn: "",
     shortDescriptionAr: "",
@@ -225,7 +221,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         referenceLink: "",
         linked_product_ids: [],
         quantity: 0,
-        low_stock_threshold: 10,
         is_out_of_stock: false,
         shortDescriptionEn: "",
         shortDescriptionAr: "",
@@ -261,14 +256,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       nameAr: formData.nameAr || '',
       sku: formData.sku || '',
       record: formData.record || '',
-      status: formData.status || 'active',
+      status: importAiProductsEnabled ? (formData.status || 'active') : 'active',
       categoryIds: formData.categoryIds || [],
       vendorId: formData.vendorId || '',
       brandId: formData.brandId || '',
       referenceLink: formData.referenceLink || '',
-      linked_product_ids: formData.linked_product_ids || [],
+      linked_product_ids: linkedProductsEnabled ? (formData.linked_product_ids || []) : [],
       quantity: formData.quantity || 0,
-      low_stock_threshold: formData.low_stock_threshold || 10,
       is_out_of_stock: formData.is_out_of_stock || false,
       shortDescriptionEn: formData.shortDescriptionEn || '',
       shortDescriptionAr: formData.shortDescriptionAr || '',
@@ -658,6 +652,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         referenceLinkVisible={referenceLinkVisible}
         metaTitleVisible={metaTitleVisible}
         metaDescriptionVisible={metaDescriptionVisible}
+        statusVisible={statusVisible}
+        linkedProductsEnabled={linkedProductsEnabled}
       />
 
       {/* Attributes Configuration — hidden when attributes_enabled is false */}
@@ -740,10 +736,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       {/* Stock Management */}
       <StockSection
           quantity={formData.quantity || 0}
-          lowStockThreshold={formData.low_stock_threshold || 10}
           isOutOfStock={formData.is_out_of_stock || false}
           onChangeQuantity={(q) => handleFieldChange("quantity", q)}
-          onChangeLowStockThreshold={(threshold) => handleFieldChange("low_stock_threshold", threshold)}
           onChangeIsOutOfStock={(isOut) => handleFieldChange("is_out_of_stock", isOut)}
           errors={errors}
         />
@@ -754,6 +748,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
+        vendorSourcePricesVisible={referenceLinkVisible}
       />
 
       {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}

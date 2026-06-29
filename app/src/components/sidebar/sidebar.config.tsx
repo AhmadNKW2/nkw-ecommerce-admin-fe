@@ -96,6 +96,7 @@ export const sidebarConfig = {
           label: 'Products Review',
           exact: true,
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          featureToggle: 'import_ai_products_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -112,6 +113,7 @@ export const sidebarConfig = {
           label: 'Updated Products',
           exact: true,
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          featureToggle: 'import_ai_products_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -144,6 +146,7 @@ export const sidebarConfig = {
           href: '/banners',
           label: 'Banners',
           roles: ['admin'] as SidebarRole[],
+          featureToggle: 'banners_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <rect x="3" y="7" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -155,6 +158,7 @@ export const sidebarConfig = {
           href: '/attributes',
           label: 'Attributes',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          featureToggle: 'attributes_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -170,6 +174,7 @@ export const sidebarConfig = {
           href: '/specifications',
           label: 'Specifications',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          featureToggle: 'specifications_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -200,6 +205,7 @@ export const sidebarConfig = {
           href: '/vendors',
           label: 'Vendors',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          featureToggle: 'vendors_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -245,6 +251,7 @@ export const sidebarConfig = {
           href: '/partners',
           label: 'Partners',
           roles: ['admin'] as SidebarRole[],
+          featureToggle: 'partners_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -300,6 +307,7 @@ export const sidebarConfig = {
           href: '/cashback-rules',
           label: 'Cashback Rules',
           roles: ['admin'] as SidebarRole[],
+          featureToggle: 'cashback_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -313,36 +321,6 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M20 12H9m0 0l3-3m-3 3l3 3"
-              />
-            </svg>
-          ),
-        },
-        {
-          href: '/tags',
-          label: 'Tags',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-              />
-            </svg>
-          ),
-        },
-        {
-          href: '/search-concepts',
-          label: 'Search Concepts',
-          roles: ['admin'] as SidebarRole[],
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
           ),
@@ -374,6 +352,36 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/features',
+          label: 'Feature Settings',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m0 10v-2m0 2a2 2 0 100-4m0 4a2 2 0 110-4M6 12H4m2 0h16"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/inventory',
+          label: 'Inventory Settings',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
               />
             </svg>
           ),
@@ -428,6 +436,7 @@ export const sidebarConfig = {
           href: '/archived-vendors',
           label: 'Archived Vendors',
           roles: ['admin'] as SidebarRole[],
+          featureToggle: 'vendors_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

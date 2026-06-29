@@ -9,8 +9,6 @@ import { Input } from "../../src/components/ui/input";
 import { Textarea } from "../../src/components/ui/textarea";
 import { Toggle } from "../../src/components/ui/toggle";
 import { Button } from "../../src/components/ui/button";
-import { showErrorToast } from "../../src/lib/toast";
-import { productService } from "../../src/services/products/api/product.service";
 import {
   useSeoSettings,
   useUpdateSeoSettings,
@@ -87,10 +85,6 @@ export default function SeoSettingsPage() {
   };
 
   const handleSave = async () => {
-    const shouldReindexProducts =
-      data?.show_sale_pricing !== undefined &&
-      data.show_sale_pricing !== formState.show_sale_pricing;
-
     const payload: UpdateSeoSettingsDto = {
       site_name_en: formState.site_name_en,
       site_name_ar: formState.site_name_ar,
@@ -110,18 +104,6 @@ export default function SeoSettingsPage() {
     };
 
     await updateSeoSettings.mutateAsync(payload);
-
-    if (shouldReindexProducts) {
-      try {
-        await productService.reindexProducts();
-      } catch (reindexError) {
-        showErrorToast(
-          reindexError instanceof Error
-            ? reindexError.message
-            : "Settings were saved, but product reindex did not start.",
-        );
-      }
-    }
   };
 
   if (isError) {

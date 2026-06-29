@@ -2,17 +2,23 @@
 
 import { useRef, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { AppSidebar } from "../sidebar/app-sidebar";
 import { sidebarConfig } from "../sidebar/sidebar.config";
 import { ScrollToTop } from "../common/ScrollToTop";
 import { useLoading } from "../../providers/loading-provider";
-import { useSeoSettings } from "../../services/settings/hooks/use-settings";
+import {
+  fetchFeatureToggles,
+  useSeoSettings,
+} from "../../services/settings/hooks/use-settings";
 import { getAdminDashboardTitle } from "../../lib/site-branding";
+import { queryKeys } from "../../lib/query-keys";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
   const mainRef = useRef<HTMLElement>(null);
   const { showOverlay } = useLoading();
@@ -47,6 +53,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     document.title = dashboardTitle;
   }, [dashboardTitle, isAuthRoute]);
+
+  useEffect(() => {
+    if (isAuthRoute) {
+      return;
+    }
+
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.settings.features(),
+      queryFn: fetchFeatureToggles,
+    });
+  }, [isAuthRoute, queryClient]);
 
   if (isAuthRoute) {
     return <>{children}</>;

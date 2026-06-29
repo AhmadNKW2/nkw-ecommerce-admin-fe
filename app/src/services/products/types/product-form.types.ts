@@ -36,7 +36,7 @@ export interface Pricing {
   cost?: number;
   originalVendorPrice?: number;
   originalVendorSalePrice?: number;
-  price: number;
+  price?: number;
   isSale?: boolean;
   salePrice?: number;
 }
@@ -82,7 +82,6 @@ export const productFormSchema = z.object({
   referenceLink: z.string().optional(),
   linked_product_ids: z.array(z.string()).default([]),
   quantity: z.number().default(0),
-  low_stock_threshold: z.number().default(10),
   is_out_of_stock: z.boolean().default(false),
   shortDescriptionEn: z.string().optional(),
   shortDescriptionAr: z.string().optional(),

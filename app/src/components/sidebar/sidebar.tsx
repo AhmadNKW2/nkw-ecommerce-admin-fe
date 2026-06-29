@@ -341,3 +341,29 @@ interface SidebarDividerProps {
 export function SidebarDivider({ className = '' }: SidebarDividerProps) {
   return <div className={`my-4 border-t border-b1 ${className}`} />;
 }
+
+// ---------- Link skeleton (loading placeholder) ----------
+
+export function SidebarLinkSkeleton() {
+  const { isCollapsed } = useSidebar();
+
+  return (
+    <div
+      className={`
+        mb-1 flex items-center animate-pulse
+        ${isCollapsed ? 'justify-center px-2 py-1.5' : 'gap-3 px-3 py-2.5'}
+      `}
+      aria-hidden="true"
+    >
+      <div
+        className={`
+          shrink-0 rounded-xl bg-gray-200
+          ${isCollapsed ? 'h-10 w-10' : 'h-5 w-5 rounded-full'}
+        `}
+      />
+      {!isCollapsed && (
+        <div className="h-4 max-w-28 flex-1 rounded bg-gray-200" />
+      )}
+    </div>
+  );
+}

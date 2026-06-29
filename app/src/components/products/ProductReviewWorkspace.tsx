@@ -56,7 +56,7 @@ import {
     UpdateProductDto,
 } from "@/services/products/types/product.types";
 import { useVendors } from "@/services/vendors/hooks/use-vendors";
-import { useProductFieldToggles } from "@/services/settings/hooks/use-settings";
+import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import type { ProductFieldToggles } from "@/services/settings/types/settings.types";
 
 type ProductLike = Product & Record<string, any>;
@@ -1353,20 +1353,22 @@ export function ProductReviewWorkspace() {
         setLimit: setStoredLimit,
     } = useSessionStoragePage(REVIEW_STORAGE_KEY);
 
-    // Product field toggles — drive review snapshot zeroing and tile/badge/group
-    // visibility. Fall back to true on every flag while loading or on error so
-    // the review workspace renders everything by default (matches the
-    // all-enabled contract).
-    const { data: productFieldToggles } = useProductFieldToggles();
-    const reviewToggles: ProductFieldToggles = productFieldToggles ?? {
+    // Feature toggles — hide gated review UI until settings are resolved.
+    const { toggles } = useResolvedFeatureToggles();
+    const reviewToggles: ProductFieldToggles = toggles ?? {
         id: 0,
-        vendors_enabled: true,
-        attributes_enabled: true,
-        specifications_enabled: true,
-        weight_and_dimensions_enabled: true,
-        reference_link_visible_admin: true,
-        meta_title_visible_admin: true,
-        meta_description_visible_admin: true,
+        vendors_enabled: false,
+        attributes_enabled: false,
+        specifications_enabled: false,
+        weight_and_dimensions_enabled: false,
+        partners_enabled: false,
+        cashback_enabled: false,
+        banners_enabled: false,
+        import_ai_products_enabled: false,
+        linked_products_enabled: false,
+        reference_link_visible_admin: false,
+        meta_title_visible_admin: false,
+        meta_description_visible_admin: false,
     };
 
     const [queryParams, setQueryParams] = useState<ProductFilters>(() => {

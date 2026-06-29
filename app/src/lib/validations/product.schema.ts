@@ -180,7 +180,6 @@ export const createProductSchema = (config: ProductFormConfig) => {
     longDescriptionAr: z.string().min(1, "Required"),
     visible: z.boolean().default(true),
     quantity: z.number().min(0, "Must be 0 or greater").optional().default(0),
-    low_stock_threshold: z.number().min(0, "Must be 0 or greater").optional().default(10),
     is_out_of_stock: z.boolean().default(false),
 
     // Attributes - optional

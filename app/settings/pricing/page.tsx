@@ -22,6 +22,7 @@ import {
   ProductPriceRule,
 } from "../../src/services/settings/types/settings.types";
 import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
+import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 import { useEffect, useState } from "react";
 
 type ProductPriceRuleDraft = {
@@ -64,13 +65,15 @@ const defaultBulkPricingFormState: BulkPricingFormState = {
 };
 
 export default function PricingSettingsPage() {
+  const { isEnabled } = useResolvedFeatureToggles();
+  const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
   const {
     data: pricingRules,
     isLoading,
     isError,
     error,
     refetch,
-  } = useProductPriceRules();
+  } = useProductPriceRules({ enabled: importAiProductsEnabled });
   const { data: vendorsData } = useVendors();
   const createProductPriceRule = useCreateProductPriceRule();
   const updateProductPriceRule = useUpdateProductPriceRule();
@@ -302,145 +305,164 @@ export default function PricingSettingsPage() {
         </div>
       </Card>
 
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-r1 bg-primary p-3 text-white">
-                <Percent className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Product Pricing Rules</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Define the percentage reduction by vendor price range.
-                </p>
+      {importAiProductsEnabled ? (
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="rounded-r1 bg-primary p-3 text-white">
+                  <Percent className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    AI Import Product Pricing Rules
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Define the percentage reduction by vendor price range for
+                    AI-imported products only.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <Button
-            variant="outline"
-            onClick={handleAddRule}
-            disabled={isLoading || isRuleMutationPending}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Rule
-            </span>
-          </Button>
-        </div>
-
-        {isError ? (
-          <div className="rounded-r1 border border-danger/20 bg-danger/5 p-5">
-            <div className="flex items-center gap-3 text-danger">
-              <AlertCircle className="h-5 w-5" />
-              <p className="font-medium">Unable to load pricing rules</p>
-            </div>
-            <p className="mt-2 text-sm text-gray-600">
-              {error instanceof Error
-                ? error.message
-                : "An error occurred while loading pricing rules."}
-            </p>
-            <Button onClick={() => refetch()} className="mt-4">
-              Try Again
+            <Button
+              variant="outline"
+              onClick={handleAddRule}
+              disabled={isLoading || isRuleMutationPending}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add Rule
+              </span>
             </Button>
           </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {ruleDrafts.length === 0 && !isLoading ? (
-              <div className="rounded-r1 border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-                No pricing rules yet. Add your first range to control imported
-                product prices.
-              </div>
-            ) : null}
 
-            {ruleDrafts.map((rule, index) => (
-              <Card key={rule.id ?? `new-rule-${index}`} variant="nested">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-semibold">
-                      {rule.id === null ? `New Rule ${index + 1}` : `Rule #${rule.id}`}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Define the vendor price range and the percentage to reduce
-                      from it.
-                    </p>
+          {isError ? (
+            <div className="rounded-r1 border border-danger/20 bg-danger/5 p-5">
+              <div className="flex items-center gap-3 text-danger">
+                <AlertCircle className="h-5 w-5" />
+                <p className="font-medium">
+                  Unable to load AI import pricing rules
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                {error instanceof Error
+                  ? error.message
+                  : "An error occurred while loading AI import pricing rules."}
+              </p>
+              <Button onClick={() => refetch()} className="mt-4">
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {ruleDrafts.length === 0 && !isLoading ? (
+                <div className="rounded-r1 border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
+                  No AI import pricing rules yet. Add your first range to
+                  control imported product prices.
+                </div>
+              ) : null}
+
+              {ruleDrafts.map((rule, index) => (
+                <Card key={rule.id ?? `new-rule-${index}`} variant="nested">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-semibold">
+                        {rule.id === null
+                          ? `New Rule ${index + 1}`
+                          : `Rule #${rule.id}`}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Define the vendor price range and the percentage to
+                        reduce for AI-imported products.
+                      </p>
+                    </div>
+
+                    <Toggle
+                      checked={rule.is_active}
+                      onChange={(value) =>
+                        setRuleField(index, "is_active", value)
+                      }
+                      disabled={isRuleMutationPending}
+                      label="Active"
+                    />
                   </div>
 
-                  <Toggle
-                    checked={rule.is_active}
-                    onChange={(value) => setRuleField(index, "is_active", value)}
-                    disabled={isRuleMutationPending}
-                    label="Active"
-                  />
-                </div>
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <Input
+                      label="Minimum Vendor Price"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={rule.min_vendor_price}
+                      onChange={(event) =>
+                        setRuleField(
+                          index,
+                          "min_vendor_price",
+                          event.target.value,
+                        )
+                      }
+                      disabled={isRuleMutationPending}
+                    />
+                    <Input
+                      label="Maximum Vendor Price"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={rule.max_vendor_price}
+                      onChange={(event) =>
+                        setRuleField(
+                          index,
+                          "max_vendor_price",
+                          event.target.value,
+                        )
+                      }
+                      disabled={isRuleMutationPending}
+                    />
+                    <Input
+                      label="Reduction Percentage"
+                      type="number"
+                      min="1"
+                      step="0.1"
+                      value={rule.percentage}
+                      onChange={(event) =>
+                        setRuleField(index, "percentage", event.target.value)
+                      }
+                      disabled={isRuleMutationPending}
+                    />
+                  </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <Input
-                    label="Minimum Vendor Price"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={rule.min_vendor_price}
-                    onChange={(event) =>
-                      setRuleField(index, "min_vendor_price", event.target.value)
-                    }
-                    disabled={isRuleMutationPending}
-                  />
-                  <Input
-                    label="Maximum Vendor Price"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={rule.max_vendor_price}
-                    onChange={(event) =>
-                      setRuleField(index, "max_vendor_price", event.target.value)
-                    }
-                    disabled={isRuleMutationPending}
-                  />
-                  <Input
-                    label="Reduction Percentage"
-                    type="number"
-                    min="1"
-                    step="0.1"
-                    value={rule.percentage}
-                    onChange={(event) =>
-                      setRuleField(index, "percentage", event.target.value)
-                    }
-                    disabled={isRuleMutationPending}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => handleSaveRule(index)}
-                    disabled={isRuleMutationPending}
-                  >
-                    {rule.id === null
-                      ? createProductPriceRule.isPending
-                        ? "Creating..."
-                        : "Create Rule"
-                      : updateProductPriceRule.isPending
-                        ? "Saving..."
-                        : "Save Rule"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDeleteRule(index)}
-                    disabled={isRuleMutationPending}
-                    color="#dc2626"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </span>
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Card>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => handleSaveRule(index)}
+                      disabled={isRuleMutationPending}
+                    >
+                      {rule.id === null
+                        ? createProductPriceRule.isPending
+                          ? "Creating..."
+                          : "Create Rule"
+                        : updateProductPriceRule.isPending
+                          ? "Saving..."
+                          : "Save Rule"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleDeleteRule(index)}
+                      disabled={isRuleMutationPending}
+                      color="#dc2626"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </span>
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+      ) : null}
     </div>
   );
 }

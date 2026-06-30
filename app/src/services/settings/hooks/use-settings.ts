@@ -94,12 +94,13 @@ export const useUpdateFeatureToggles = () => {
 /** @deprecated Use useUpdateFeatureToggles */
 export const useUpdateProductFieldToggles = useUpdateFeatureToggles;
 
-export const useProductPriceRules = () => {
+export const useProductPriceRules = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: queryKeys.settings.pricingRules(),
     queryFn: () => settingsService.getProductPriceRules(),
     select: (response) => response.data,
     refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
   });
 };
 

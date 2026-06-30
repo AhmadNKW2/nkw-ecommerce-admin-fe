@@ -22,6 +22,7 @@ import {
   getProductImageUrl,
   getProductStockSummary,
 } from "./product-table-utils";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
 interface ProductCatalogTableProps {
   products: ProductItem[];
@@ -48,6 +49,9 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
   noPagination = false,
   tableClassName = "min-w-280",
 }) => {
+  const { isEnabled } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
+  const ratingsEnabled = isEnabled("ratings_enabled");
   const selectedIdSet = new Set(selectedProductIds);
   const currentPageIds = products.map((product) => product.id);
   const allCurrentPageSelected =
@@ -84,10 +88,10 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
           <TableHead width="18%">Product Name</TableHead>
           <TableHead width="10%">Category</TableHead>
           <TableHead width="13%">Brand</TableHead>
-          <TableHead width="13%">Vendor</TableHead>
+          {vendorsEnabled && <TableHead width="13%">Vendor</TableHead>}
           <TableHead width="8%">Price</TableHead>
           <TableHead width="9%">Stock</TableHead>
-          <TableHead width="7%">Rating</TableHead>
+          {ratingsEnabled && <TableHead width="7%">Rating</TableHead>}
           <TableHead width="8%">Visibility</TableHead>
         </TableRow>
       </TableHeader>
@@ -183,6 +187,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   <span className="text-gray-400">—</span>
                 )}
               </TableCell>
+              {vendorsEnabled && (
               <TableCell>
                 <div className="flex items-center gap-2">
                   {product.vendor?.logo ? (
@@ -202,6 +207,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   </span>
                 </div>
               </TableCell>
+              )}
               <TableCell>
                 {!displayPrice ? (
                   <span className="text-gray-400">—</span>
@@ -221,6 +227,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   {stockSummary.label}
                 </Badge>
               </TableCell>
+              {ratingsEnabled && (
               <TableCell>
                 <div className="flex items-center justify-start gap-1">
                   <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
@@ -230,6 +237,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   ) : null}
                 </div>
               </TableCell>
+              )}
               <TableCell>
                 <Badge variant={getVisibilityVariant(product.visible ?? product.is_active)}>
                   {getVisibilityLabel(product.visible ?? product.is_active)}

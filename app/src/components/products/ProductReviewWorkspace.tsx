@@ -1354,10 +1354,11 @@ export function ProductReviewWorkspace() {
     } = useSessionStoragePage(REVIEW_STORAGE_KEY);
 
     // Feature toggles — hide gated review UI until settings are resolved.
-    const { toggles } = useResolvedFeatureToggles();
+    const { toggles, isResolved } = useResolvedFeatureToggles();
     const reviewToggles: ProductFieldToggles = toggles ?? {
         id: 0,
         vendors_enabled: false,
+        ratings_enabled: false,
         attributes_enabled: false,
         specifications_enabled: false,
         weight_and_dimensions_enabled: false,
@@ -1370,6 +1371,7 @@ export function ProductReviewWorkspace() {
         meta_title_visible_admin: false,
         meta_description_visible_admin: false,
     };
+    const vendorsEnabled = reviewToggles.vendors_enabled !== false;
 
     const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
         if (typeof window !== "undefined") {
@@ -1478,6 +1480,27 @@ export function ProductReviewWorkspace() {
     }, [isLoading, setShowOverlay]);
 
     useEffect(() => {
+        if (!isResolved || vendorsEnabled) {
+            return;
+        }
+
+        setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
+        setBulkReimportVendorId((current) => (current ? "" : current));
+        setQueryParams((prev) => {
+            if (!prev.vendor_ids) {
+                return prev;
+            }
+
+            const next = { ...prev };
+            delete next.vendor_ids;
+            delete next.vendor_id;
+            delete next.vendorId;
+            delete next.has_no_vendor;
+            return { ...next, page: 1, status: "review" };
+        });
+    }, [isResolved, vendorsEnabled]);
+
+    useEffect(() => {
         const debounce = setTimeout(() => {
             if (searchTerm !== (queryParams.search || "")) {
                 setQueryParams((prev) => ({
@@ -1513,16 +1536,18 @@ export function ProductReviewWorkspace() {
     }, [priceOverrides, products, reviewToggles]);
 
     const hasActiveFilters =
-        Boolean(searchTerm.trim()) || selectedVendorIds.length > 0 || selectedCategoryIds.length > 0;
+        Boolean(searchTerm.trim()) ||
+        (vendorsEnabled && selectedVendorIds.length > 0) ||
+        selectedCategoryIds.length > 0;
     const hasAnyActiveReimport = computedIsBulkReimporting || computedActiveReimportProductIds.length > 0;
     const bulkReimportScopeMessage =
-        bulkReimportVendorId || bulkReimportCategoryIds.length > 0
+        (vendorsEnabled && bulkReimportVendorId) || bulkReimportCategoryIds.length > 0
             ? "Only review products matching the optional filters below will be re-imported. Leave either field empty to keep it unrestricted."
             : "All review products will be re-imported. Choose a vendor, a category, or both if you want to narrow the run.";
     const bulkReimportActionLabel =
         computedIsBulkReimporting
             ? "Starting re-import..."
-            : bulkReimportVendorId || bulkReimportCategoryIds.length > 0
+            : (vendorsEnabled && bulkReimportVendorId) || bulkReimportCategoryIds.length > 0
                 ? "Re-import selected review products"
                 : "Re-import all review products";
 
@@ -1900,7 +1925,13 @@ export function ProductReviewWorkspace() {
                 </section>
 
                 <section className="rounded-[30px] border border-slate-200 bg-white/95 p-5 shadow-[0_20px_55px_-42px_rgba(15,23,42,0.3)]">
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(240px,0.8fr)_minmax(280px,1fr)]">
+                    <div
+                        className={`grid gap-4 ${
+                            vendorsEnabled
+                                ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(240px,0.8fr)_minmax(280px,1fr)]"
+                                : "xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,1fr)]"
+                        }`}
+                    >
                         <Input
                             value={searchTerm}
                             onChange={(event) => setSearchTerm(event.target.value.slice(0, 150))}
@@ -1909,6 +1940,7 @@ export function ProductReviewWorkspace() {
                             maxLength={150}
                         />
 
+                        {vendorsEnabled && (
                         <div className="relative z-20">
                             <Select
                                 label="Vendor"
@@ -1921,6 +1953,7 @@ export function ProductReviewWorkspace() {
                                 disabled={vendorOptions.length === 0}
                             />
                         </div>
+                        )}
 
                         <div className="relative z-30">
                             <CategoryTreeSelect
@@ -2006,7 +2039,14 @@ export function ProductReviewWorkspace() {
                             {bulkReimportScopeMessage}
                         </div>
 
-                        <div className="grid gap-4 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+                        <div
+                            className={`grid gap-4 ${
+                                vendorsEnabled
+                                    ? "xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]"
+                                    : "grid-cols-1"
+                            }`}
+                        >
+                            {vendorsEnabled && (
                             <div className="relative z-20">
                                 <Select
                                     label="Vendor filter"
@@ -2019,6 +2059,7 @@ export function ProductReviewWorkspace() {
                                     disabled={computedIsBulkReimporting || vendorOptions.length === 0}
                                 />
                             </div>
+                            )}
 
                             <div className="relative z-10">
                                 <CategoryTreeSelect

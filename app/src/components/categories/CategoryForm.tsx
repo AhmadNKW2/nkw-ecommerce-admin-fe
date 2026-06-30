@@ -18,6 +18,7 @@ import { Category } from "../../services/categories/types/category.types";
 import { ProductsTableSection, ProductItem } from "../common/ProductsTableSection";
 import { CategoryTreeSelect } from "../products/CategoryTreeSelect";
 import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
 const removeCategoryBranch = (
   categories: Category[],
@@ -123,6 +124,11 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   currentCategoryId,
 }) => {
   const router = useRouter();
+  const { isEnabled } = useResolvedFeatureToggles();
+  const attributesEnabled = isEnabled("attributes_enabled");
+  const specificationsEnabled = isEnabled("specifications_enabled");
+  const showAttributesSpecificationsSection =
+    attributesEnabled || specificationsEnabled;
   useEnterToSubmit(onSubmit, isSubmitting);
 
   const handleBack = () => {
@@ -238,6 +244,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
 
       </Card>
 
+      {showAttributesSpecificationsSection && (
       <Card>
         <h2 className="text-lg font-semibold">Category Attributes & Specifications</h2>
 
@@ -249,11 +256,11 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               selectedIds={copyFromCategoryId ? [copyFromCategoryId] : []}
               onChange={(ids) => onCopyFromCategoryIdChange(ids[0] || "")}
               singleSelect={true}
-              placeholder="Select category to copy from"
               disabled={availableParents.length === 0}
             />
           </div>
 
+          {attributesEnabled && (
           <Select
             label="Attributes"
             value={attributeIds}
@@ -269,7 +276,9 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
             multiple={true}
             placeholder="Select attributes"
           />
+          )}
 
+          {specificationsEnabled && (
           <Select
             label="Specifications"
             value={specificationIds}
@@ -285,8 +294,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
             multiple={true}
             placeholder="Select specifications"
           />
+          )}
         </div>
       </Card>
+      )}
 
       {/* Products Section */}
       <Card>

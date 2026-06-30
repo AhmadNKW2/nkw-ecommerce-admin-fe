@@ -28,6 +28,7 @@ export interface FeatureToggles {
   id: number;
   // Disabling toggles — enforced by BE on create/update, hide UI on admin + storefront.
   vendors_enabled: boolean;
+  ratings_enabled: boolean;
   attributes_enabled: boolean;
   specifications_enabled: boolean;
   weight_and_dimensions_enabled: boolean;

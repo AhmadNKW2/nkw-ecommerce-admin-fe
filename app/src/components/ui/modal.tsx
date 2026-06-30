@@ -124,7 +124,7 @@ export const Modal: React.FC<ModalProps> = ({
         />
 
         {/* Content Container */}
-        <div className={`flex flex-col flex-1 ${scrollable ? 'overflow-y-auto' : ''} ${variant === 'default' ? 'p-6 md:p-8' : ''} ${contentClassName}`}>
+        <div className={`flex flex-col flex-1 justify-center items-center ${scrollable ? 'overflow-y-auto' : ''} ${variant === 'default' ? 'p-6 md:p-8' : ''} ${contentClassName}`}>
           {children}
         </div>
       </div>

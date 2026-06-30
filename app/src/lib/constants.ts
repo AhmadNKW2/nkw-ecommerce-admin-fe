@@ -13,10 +13,7 @@ export const API_CONFIG = {
 } as const;
 
 export const STOREFRONT_CONFIG = {
-  baseUrl:
-    process.env.NEXT_PUBLIC_STOREFRONT_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000",
+  baseUrl: process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:3000",
 } as const;
 
 export const QUERY_CONFIG = {

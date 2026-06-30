@@ -319,7 +319,7 @@ export const CategoryDeleteModal: React.FC<CategoryDeleteModalProps> = ({
           <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
           <p className="text-sm text-red-700">
             Type{" "}
-            <span className="font-mono bg-red-100 border border-red-200 px-1.5 py-0.5 rounded text-red-700 font-semibold">
+            <span className="inline-block font-mono bg-red-100 border border-red-200 px-1.5 py-0.5 rounded text-red-700 font-semibold select-all">
               {CONFIRM_WORD}
             </span>{" "}
             to confirm permanent deletion
@@ -347,7 +347,7 @@ export const CategoryDeleteModal: React.FC<CategoryDeleteModalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex gap-3 w-full pt-2">
+      <div className="flex gap-3 w-full pt-2 justify-center">
         <Button
           type="button"
           variant="outline"

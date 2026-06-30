@@ -31,6 +31,12 @@ const catalogFields: Array<{
       "Show vendors in the admin panel and storefront, and accept vendor changes on product create/update.",
   },
   {
+    key: "ratings_enabled",
+    label: "Ratings",
+    description:
+      "Show product ratings in the admin product table, storefront filters, product cards, and product detail pages.",
+  },
+  {
     key: "attributes_enabled",
     label: "Attributes",
     description:
@@ -96,7 +102,7 @@ const appearanceFields: Array<{
     key: "reference_link_visible_admin",
     label: "Reference Link",
     description:
-      "Show the reference link input and vendor source prices in the admin product form, and its badge in the review workspace.",
+      "Show the reference link input and vendor source prices in the admin product form, its badge in the review workspace, and reference-link filters/actions in product lists.",
   },
   {
     key: "meta_title_visible_admin",

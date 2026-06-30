@@ -24,6 +24,7 @@ import { validateCategoryForm } from "../../src/lib/validations";
 import { ProductItem } from "../../src/components/common/ProductsTableSection";
 import { mapProductToProductItem } from "../../src/components/common/product-table-utils";
 import { buildUpdateProductChanges } from "@/lib/product-changes";
+import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 
 const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
   const normalizedIds = Array.isArray(directIds)
@@ -46,6 +47,9 @@ export default function EditCategoryPage() {
   const params = useParams();
   const categoryId = Number(params.id);
   const { setShowOverlay } = useLoading();
+  const { isEnabled } = useResolvedFeatureToggles();
+  const attributesEnabled = isEnabled("attributes_enabled");
+  const specificationsEnabled = isEnabled("specifications_enabled");
 
   // Form state
   const [nameEn, setNameEn] = useState("");
@@ -77,9 +81,13 @@ export default function EditCategoryPage() {
     refetch,
   } = useCategory(categoryId);
 
-  const { data: attributes = [] } = useAttributes();
+  const { data: attributes = [] } = useAttributes(undefined, {
+    enabled: attributesEnabled,
+  });
   const { data: allCategories } = useCategories();
-  const { data: specifications = [] } = useSpecifications();
+  const { data: specifications = [] } = useSpecifications(undefined, {
+    enabled: specificationsEnabled,
+  });
   const sourceCategoryId = Number(copyFromCategoryId);
   const { data: sourceCategory } = useCategory(sourceCategoryId, {
     enabled: sourceCategoryId > 0,
@@ -138,12 +146,16 @@ export default function EditCategoryPage() {
     }
 
     setAttributeIds(
-      extractLinkedIds((sourceCategory as any).attribute_ids, (sourceCategory as any).attributes)
+      attributesEnabled
+        ? extractLinkedIds((sourceCategory as any).attribute_ids, (sourceCategory as any).attributes)
+        : []
     );
     setSpecificationIds(
-      extractLinkedIds((sourceCategory as any).specification_ids, (sourceCategory as any).specifications)
+      specificationsEnabled
+        ? extractLinkedIds((sourceCategory as any).specification_ids, (sourceCategory as any).specifications)
+        : []
     );
-  }, [copyFromCategoryId, sourceCategory]);
+  }, [copyFromCategoryId, sourceCategory, attributesEnabled, specificationsEnabled]);
 
   const validate = () => {
     const result = validateCategoryForm({
@@ -178,8 +190,8 @@ export default function EditCategoryPage() {
           description_ar: descriptionAr || undefined,
           visible: visible,
           parent_id: parentId,
-          attribute_ids,
-          specification_ids,
+          ...(attributesEnabled ? { attribute_ids } : {}),
+          ...(specificationsEnabled ? { specification_ids } : {}),
           // Only send new file if one was uploaded
           image: image?.file || undefined,
           product_changes: buildUpdateProductChanges(originalProductIds, product_ids),

@@ -72,22 +72,36 @@ export const DeleteConfirmationModal: React.FC<
     const isButtonDisabled = isLoading || (isPermanent && !isConfirmValid);
 
     return (
-      <Modal isOpen={isOpen} onClose={onClose} variant="default">
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        variant="default"
+        className="max-w-lg w-full"
+        contentClassName="gap-4"
+      >
         <div className={`flex items-center justify-center w-12 h-12 ${iconBgColor} rounded-full`}>
           <Icon className={`w-6 h-6 ${iconColor}`} />
         </div>
         <h2 className="text-xl font-semibold">{title}</h2>
 
-        {/* Item name highlight for permanent deletion */}
-            <span className="text-sm font-medium text-red-800 text-center bg-red-50 p-3 border border-red-200 rounded-lg w-100">
-              {message}
-            </span>
+        <p className="text-sm font-medium text-red-800 text-center bg-red-50 p-3 border border-red-200 rounded-lg w-full">
+          {message}
+          {itemName && (
+            <>
+              {" "}
+              <span className="font-semibold">&quot;{itemName}&quot;</span>
+            </>
+          )}
+        </p>
 
-        {/* Confirmation Input for permanent deletion */}
         {isPermanent && (
           <div className="w-full space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Type <span className="font-mono bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-red-600">{CONFIRM_WORD}</span> to confirm:
+              Type{" "}
+              <span className="inline-block font-mono bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-red-600 select-all">
+                {CONFIRM_WORD}
+              </span>
+              {" "}to confirm:
             </label>
             <Input
               value={confirmInput}
@@ -110,8 +124,7 @@ export const DeleteConfirmationModal: React.FC<
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex gap-5">
+        <div className="flex gap-3 w-full justify-center">
           <Button
             type="button"
             variant="outline"

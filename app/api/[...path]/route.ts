@@ -170,12 +170,10 @@ function serializeError(error: unknown) {
 }
 
 function getBackendOrigin(): string {
-  return (
-    process.env.ADMIN_BACKEND_ORIGIN ||
-    process.env.BACKEND_ORIGIN ||
-    process.env.NEXT_PUBLIC_BACKEND_ORIGIN ||
-    "http://localhost:3001"
-  ).replace(/\/$/, "");
+  return (process.env.BACKEND_ORIGIN || "http://localhost:3001").replace(
+    /\/$/,
+    "",
+  );
 }
 
 function buildUpstreamUrl(req: Request, pathSegments: string[]): string {

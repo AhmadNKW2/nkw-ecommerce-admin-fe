@@ -19,6 +19,7 @@ import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { validateCategoryForm } from "../../src/lib/validations";
 import { ProductItem } from "../../src/components/common/ProductsTableSection";
 import { buildCreateProductChanges } from "@/lib/product-changes";
+import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 
 const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
   const normalizedIds = Array.isArray(directIds)
@@ -38,6 +39,9 @@ const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
 
 export default function CreateCategoryPage() {
   const router = useRouter();
+  const { isEnabled } = useResolvedFeatureToggles();
+  const attributesEnabled = isEnabled("attributes_enabled");
+  const specificationsEnabled = isEnabled("specifications_enabled");
 
   // Form state
   const [nameEn, setNameEn] = useState("");
@@ -61,9 +65,13 @@ export default function CreateCategoryPage() {
 
   // Get parent categories for dropdown
   const { data: categories } = useCategories();
-  const { data: attributes = [] } = useAttributes();
+  const { data: attributes = [] } = useAttributes(undefined, {
+    enabled: attributesEnabled,
+  });
   const { data: productsData } = useProducts({ limit: 1000 });
-  const { data: specifications = [] } = useSpecifications();
+  const { data: specifications = [] } = useSpecifications(undefined, {
+    enabled: specificationsEnabled,
+  });
   const sourceCategoryId = Number(copyFromCategoryId);
   const { data: sourceCategory } = useCategory(sourceCategoryId, {
     enabled: sourceCategoryId > 0,
@@ -104,9 +112,9 @@ export default function CreateCategoryPage() {
       (sourceCategory as any).specifications
     );
 
-    setAttributeIds(nextAttributeIds);
-    setSpecificationIds(nextSpecificationIds);
-  }, [copyFromCategoryId, sourceCategory]);
+    setAttributeIds(attributesEnabled ? nextAttributeIds : []);
+    setSpecificationIds(specificationsEnabled ? nextSpecificationIds : []);
+  }, [copyFromCategoryId, sourceCategory, attributesEnabled, specificationsEnabled]);
 
   const validate = () => {
     const result = validateCategoryForm({
@@ -140,8 +148,8 @@ export default function CreateCategoryPage() {
         parent_id: parentId,
         image: image?.file || undefined,
         product_changes: buildCreateProductChanges(product_ids),
-        attribute_ids,
-        specification_ids,
+        ...(attributesEnabled ? { attribute_ids } : {}),
+        ...(specificationsEnabled ? { specification_ids } : {}),
       });
       
       router.push("/categories");

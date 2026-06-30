@@ -364,7 +364,7 @@ export const VendorRestoreModal: React.FC<VendorRestoreModalProps> = ({
       )}
 
       {/* Footer */}
-      <div className="flex gap-3 w-full pt-2">
+      <div className="flex gap-3 w-full pt-2 justify-center">
         <Button
           type="button"
           variant="outline"

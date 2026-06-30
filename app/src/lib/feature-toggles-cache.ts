@@ -15,6 +15,7 @@ export type StoredFeatureToggles = Omit<
 
 const DEFAULT_TOGGLES: StoredFeatureToggles = {
   vendors_enabled: true,
+  ratings_enabled: true,
   attributes_enabled: true,
   specifications_enabled: true,
   weight_and_dimensions_enabled: true,

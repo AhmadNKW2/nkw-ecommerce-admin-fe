@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
+import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { useLoading } from "@/providers/loading-provider";
 import { useCategories } from "@/services/categories/hooks/use-categories";
 import {
@@ -1085,6 +1086,9 @@ export function ProductReviewPage() {
     setLimit: setStoredLimit,
   } = useSessionStoragePage(REVIEW_STORAGE_KEY);
 
+  const { isEnabled, isResolved } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
+
   const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem(REVIEW_FILTERS_STORAGE_KEY);
@@ -1157,6 +1161,26 @@ export function ProductReviewPage() {
   }, [isLoading, setShowOverlay]);
 
   useEffect(() => {
+    if (!isResolved || vendorsEnabled) {
+      return;
+    }
+
+    setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
+    setQueryParams((prev) => {
+      if (!prev.vendor_ids) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next.vendor_ids;
+      delete next.vendor_id;
+      delete next.vendorId;
+      delete next.has_no_vendor;
+      return { ...next, page: 1, status: "review" };
+    });
+  }, [isResolved, vendorsEnabled]);
+
+  useEffect(() => {
     const debounce = setTimeout(() => {
       if (searchTerm !== (queryParams.search || "")) {
         setQueryParams((prev) => ({
@@ -1199,7 +1223,9 @@ export function ProductReviewPage() {
   }, [data?.data.pagination?.total, queueItems.length]);
 
   const hasActiveFilters =
-    Boolean(searchTerm.trim()) || selectedVendorIds.length > 0 || selectedCategoryIds.length > 0;
+    Boolean(searchTerm.trim()) ||
+    (vendorsEnabled && selectedVendorIds.length > 0) ||
+    selectedCategoryIds.length > 0;
 
   const handleVendorChange = (value: string | string[]) => {
     const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
@@ -1375,7 +1401,13 @@ export function ProductReviewPage() {
       {(products.length > 0 || hasActiveFilters) && (
         <Card className="w-full rounded-[28px] border border-primary/10 shadow-[0_24px_50px_-38px_rgba(15,23,42,0.45)] p-4 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="grid w-full gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)_minmax(280px,1fr)]">
+            <div
+            className={`grid w-full gap-4 ${
+              vendorsEnabled
+                ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)_minmax(280px,1fr)]"
+                : "xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,1fr)]"
+            }`}
+          >
               <Input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value.slice(0, 150))}
@@ -1384,6 +1416,7 @@ export function ProductReviewPage() {
                 maxLength={150}
               />
 
+              {vendorsEnabled && (
               <div className="relative z-20">
                 <Select
                   label="Vendor"
@@ -1396,6 +1429,7 @@ export function ProductReviewPage() {
                   disabled={vendorOptions.length === 0}
                 />
               </div>
+              )}
 
               <div className="relative z-30">
                 <CategoryTreeSelect

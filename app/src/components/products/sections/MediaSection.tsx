@@ -34,16 +34,14 @@ export function MediaSection({ media, onChange, errors }: MediaSectionProps) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold text-emerald-900 border-b border-emerald-100 pb-2">
+      <h2 className="text-xl font-semibold">
         Product Media
       </h2>
-      <div className="mt-4">
-        <ImageUpload
-          value={mediaItems}
-          onChange={handleMediaChange}
-          hasPrimary
-        />
-      </div>
+      <ImageUpload
+        value={mediaItems}
+        onChange={handleMediaChange}
+        hasPrimary
+      />
       {errors && errors["media"] && (
         <p className="text-sm text-red-500 mt-2">{String(errors["media"])}</p>
       )}

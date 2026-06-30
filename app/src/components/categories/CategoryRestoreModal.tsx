@@ -814,7 +814,7 @@ export const CategoryRestoreModal: React.FC<CategoryRestoreModalProps> = ({
       )}
 
       {/* Footer */}
-      <div className="flex gap-3 w-full pt-4 border-t border-gray-100">
+      <div className="flex gap-3 w-full pt-4 border-t border-gray-100 justify-center">
         <Button
           type="button"
           variant="outline"

@@ -33,10 +33,13 @@ import {
 import { DeleteConfirmationModal } from "../src/components/common/DeleteConfirmationModal";
 import { RestoreConfirmationModal } from "../src/components/common/RestoreConfirmationModal";
 import { Product } from "../src/services/products/types/product.types";
+import { useResolvedFeatureToggles } from "../src/hooks/use-resolved-feature-toggles";
 
 export default function ArchivedProductsPage() {
   const router = useRouter();
   const { setShowOverlay } = useLoading();
+  const { isEnabled } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
@@ -203,7 +206,7 @@ export default function ArchivedProductsPage() {
               <TableHead>Product Name</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Vendor</TableHead>
+              {vendorsEnabled && <TableHead>Vendor</TableHead>}
               <TableHead>Created By</TableHead>
               <TableHead>Archived Date</TableHead>
               <TableHead>Actions</TableHead>
@@ -242,6 +245,7 @@ export default function ArchivedProductsPage() {
                     {product.category?.name_en || <span className="text-gray-400">—</span>}
                   </div>
                 </TableCell>
+                {vendorsEnabled && (
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     <span>
@@ -254,6 +258,7 @@ export default function ArchivedProductsPage() {
                     )}
                   </div>
                 </TableCell>
+                )}
                 <TableCell>
                   {product.created_by ? (
                     <div className="flex flex-col text-sm">

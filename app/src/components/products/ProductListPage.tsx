@@ -42,6 +42,7 @@ import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationM
 import { DatePicker } from "@/components/ui/date-picker";
 import { CategoryTreeSelect } from "@/components/products/CategoryTreeSelect";
 import { Select } from "@/components/ui/select";
+import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 
 interface ProductListPageProps {
   title: string;
@@ -253,6 +254,10 @@ export function ProductListPage({
   fixedStatus,
 }: ProductListPageProps) {
   const router = useRouter();
+  const { isEnabled, isResolved } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
+  const ratingsEnabled = isEnabled("ratings_enabled");
+  const referenceLinkVisible = isEnabled("reference_link_visible_admin");
   const { setShowOverlay } = useLoading();
   const {
     page: storedPage,
@@ -406,6 +411,45 @@ export function ProductListPage({
       }
     }
   }, [isLoading, products.length]);
+
+  useEffect(() => {
+    if (!isResolved) {
+      return;
+    }
+
+    if (!vendorsEnabled) {
+      setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
+      setQueryParams((prev) => {
+        if (
+          !prev.vendor_ids &&
+          !prev.vendor_id &&
+          !prev.vendorId &&
+          !prev.has_no_vendor
+        ) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next.vendor_ids;
+        delete next.vendor_id;
+        delete next.vendorId;
+        delete next.has_no_vendor;
+        return { ...next, page: 1 };
+      });
+    }
+
+    if (!referenceLinkVisible) {
+      setQueryParams((prev) => {
+        if (prev.has_duplicate_reference_link === undefined) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next.has_duplicate_reference_link;
+        return { ...next, page: 1 };
+      });
+    }
+  }, [isResolved, vendorsEnabled, referenceLinkVisible]);
 
   const handleFilterChange = (filters: ProductFilters) => {
     setQueryParams((prev) => ({
@@ -750,6 +794,7 @@ export function ProductListPage({
                 />
               </div>
 
+              {vendorsEnabled && (
               <div className="relative flex-1">
                 <Select
                   label="Vendor"
@@ -762,6 +807,7 @@ export function ProductListPage({
                   disabled={vendorOptions.length === 0}
                 />
               </div>
+              )}
 
               <div className="relative flex-1">
                 <Select
@@ -852,6 +898,7 @@ export function ProductListPage({
                   placeholder="All Visibility"
                 />
               </div>
+              {referenceLinkVisible && (
               <div className="relative flex-1">
                 <Select
                   label="Reference Links"
@@ -872,6 +919,7 @@ export function ProductListPage({
                   placeholder="All Reference Links"
                 />
               </div>
+              )}
               <div className="relative flex-1">
                 <Input
                   label="Min Price"
@@ -931,10 +979,10 @@ export function ProductListPage({
               <TableHead width="11%">Product Name</TableHead>
               <TableHead width="8%">Category</TableHead>
               <TableHead width="11%">Brand</TableHead>
-              <TableHead width="11%">Vendor</TableHead>
+              {vendorsEnabled && <TableHead width="11%">Vendor</TableHead>}
               <TableHead width="5%">Price</TableHead>
               <TableHead width="7%">Stock</TableHead>
-              <TableHead width="5%">Rating</TableHead>
+              {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">Created At</TableHead>
               <TableHead width="10%">Created By</TableHead>
               <TableHead width="7%">Visibility</TableHead>
@@ -1018,6 +1066,7 @@ export function ProductListPage({
                       <span className="text-gray-400">—</span>
                     )}
                   </TableCell>
+                  {vendorsEnabled && (
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {product.vendor?.logo && (
@@ -1037,6 +1086,7 @@ export function ProductListPage({
                       </span>
                     </div>
                   </TableCell>
+                  )}
                   <TableCell>
                     {!displayPrice ? (
                       <span className="text-gray-400">—</span>
@@ -1064,6 +1114,7 @@ export function ProductListPage({
                       );
                     })()}
                   </TableCell>
+                  {ratingsEnabled && (
                   <TableCell>
                     <div className="flex items-center justify-start gap-1">
                       <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
@@ -1073,6 +1124,7 @@ export function ProductListPage({
                       ) : null}
                     </div>
                   </TableCell>
+                  )}
                   <TableCell>
                     {(() => {
                       const createdAtParts = getCreatedAtParts(
@@ -1125,6 +1177,7 @@ export function ProductListPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      {referenceLinkVisible && (
                       <IconButton
                         variant="external"
                         disabled={!normalizeExternalUrl(product.reference_link)}
@@ -1138,6 +1191,7 @@ export function ProductListPage({
                             : "No reference link"
                         }
                       />
+                      )}
                       <IconButton
                         variant="view"
                         disabled={!product.slug}

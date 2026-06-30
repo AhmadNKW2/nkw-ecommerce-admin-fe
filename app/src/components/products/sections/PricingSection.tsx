@@ -40,7 +40,7 @@ export function PricingSection({
 
     return (
         <Card className="p-6">
-            <h2 className="text-lg font-semibold text-emerald-900 border-b border-emerald-100 pb-2">
+            <h2 className="text-xl font-semibold">
                 Pricing
             </h2>
             <div className={`grid gap-4 ${vendorSourcePricesVisible ? "lg:grid-cols-2" : ""}`}>

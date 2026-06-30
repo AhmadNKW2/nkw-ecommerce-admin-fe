@@ -286,7 +286,7 @@ export const RestoreConfirmationModal: React.FC<RestoreConfirmationModalProps> =
       )}
 
       {/* Footer */}
-      <div className="flex gap-3 w-full">
+      <div className="flex gap-3 w-full justify-center">
         <Button
           type="button"
           variant="solid"

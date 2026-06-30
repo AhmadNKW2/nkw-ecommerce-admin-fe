@@ -46,6 +46,7 @@ export interface FeatureToggles {
   banners_enabled: boolean;
   import_ai_products_enabled: boolean;
   linked_products_enabled: boolean;
+  reference_links_enabled: boolean;
   // Appearance-only toggles — admin dashboard UI only; BE ignores them.
   reference_link_visible_admin: boolean;
   meta_title_visible_admin: boolean;

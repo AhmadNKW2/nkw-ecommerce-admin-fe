@@ -24,6 +24,7 @@ const DEFAULT_TOGGLES: StoredFeatureToggles = {
   banners_enabled: true,
   import_ai_products_enabled: true,
   linked_products_enabled: true,
+  reference_links_enabled: true,
   reference_link_visible_admin: true,
   meta_title_visible_admin: true,
   meta_description_visible_admin: true,

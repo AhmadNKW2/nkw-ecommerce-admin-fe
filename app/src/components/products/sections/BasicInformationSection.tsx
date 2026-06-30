@@ -70,6 +70,7 @@ interface BasicInformationSectionProps {
     initialLinkedProducts?: LinkedProductSummary[];
     vendorsEnabled?: boolean;
     referenceLinkVisible?: boolean;
+    referenceLinkActionsEnabled?: boolean;
     metaTitleVisible?: boolean;
     metaDescriptionVisible?: boolean;
     statusVisible?: boolean;
@@ -87,6 +88,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
     initialLinkedProducts,
     vendorsEnabled = true,
     referenceLinkVisible = true,
+    referenceLinkActionsEnabled = true,
     metaTitleVisible = true,
     metaDescriptionVisible = true,
     statusVisible = true,
@@ -368,7 +370,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                     disabled
                     className="bg-gray-100 cursor-not-allowed"
                     error={errors.referenceLink}
-                    rightElement={
+                    rightElement={referenceLinkActionsEnabled ? (
                         <button
                             type="button"
                             onClick={() => openReferenceLink(formData.referenceLink)}
@@ -383,8 +385,22 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                         >
                             <ExternalLink className="h-4 w-4" />
                         </button>
-                    }
+                    ) : undefined}
                 />
+                )}
+
+                {referenceLinkActionsEnabled && !referenceLinkVisible && (
+                <div className="col-span-2">
+                    <button
+                        type="button"
+                        onClick={() => openReferenceLink(formData.referenceLink)}
+                        disabled={!normalizeExternalUrl(formData.referenceLink)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-primary2/20 bg-primary2/5 px-3 py-2 text-sm font-medium text-primary2 transition-colors hover:bg-primary2/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        Open Reference Link
+                    </button>
+                </div>
                 )}
 
                 {metaTitleVisible && (

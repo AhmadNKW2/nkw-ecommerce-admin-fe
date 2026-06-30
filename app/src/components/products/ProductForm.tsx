@@ -122,6 +122,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const attributesEnabled = isEnabled("attributes_enabled");
   const specificationsEnabled = isEnabled("specifications_enabled");
   const weightAndDimensionsEnabled = isEnabled("weight_and_dimensions_enabled");
+  const referenceLinksEnabled = isEnabled("reference_links_enabled");
   const referenceLinkVisible = isEnabled("reference_link_visible_admin");
   const metaTitleVisible = isEnabled("meta_title_visible_admin");
   const metaDescriptionVisible = isEnabled("meta_description_visible_admin");
@@ -650,6 +651,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         initialLinkedProducts={initialLinkedProducts}
         vendorsEnabled={vendorsEnabled}
         referenceLinkVisible={referenceLinkVisible}
+        referenceLinkActionsEnabled={referenceLinksEnabled}
         metaTitleVisible={metaTitleVisible}
         metaDescriptionVisible={metaDescriptionVisible}
         statusVisible={statusVisible}
@@ -748,7 +750,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
-        vendorSourcePricesVisible={referenceLinkVisible}
+        vendorSourcePricesVisible={referenceLinksEnabled}
       />
 
       {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}

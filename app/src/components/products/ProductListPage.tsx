@@ -257,7 +257,7 @@ export function ProductListPage({
   const { isEnabled, isResolved } = useResolvedFeatureToggles();
   const vendorsEnabled = isEnabled("vendors_enabled");
   const ratingsEnabled = isEnabled("ratings_enabled");
-  const referenceLinkVisible = isEnabled("reference_link_visible_admin");
+  const referenceLinksEnabled = isEnabled("reference_links_enabled");
   const { setShowOverlay } = useLoading();
   const {
     page: storedPage,
@@ -438,7 +438,7 @@ export function ProductListPage({
       });
     }
 
-    if (!referenceLinkVisible) {
+    if (!referenceLinksEnabled) {
       setQueryParams((prev) => {
         if (prev.has_duplicate_reference_link === undefined) {
           return prev;
@@ -449,7 +449,7 @@ export function ProductListPage({
         return { ...next, page: 1 };
       });
     }
-  }, [isResolved, vendorsEnabled, referenceLinkVisible]);
+  }, [isResolved, vendorsEnabled, referenceLinksEnabled]);
 
   const handleFilterChange = (filters: ProductFilters) => {
     setQueryParams((prev) => ({
@@ -898,7 +898,7 @@ export function ProductListPage({
                   placeholder="All Visibility"
                 />
               </div>
-              {referenceLinkVisible && (
+              {referenceLinksEnabled && (
               <div className="relative flex-1">
                 <Select
                   label="Reference Links"
@@ -1177,7 +1177,7 @@ export function ProductListPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {referenceLinkVisible && (
+                      {referenceLinksEnabled && (
                       <IconButton
                         variant="external"
                         disabled={!normalizeExternalUrl(product.reference_link)}

@@ -25,6 +25,12 @@ const catalogFields: Array<{
   description: string;
 }> = [
   {
+    key: "reference_links_enabled",
+    label: "Reference Links",
+    description:
+      "Enable reference-link actions and buttons across the full admin experience.",
+  },
+  {
     key: "vendors_enabled",
     label: "Vendors",
     description:
@@ -100,9 +106,9 @@ const appearanceFields: Array<{
 }> = [
   {
     key: "reference_link_visible_admin",
-    label: "Reference Link",
+    label: "Reference Link Input",
     description:
-      "Show the reference link input and vendor source prices in the admin product form, its badge in the review workspace, and reference-link filters/actions in product lists.",
+      "Show the reference link field in the admin product form only.",
   },
   {
     key: "meta_title_visible_admin",

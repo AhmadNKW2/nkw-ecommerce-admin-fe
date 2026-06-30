@@ -666,18 +666,20 @@ const buildReviewSnapshot = (
         vendors_enabled?: boolean;
         attributes_enabled?: boolean;
         specifications_enabled?: boolean;
+        reference_links_enabled?: boolean;
     },
 ): ReviewSnapshot => {
     const vendorsEnabled = toggles?.vendors_enabled ?? true;
     const attributesEnabled = toggles?.attributes_enabled ?? true;
     const specificationsEnabled = toggles?.specifications_enabled ?? true;
+    const referenceLinksEnabled = toggles?.reference_links_enabled ?? true;
 
     return {
         imageUrl: getProductImageUrl(product),
         displayPrice: getProductDisplayPrice(product),
         visible: Boolean(product.visible ?? product.is_active),
         outOfStock: isProductOutOfStock(product),
-        referenceUrl: vendorsEnabled
+        referenceUrl: referenceLinksEnabled
             ? normalizeExternalUrl(product.reference_link)
             : null,
         attributes: attributesEnabled
@@ -909,7 +911,7 @@ function ProductReviewCard({
     const vendorsEnabled = toggles.vendors_enabled;
     const attributesEnabled = toggles.attributes_enabled;
     const specificationsEnabled = toggles.specifications_enabled;
-    const referenceLinkVisibleAdmin = toggles.reference_link_visible_admin;
+    const referenceLinksEnabled = toggles.reference_links_enabled;
     const beforePrice = snapshot.displayPrice?.price ?? null;
     const afterPrice = snapshot.displayPrice?.salePrice ?? null;
     const hasTwoPrices = Boolean(beforePrice && afterPrice);
@@ -1024,7 +1026,7 @@ function ProductReviewCard({
                                 <Badge variant={snapshot.outOfStock ? "warning" : "success"}>
                                     {snapshot.outOfStock ? "Out of stock" : "In Stock"}
                                 </Badge>
-                                {referenceLinkVisibleAdmin && (
+                                {referenceLinksEnabled && (
                                 <Badge variant={snapshot.referenceUrl ? "success" : "warning"}>
                                     {snapshot.referenceUrl ? "Reference linked" : "Reference missing"}
                                 </Badge>
@@ -1237,7 +1239,13 @@ function ProductReviewCard({
                                 icon={<ExternalLink className="h-4 w-4" />}
                                 label="Reference"
                                 onClick={() => openExternalLink(snapshot.referenceUrl)}
-                                disabled={!snapshot.referenceUrl || isSavingPrice || isReimporting || isBulkReimporting}
+                                disabled={
+                                    !referenceLinksEnabled ||
+                                    !snapshot.referenceUrl ||
+                                    isSavingPrice ||
+                                    isReimporting ||
+                                    isBulkReimporting
+                                }
                                 variant="outline"
                                 color="var(--color-primary2)"
                                 className="w-full border-slate-200 bg-white text-slate-700"
@@ -1367,6 +1375,7 @@ export function ProductReviewWorkspace() {
         banners_enabled: false,
         import_ai_products_enabled: false,
         linked_products_enabled: false,
+        reference_links_enabled: false,
         reference_link_visible_admin: false,
         meta_title_visible_admin: false,
         meta_description_visible_admin: false,

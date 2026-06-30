@@ -186,5 +186,6 @@ export const queryKeys = {
     pricingRules: () => [...queryKeys.settings.all, "pricing-rules"] as const,
     pricingAudit: (params?: Record<string, any>) =>
       [...queryKeys.settings.all, "pricing-audit", params] as const,
+    popup: () => [...queryKeys.settings.all, "popup"] as const,
   },
 } as const;

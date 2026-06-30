@@ -17,12 +17,15 @@ import {
   UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
+  UpdateSitePopupSettingsDto,
+  SitePopupSettings,
 } from '../types/settings.types';
 
 class SettingsService {
   private seoEndpoint = '/settings/seo';
   private pricingRulesEndpoint = '/settings/pricing-rules';
   private featuresEndpoint = '/settings/features';
+  private popupEndpoint = '/settings/popup';
   private pricingAuditEndpoint = '/products/import-pricing/audit';
   private pricingSyncEndpoint = '/products/import-pricing/sync';
 
@@ -52,6 +55,18 @@ class SettingsService {
         headers: { 'x-skip-request-toast': '1' },
       },
     );
+  }
+
+  async getSitePopupSettings(): Promise<ApiResponse<SitePopupSettings>> {
+    return httpClient.get<ApiResponse<SitePopupSettings>>(this.popupEndpoint);
+  }
+
+  async updateSitePopupSettings(
+    data: UpdateSitePopupSettingsDto,
+  ): Promise<ApiResponse<SitePopupSettings>> {
+    return httpClient.patch<ApiResponse<SitePopupSettings>>(this.popupEndpoint, data, {
+      headers: { 'x-skip-request-toast': '1' },
+    });
   }
 
   /** @deprecated Use getFeatureToggles */

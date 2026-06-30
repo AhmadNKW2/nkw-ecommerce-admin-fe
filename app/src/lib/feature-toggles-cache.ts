@@ -25,6 +25,8 @@ const DEFAULT_TOGGLES: StoredFeatureToggles = {
   import_ai_products_enabled: true,
   linked_products_enabled: true,
   reference_links_enabled: true,
+  easy_purchase_enabled: false,
+  cart_sidebar_button_enabled: true,
   reference_link_visible_admin: true,
   meta_title_visible_admin: true,
   meta_description_visible_admin: true,

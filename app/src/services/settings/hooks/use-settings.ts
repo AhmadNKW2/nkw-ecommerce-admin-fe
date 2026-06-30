@@ -24,6 +24,7 @@ import {
   UpdateProductFieldTogglesDto,
   UpdateProductPriceRuleDto,
   UpdateSeoSettingsDto,
+  UpdateSitePopupSettingsDto,
 } from '../types/settings.types';
 
 export async function fetchSeoSettings() {
@@ -116,6 +117,31 @@ export const useUpdateFeatureToggles = () => {
 
 /** @deprecated Use useUpdateFeatureToggles */
 export const useUpdateProductFieldToggles = useUpdateFeatureToggles;
+
+export const useSitePopupSettings = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: queryKeys.settings.popup(),
+    queryFn: () => settingsService.getSitePopupSettings(),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? true,
+    refetchOnWindowFocus: false,
+    staleTime: QUERY_CONFIG.staleTime,
+  });
+};
+
+export const useUpdateSitePopupSettings = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateSitePopupSettingsDto) =>
+      settingsService.updateSitePopupSettings(data),
+    onSuccess: (response) => {
+      queryClient.setQueryData(queryKeys.settings.popup(), response);
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      showSuccessToast('Site popup updated successfully');
+    },
+  });
+};
 
 export const useProductPriceRules = (options?: { enabled?: boolean }) => {
   return useQuery({

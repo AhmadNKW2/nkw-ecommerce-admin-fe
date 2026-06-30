@@ -74,6 +74,18 @@ const platformModules: Array<{
   description: string;
 }> = [
   {
+    key: "easy_purchase_enabled",
+    label: "Easy Purchase",
+    description:
+      "Simplify storefront checkout to full name and phone only, place orders directly with cash on delivery, and show the fast purchase headline.",
+  },
+  {
+    key: "cart_sidebar_button_enabled",
+    label: "Cart Button in Sidebar",
+    description:
+      "Show the View Cart button in the storefront cart sidebar. When disabled, the button is hidden from the sidebar footer.",
+  },
+  {
     key: "partners_enabled",
     label: "Partners",
     description:

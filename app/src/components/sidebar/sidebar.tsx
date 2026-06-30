@@ -51,27 +51,46 @@ export function Sidebar({ children }: SidebarProps) {
 // ---------- Header ----------
 
 interface SidebarHeaderProps {
+  logo?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function SidebarHeader({ children }: SidebarHeaderProps) {
+export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
   const { isCollapsed, toggleCollapsed } = useSidebar();
 
   return (
     <div
       className={`
-        border-b border-b1 flex items-center py-5
+        border-b border-b1 flex items-center py-2
         transition-all duration-300 ease-in-out
-        ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'}
+        ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'}
       `}
     >
       <div
         className={`
-          overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap
-          ${isCollapsed ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-50 flex-1 opacity-100'}
+          flex min-w-0 items-center transition-all duration-300 ease-in-out
+          ${isCollapsed ? 'justify-center' : 'flex-1 gap-3 pr-6'}
         `}
       >
-        {children}
+        {logo ? (
+          <div
+            className={`
+              shrink-0 transition-all duration-300 ease-in-out
+              ${isCollapsed ? 'h-10 w-10 [&_img]:h-10 [&_img]:w-10 [&>div]:h-10 [&>div]:w-10' : ''}
+            `}
+          >
+            {logo}
+          </div>
+        ) : null}
+
+        <div
+          className={`
+            min-w-0 overflow-hidden transition-all duration-300 ease-in-out
+            ${isCollapsed ? 'max-w-0 opacity-0' : 'flex-1 opacity-100'}
+          `}
+        >
+          {children}
+        </div>
       </div>
 
       <button

@@ -8,8 +8,12 @@ import { LoadingProvider } from "./src/providers/loading-provider";
 import { AuthProvider } from "./src/contexts/auth.context";
 import { JobTrackerProvider } from "./src/providers/job-tracker-provider";
 import { AppShell } from "./src/components/layout/AppShell";
+import { FaviconManager } from "./src/components/layout/FaviconManager";
+import { BrandThemeManager } from "./src/components/layout/BrandThemeManager";
 import { DevSsrApiLogReset } from "./src/components/common/DevSsrApiLogReset";
 import { ToastContainer, Slide } from "react-toastify";
+import { getAdminDashboardTitle } from "./src/lib/site-branding";
+import { fetchServerSeoSettings } from "./src/lib/seo-settings-server";
 
 const lato = Lato({
   variable: '--font-lato',
@@ -25,10 +29,24 @@ const almarai = Almarai({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: "Admin Dashboard",
-  description: "Admin dashboard for storefront management",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await fetchServerSeoSettings();
+  const logo = settings?.site_logo?.trim();
+
+  return {
+    title: getAdminDashboardTitle(settings),
+    description: "Admin dashboard for storefront management",
+    ...(logo
+      ? {
+          icons: {
+            icon: logo,
+            shortcut: logo,
+            apple: logo,
+          },
+        }
+      : {}),
+  };
+}
 
 export default function RootLayout({
   children,
@@ -41,6 +59,8 @@ export default function RootLayout({
         className={`${lato.variable} ${almarai.variable} antialiased`}
       >
         <QueryProvider>
+          <BrandThemeManager />
+          <FaviconManager />
           {process.env.NODE_ENV !== "production" ? <DevSsrApiLogReset /> : null}
           <LoadingProvider>
             <AuthProvider>

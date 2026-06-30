@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const settingsLinks = [
   { href: "/settings/seo", label: "SEO" },
+  { href: "/settings/appearance", label: "Appearance" },
   { href: "/settings/features", label: "Feature Settings" },
   { href: "/settings/inventory", label: "Inventory" },
   { href: "/settings/pricing", label: "Pricing Rules" },

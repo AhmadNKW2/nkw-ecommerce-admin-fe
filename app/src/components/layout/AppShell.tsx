@@ -10,10 +10,10 @@ import { ScrollToTop } from "../common/ScrollToTop";
 import { useLoading } from "../../providers/loading-provider";
 import {
   fetchFeatureToggles,
-  useSeoSettings,
 } from "../../services/settings/hooks/use-settings";
-import { getAdminDashboardTitle } from "../../lib/site-branding";
+import { AdminLogo } from "../common/AdminLogo";
 import { queryKeys } from "../../lib/query-keys";
+import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -22,14 +22,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
   const mainRef = useRef<HTMLElement>(null);
   const { showOverlay } = useLoading();
-  const { data: seoSettings } = useSeoSettings({ enabled: !isAuthRoute });
-  const dashboardTitle = getAdminDashboardTitle(seoSettings);
+  const {
+    dashboardTitle,
+    siteName,
+    siteLogo,
+    isBrandingPending,
+  } = useResolvedSiteBranding({ enabled: !isAuthRoute });
+
   const sidebarHeader = useMemo(
     () => ({
       ...sidebarConfig.header,
-      title: dashboardTitle,
+      title: siteName,
+      subtitle: "Admin Dashboard",
+      logo: (
+        <AdminLogo
+          src={siteLogo}
+          pending={isBrandingPending}
+          alt={siteName}
+        />
+      ),
     }),
-    [dashboardTitle],
+    [siteName, siteLogo, isBrandingPending],
   );
 
   // Global ESC key → navigate back (skip when typing in inputs or a dialog is open)
@@ -79,7 +92,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <main ref={mainRef} className="flex-1 overflow-auto relative">
           {children}
-          {/* Blocks clicks/edits but stays inside <main> so wheel events bubble up and scroll still works */}
           {showOverlay && (
             <div className="absolute inset-0 z-[9998]" />
           )}

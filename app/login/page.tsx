@@ -12,10 +12,18 @@ import { Input } from "../src/components/ui/input";
 import { Button } from "../src/components/ui/button";
 import { Card } from "../src/components/ui/card";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AdminLogo } from "../src/components/common/AdminLogo";
+import { useResolvedSiteBranding } from "../src/hooks/use-resolved-site-branding";
 
 export default function LoginPage() {
   const { login, isLoading } = useAuth();
   const { setShowOverlay } = useLoading();
+  const {
+    dashboardTitle,
+    siteName,
+    siteLogo,
+    isBrandingPending,
+  } = useResolvedSiteBranding();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,9 +37,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (typeof document !== "undefined") {
-      document.title = "Admin Dashboard";
+      document.title = dashboardTitle;
     }
-  }, []);
+  }, [dashboardTitle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +70,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center  px-4">
       <Card className="w-full max-w-md p-8">
         <div className="text-center">
+          <div className="mb-4 flex justify-center">
+            <AdminLogo
+              src={siteLogo}
+              pending={isBrandingPending}
+              alt={siteName}
+            />
+          </div>
           <h1 className="text-3xl font-bold ">Admin Login</h1>
           <p className=" mt-2">Sign in to your account</p>
         </div>
@@ -117,7 +132,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm ">
-          <p>Admin Dashboard</p>
+          <p>{dashboardTitle}</p>
         </div>
       </Card>
     </div>

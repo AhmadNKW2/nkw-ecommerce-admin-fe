@@ -6,6 +6,11 @@ import {
   toFeatureToggles,
   writeStoredFeatureToggles,
 } from '../../../lib/feature-toggles-cache';
+import {
+  readStoredSiteBranding,
+  toCachedSeoSettings,
+  writeStoredSiteBranding,
+} from '../../../lib/site-branding-cache';
 import { showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
@@ -21,13 +26,29 @@ import {
   UpdateSeoSettingsDto,
 } from '../types/settings.types';
 
+export async function fetchSeoSettings() {
+  const response = await settingsService.getSeoSettings();
+  writeStoredSiteBranding(response.data);
+  return response;
+}
+
 export const useSeoSettings = (options?: { enabled?: boolean }) => {
+  const storedBranding = readStoredSiteBranding();
+
   return useQuery({
     queryKey: queryKeys.settings.seo(),
-    queryFn: () => settingsService.getSeoSettings(),
+    queryFn: fetchSeoSettings,
     select: (response) => response.data,
     enabled: options?.enabled ?? true,
     refetchOnWindowFocus: false,
+    staleTime: QUERY_CONFIG.staleTime,
+    placeholderData: storedBranding
+      ? () => ({
+          data: toCachedSeoSettings(storedBranding),
+          success: true,
+          message: "",
+        })
+      : undefined,
   });
 };
 
@@ -37,7 +58,9 @@ export const useUpdateSeoSettings = () => {
   return useMutation({
     mutationFn: (data: UpdateSeoSettingsDto) =>
       settingsService.updateSeoSettings(data),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      writeStoredSiteBranding(response.data);
+      queryClient.setQueryData(queryKeys.settings.seo(), response);
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast('SEO settings updated successfully');
     },

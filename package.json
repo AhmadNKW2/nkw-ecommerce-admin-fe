@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:brand-theme": "node scripts/sync-brand-theme-from-css.mjs",
+    "predev": "pnpm sync:brand-theme",
     "dev": "next dev -p 3002",
+    "prebuild": "pnpm sync:brand-theme",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint"

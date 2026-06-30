@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, Search } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
@@ -9,15 +10,18 @@ import { Input } from "../../src/components/ui/input";
 import { Textarea } from "../../src/components/ui/textarea";
 import { Toggle } from "../../src/components/ui/toggle";
 import { Button } from "../../src/components/ui/button";
+import { ImageUpload, ImageUploadItem } from "../../src/components/ui/image-upload";
 import {
   useSeoSettings,
   useUpdateSeoSettings,
 } from "../../src/services/settings/hooks/use-settings";
 import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
+import { mediaService } from "../../src/services/media/api/media.service";
 
 type FormState = {
   site_name_en: string;
   site_name_ar: string;
+  site_logo: ImageUploadItem | null;
   default_meta_title_en: string;
   default_meta_title_ar: string;
   default_meta_description_en: string;
@@ -36,6 +40,7 @@ type FormState = {
 const emptyFormState: FormState = {
   site_name_en: "",
   site_name_ar: "",
+  site_logo: null,
   default_meta_title_en: "",
   default_meta_title_ar: "",
   default_meta_description_en: "",
@@ -52,6 +57,7 @@ const emptyFormState: FormState = {
 };
 
 export default function SeoSettingsPage() {
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useSeoSettings();
   const updateSeoSettings = useUpdateSeoSettings();
   const [formState, setFormState] = useState<FormState>(emptyFormState);
@@ -64,6 +70,14 @@ export default function SeoSettingsPage() {
     setFormState({
       site_name_en: data.site_name_en ?? "",
       site_name_ar: data.site_name_ar ?? "",
+      site_logo: data.site_logo
+        ? {
+            id: "site-logo",
+            preview: data.site_logo,
+            type: "image",
+            order: 0,
+          }
+        : null,
       default_meta_title_en: data.default_meta_title_en ?? "",
       default_meta_title_ar: data.default_meta_title_ar ?? "",
       default_meta_description_en: data.default_meta_description_en ?? "",
@@ -85,9 +99,21 @@ export default function SeoSettingsPage() {
   };
 
   const handleSave = async () => {
+    let siteLogoUrl: string | null = null;
+
+    if (formState.site_logo) {
+      if (formState.site_logo.file) {
+        const uploadResult = await mediaService.uploadMedia(formState.site_logo.file);
+        siteLogoUrl = uploadResult.data.url;
+      } else {
+        siteLogoUrl = formState.site_logo.preview;
+      }
+    }
+
     const payload: UpdateSeoSettingsDto = {
       site_name_en: formState.site_name_en,
       site_name_ar: formState.site_name_ar,
+      site_logo: siteLogoUrl,
       default_meta_title_en: formState.default_meta_title_en,
       default_meta_title_ar: formState.default_meta_title_ar,
       default_meta_description_en: formState.default_meta_description_en,
@@ -104,6 +130,7 @@ export default function SeoSettingsPage() {
     };
 
     await updateSeoSettings.mutateAsync(payload);
+    router.refresh();
   };
 
   if (isError) {
@@ -155,7 +182,8 @@ export default function SeoSettingsPage() {
           <div>
             <h2 className="text-lg font-semibold">Site Identity</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Manage the site names and default metadata shown across the storefront.
+              Manage the site name and logo used in the admin panel and across the
+              storefront.
             </p>
           </div>
         </div>
@@ -176,6 +204,23 @@ export default function SeoSettingsPage() {
             isRtl
             disabled={isLoading || updateSeoSettings.isPending}
           />
+          <div className="lg:col-span-2">
+            <ImageUpload
+              label="Site Logo"
+              value={formState.site_logo ? [formState.site_logo] : []}
+              onChange={(items) =>
+                setField("site_logo", items.length > 0 ? items[0] : null)
+              }
+              isMulti={false}
+              accept="image/*"
+              placeholder="or drag and drop a logo here"
+              previewSize="lg"
+            />
+            <p className="mt-2 text-sm text-gray-500">
+              Uploaded to storage and saved in settings. The admin panel shows a
+              placeholder until a logo is saved here.
+            </p>
+          </div>
           <Input
             label="Default Meta Title (English)"
             value={formState.default_meta_title_en}

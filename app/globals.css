@@ -3,42 +3,54 @@
 @import "tw-animate-css";
 
 :root {
-  --color-primary: #6d4bdd;
-  --color-primary2: #9e94c7;
-  --color-primary3: #b9a8fc;
+  /* Edit brand colors here — @theme maps these into Tailwind utilities */
+  --brand-primary: #6d4bdd;
+  --brand-primary-2: #9e94c7;
+  --brand-primary-3: #b9a8fc;
 
-  --color-secondary: #f0c03f;
+  --brand-secondary: #f3b42b;
 
-  --color-success: #6bd127;
-  --color-success2: #80ff2b;
+  --brand-success: #6bd127;
+  --brand-success-2: #80ff2b;
 
-  --color-danger: #F8595F;
-  --color-danger2: #cc3232;
+  --brand-danger: #F8595F;
+  --brand-danger-2: #cc3232;
+
+
+  /* Aliases used by inline styles (e.g. color="var(--color-primary)") */
+  --color-primary: var(--brand-primary);
+  --color-primary2: var(--brand-primary-2);
+  --color-primary3: var(--brand-primary-3);
+  --color-secondary: var(--brand-secondary);
+  --color-success: var(--brand-success);
+  --color-success2: var(--brand-success-2);
+  --color-danger: var(--brand-danger);
+  --color-danger2: var(--brand-danger-2);
 
   --shadow1: 0 0 2rem 0 rgba(136, 152, 170, .15);
   --shadow2: 0 3px 9px rgba(50, 50, 9, 0), 3px 4px 8px rgba(94, 114, 228, .1);
   --rounded1: 16px;
   --rounded2: 8px;
 
-  --border1: #694dc52d;
+  --border1: color-mix(in srgb, var(--brand-primary) 18%, transparent);
 
   /* Autofill background override (Chrome/Edge/Firefox) */
-  --autofill-bg: #f7f4ff;
+  --autofill-bg: color-mix(in srgb, var(--brand-primary) 6%, white);
 }
 
 @theme inline {
 
-  --color-primary: var(--color-primary);
-  --color-primary2: var(--color-primary2);
-  --color-primary3: var(--color-primary3);
+  --color-primary: var(--brand-primary);
+  --color-primary2: var(--brand-primary-2);
+  --color-primary3: var(--brand-primary-3);
 
-  --color-secondary: var(--color-secondary);
+  --color-secondary: var(--brand-secondary);
 
-  --color-success: var(--color-success);
-  --color-success2: var(--color-success2);
+  --color-success: var(--brand-success);
+  --color-success2: var(--brand-success-2);
 
-  --color-danger: var(--color-danger);
-  --color-danger2: var(--color-danger2);
+  --color-danger: var(--brand-danger);
+  --color-danger2: var(--brand-danger-2);
 
   --color-b1: var(--border1);
 
@@ -122,16 +134,16 @@
   }
 
   *::-webkit-scrollbar-track {
-    background: #e0d6ff;
+    background: color-mix(in srgb, var(--brand-primary) 12%, white);
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color:  var(--color-primary2) ;
+    background-color: var(--brand-primary-2);
     border-radius: 33px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-primary);
+    background-color: var(--brand-primary);
   }
 
   /* Prefer Almarai for Arabic text and RTL content */
@@ -168,16 +180,21 @@
 }
 
 #nprogress .bar {
-  background: linear-gradient(90deg, #22d3ee, #6d4bdd, #ec4899) !important;
+  background: linear-gradient(
+    90deg,
+    #22d3ee,
+    var(--brand-primary),
+    #ec4899
+  ) !important;
   position: fixed;
   z-index: 99999;
   top: 0;
   left: 0;
   width: 100%;
   height: 3px;
-  box-shadow: 
+  box-shadow:
     0 0 10px #22d3ee,
-    0 0 20px #6d4bdd,
+    0 0 20px var(--brand-primary),
     0 0 30px #ec4899;
 }
 

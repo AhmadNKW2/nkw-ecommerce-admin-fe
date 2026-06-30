@@ -7,6 +7,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { QUERY_CONFIG } from "./constants";
 import { hydrateFeatureTogglesQueryClient } from "./feature-toggles-cache";
+import { hydrateSiteBrandingQueryClient } from "./site-branding-cache";
 
 // Global query client instance
 let queryClient: QueryClient | null = null;
@@ -31,6 +32,7 @@ export function getQueryClient(): QueryClient {
       },
     });
     hydrateFeatureTogglesQueryClient(queryClient);
+    hydrateSiteBrandingQueryClient(queryClient);
   }
   return queryClient;
 }

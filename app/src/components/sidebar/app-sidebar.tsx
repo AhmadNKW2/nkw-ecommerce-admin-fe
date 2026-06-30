@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/auth.context';
 import type { SidebarRole } from './sidebar.config';
 import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-toggles';
 import type { FeatureToggles } from '../../services/settings/types/settings.types';
+import { AdminLogo } from '../common/AdminLogo';
 
 import {
   Sidebar,
@@ -48,8 +49,8 @@ interface AppSidebarProps {
   groups: SidebarGroupItem[];
   header?: {
     title: string;
-    subtitle: string;
-    logo: ReactNode;
+    subtitle?: string;
+    logo?: ReactNode;
   };
   footer?: {
     userName: string;
@@ -103,13 +104,12 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   return (
     <>
       {header && (
-        <SidebarHeader>
-          <div className="flex items-center gap-5">
-            {header.logo}
-            <div>
-              <h1 className="text-lg font-bold ">{header.title}</h1>
-              <p className="text-xs ">{header.subtitle}</p>
-            </div>
+        <SidebarHeader logo={header.logo ?? <AdminLogo />}>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold leading-tight">{header.title}</h1>
+            {header.subtitle ? (
+              <p className="text-xs leading-tight text-gray-500">{header.subtitle}</p>
+            ) : null}
           </div>
         </SidebarHeader>
       )}

@@ -1388,6 +1388,8 @@ export function ProductReviewWorkspace({
         import_ai_products_enabled: false,
         linked_products_enabled: false,
         reference_links_enabled: false,
+        easy_purchase_enabled: false,
+        cart_sidebar_button_enabled: false,
         reference_link_visible_admin: false,
         meta_title_visible_admin: false,
         meta_description_visible_admin: false,

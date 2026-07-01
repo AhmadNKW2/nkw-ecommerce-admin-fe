@@ -1351,7 +1351,19 @@ function ReviewEmptyState({
     );
 }
 
-export function ProductReviewWorkspace() {
+export function ProductReviewWorkspace({
+  hideImportActions = false,
+  title = "Review products.",
+  showViewToggle = false,
+  viewMode = "review",
+  onViewModeChange,
+}: {
+  hideImportActions?: boolean;
+  title?: string;
+  showViewToggle?: boolean;
+  viewMode?: "list" | "review";
+  onViewModeChange?: (mode: "list" | "review") => void;
+} = {}) {
     const { addJob, activeJobs } = useJobTracker();
     const { setShowOverlay } = useLoading();
     const {
@@ -1878,7 +1890,7 @@ export function ProductReviewWorkspace() {
     return (
         <div className="min-h-screen w-full text-slate-950">
             <div className="mx-auto flex w-full max-w-none flex-col gap-6 px-4 py-5 md:px-8 md:py-8">
-                {importJobs.length > 0 && (
+                {hideImportActions ? null : importJobs.length > 0 && (
                     <section className="flex flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
                         {renderImportJobStatusCards(importJobs)}
                     </section>
@@ -1887,10 +1899,30 @@ export function ProductReviewWorkspace() {
                 <section className="overflow-hidden rounded-[34px] border border-slate-200 bg-white/95 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)]">
                     <div className="flex flex-col gap-4 p-6 md:p-8 xl:flex-row xl:items-center xl:justify-between">
                         <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                            Review products.
+                            {title}
                         </h1>
 
                         <div className="flex flex-wrap gap-2">
+                            {showViewToggle && onViewModeChange ? (
+                                <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1">
+                                    <Button
+                                        variant={viewMode === "list" ? "solid" : "outline"}
+                                        color="var(--color-primary2)"
+                                        onClick={() => onViewModeChange("list")}
+                                        className="rounded-full px-3 py-1.5 text-sm"
+                                    >
+                                        List view
+                                    </Button>
+                                    <Button
+                                        variant={viewMode === "review" ? "solid" : "outline"}
+                                        color="var(--color-primary2)"
+                                        onClick={() => onViewModeChange("review")}
+                                        className="rounded-full px-3 py-1.5 text-sm"
+                                    >
+                                        Review view
+                                    </Button>
+                                </div>
+                            ) : null}
                             {hasActiveFilters ? (
                                 <Button
                                     onClick={handleClearFilters}
@@ -1912,6 +1944,8 @@ export function ProductReviewWorkspace() {
                                 />
                                 Refresh queue
                             </Button>
+                            {hideImportActions ? null : (
+                            <>
                             <Button
                                 variant="outline"
                                 color="var(--color-primary2)"
@@ -1929,6 +1963,8 @@ export function ProductReviewWorkspace() {
                             >
                                 View import status
                             </Button>
+                            </>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -2027,6 +2063,7 @@ export function ProductReviewWorkspace() {
                     </Card>
                 ) : null}
 
+                {hideImportActions ? null : (
                 <Modal
                     isOpen={bulkReimportModalOpen}
                     onClose={closeBulkReimportModal}
@@ -2103,7 +2140,9 @@ export function ProductReviewWorkspace() {
                         </div>
                     </div>
                 </Modal>
+                )}
 
+                {hideImportActions ? null : (
                 <Modal
                     isOpen={importStatusModalOpen}
                     onClose={closeImportStatusModal}
@@ -2138,6 +2177,7 @@ export function ProductReviewWorkspace() {
                         </div>
                     </div>
                 </Modal>
+                )}
 
                 <DeleteConfirmationModal
                     isOpen={deleteModalOpen}

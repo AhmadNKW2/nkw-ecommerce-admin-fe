@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 
 const settingsLinks = [
   { href: "/settings/seo", label: "SEO" },
@@ -14,11 +15,21 @@ const settingsLinks = [
 
 export function SettingsNav() {
   const pathname = usePathname();
+  const { isResolved, isEnabled } = useResolvedFeatureToggles();
+  const importAiEnabled = isResolved && isEnabled("import_ai_products_enabled");
+
+  const links = importAiEnabled
+    ? [
+        ...settingsLinks.slice(0, 4),
+        { href: "/settings/product-import", label: "Product Import" },
+        ...settingsLinks.slice(4),
+      ]
+    : settingsLinks;
 
   return (
     <div className="w-full rounded-r1 border border-primary/20 bg-white p-2 shadow-s1">
       <div className="flex flex-wrap gap-2">
-        {settingsLinks.map((link) => {
+        {links.map((link) => {
           const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
           return (

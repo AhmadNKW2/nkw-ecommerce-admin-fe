@@ -395,6 +395,24 @@ export interface BulkReviewReimportAiDto {
   vendor_id?: number;
 }
 
+export interface BulkUpdateProductStatusDto {
+  from_status: ProductStatus;
+  to_status: ProductStatus;
+  vendor_id?: number;
+  category_id?: number;
+}
+
+export interface BulkUpdateProductStatusResult {
+  message: string;
+  updated: number;
+  filters: {
+    from_status: ProductStatus;
+    to_status: ProductStatus;
+    vendor_id?: number;
+    category_id?: number;
+  };
+}
+
 export interface ProductImportJobStart {
   job_id: string;
   status?: string;

@@ -1,18 +1,10 @@
-"use client";
-
-import { ProductListPage } from "../src/components/products/ProductListPage";
+import { Suspense } from "react";
+import ProductsPageClient from "./ProductsPageClient";
 
 export default function ProductsPage() {
   return (
-    <ProductListPage
-      title="Products"
-      description="Manage your product inventory"
-      storageKey="products"
-    />
+    <Suspense fallback={null}>
+      <ProductsPageClient />
+    </Suspense>
   );
 }
-
-
-
-
-

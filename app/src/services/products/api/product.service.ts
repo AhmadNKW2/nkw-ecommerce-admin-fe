@@ -14,6 +14,8 @@ import {
   ProductImportJobStart,
   ProductImportJobStatus,
   BulkReviewReimportAiDto,
+  BulkUpdateProductStatusDto,
+  BulkUpdateProductStatusResult,
   CreateProductDto,
   UpdateProductDto,
   ProductAttributeInput,
@@ -286,6 +288,17 @@ class ProductService extends BaseService<Product> {
     data: BulkReviewReimportAiDto
   ): Promise<ApiResponse<ProductImportJobStart>> {
     return httpClient.post<ApiResponse<ProductImportJobStart>>(`${this.endpoint}/review/reimport-ai`, data);
+  }
+
+  async bulkUpdateProductStatus(
+    data: BulkUpdateProductStatusDto
+  ): Promise<ApiResponse<BulkUpdateProductStatusResult>> {
+    const response = await httpClient.patch<ApiResponse<BulkUpdateProductStatusResult>>(
+      `${this.endpoint}/bulk-status`,
+      data
+    );
+    getQueryClient().invalidateQueries({ queryKey: queryKeys.products.all });
+    return response;
   }
 
   /**

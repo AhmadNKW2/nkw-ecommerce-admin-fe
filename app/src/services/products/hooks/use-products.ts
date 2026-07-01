@@ -12,13 +12,15 @@ import {
 } from "@tanstack/react-query";
 import { productService } from "../api/product.service";
 import { queryKeys } from "../../../lib/query-keys";
-import { showSuccessToast } from "../../../lib/toast";
+import { showSuccessToast, showErrorToast } from "../../../lib/toast";
 import {
   Product,
   ProductDetail,
   CreateProductDto,
   UpdateProductDto,
   BulkReviewReimportAiDto,
+  BulkUpdateProductStatusDto,
+  BulkUpdateProductStatusResult,
   ProductFilters,
   ProductImportJobStart,
   ProductNamesFilters,
@@ -343,5 +345,31 @@ export function useBulkReviewReimportAi(
   return useMutation({
     mutationFn: (data: BulkReviewReimportAiDto) => productService.bulkReimportReviewProductsAi(data),
     ...options,
+  });
+}
+
+export function useBulkUpdateProductStatus(
+  options?: UseMutationOptions<
+    ApiResponse<BulkUpdateProductStatusResult>,
+    ApiError,
+    BulkUpdateProductStatusDto
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (data: BulkUpdateProductStatusDto) => productService.bulkUpdateProductStatus(data),
+    onSuccess: (...args) => {
+      const [response] = args;
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
+      showSuccessToast(response.data?.message ?? "Product statuses updated successfully");
+      options?.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      const [error] = args;
+      showErrorToast(error.message || "Failed to update product statuses");
+      options?.onError?.(...args);
+    },
   });
 }

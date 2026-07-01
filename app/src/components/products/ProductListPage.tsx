@@ -10,6 +10,7 @@ import {
   usePermanentDeleteProduct,
   useProducts,
   useToggleProductStatus,
+  useBulkUpdateProductStatus,
 } from "@/services/products/hooks/use-products";
 import {
   Product,
@@ -22,9 +23,10 @@ import { useCategories } from "@/services/categories/hooks/use-categories";
 import { useCustomers } from "@/services/customers/hooks/use-customers";
 import { STOREFRONT_CONFIG } from "@/lib/constants";
 import { normalizeExternalUrl, openReferenceLink } from "@/lib/reference-link";
-import { Package, AlertCircle, Star } from "lucide-react";
+import { Package, AlertCircle, Star, List, LayoutGrid, ArrowRightLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Input } from "@/components/ui/input";
@@ -49,7 +51,14 @@ interface ProductListPageProps {
   description: string;
   storageKey: string;
   fixedStatus?: ProductStatus;
+  showViewToggle?: boolean;
+  viewMode?: "list" | "review";
+  onViewModeChange?: (mode: "list" | "review") => void;
+  showStatusFilter?: boolean;
+  initialStatus?: ProductStatus;
 }
+
+const WORKFLOW_STATUSES: ProductStatus[] = ["active", "review", "updated"];
 
 const NO_CATEGORY_FILTER_VALUE = "none";
 const NO_VENDOR_FILTER_VALUE = "__no_vendor__";
@@ -252,6 +261,11 @@ export function ProductListPage({
   description,
   storageKey,
   fixedStatus,
+  showViewToggle = false,
+  viewMode = "list",
+  onViewModeChange,
+  showStatusFilter = false,
+  initialStatus,
 }: ProductListPageProps) {
   const router = useRouter();
   const { isEnabled, isResolved } = useResolvedFeatureToggles();
@@ -288,9 +302,17 @@ export function ProductListPage({
     return {
       page: storedPage,
       limit: storedLimit,
-      status: fixedStatus,
+      status: fixedStatus ?? initialStatus,
     };
   });
+
+  useEffect(() => {
+    if (!fixedStatus && initialStatus) {
+      setQueryParams((prev) =>
+        prev.status === initialStatus ? prev : { ...prev, status: initialStatus, page: 1 }
+      );
+    }
+  }, [fixedStatus, initialStatus]);
 
   useEffect(() => {
     setStoredPage(queryParams.page ?? 1);
@@ -338,13 +360,19 @@ export function ProductListPage({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
-  const isPermanentDeleteMode = fixedStatus === "review";
+  const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
+  const [bulkFromStatus, setBulkFromStatus] = useState<ProductStatus>("updated");
+  const [bulkToStatus, setBulkToStatus] = useState<ProductStatus>("review");
+  const [bulkStatusVendorId, setBulkStatusVendorId] = useState("");
+  const [bulkStatusCategoryIds, setBulkStatusCategoryIds] = useState<string[]>([]);
+  const isPermanentDeleteMode = productToDelete?.status === "review";
 
   const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
   const archiveProduct = useDeleteProduct();
   const permanentDeleteProduct = usePermanentDeleteProduct();
-  const deleteProduct = isPermanentDeleteMode ? permanentDeleteProduct : archiveProduct;
+  const deleteProductMutation = isPermanentDeleteMode ? permanentDeleteProduct : archiveProduct;
   const toggleProductStatus = useToggleProductStatus();
+  const bulkUpdateStatus = useBulkUpdateProductStatus();
 
   const handleToggleVisibility = async (event: React.MouseEvent, product: Product) => {
     event.stopPropagation();
@@ -476,7 +504,7 @@ export function ProductListPage({
   const handleDeleteConfirm = async () => {
     if (productToDelete) {
       try {
-        await deleteProduct.mutateAsync(productToDelete.id);
+        await deleteProductMutation.mutateAsync(productToDelete.id);
         setDeleteModalOpen(false);
         setProductToDelete(null);
       } catch (deleteError) {
@@ -629,6 +657,73 @@ export function ProductListPage({
     handleFilterChange({ has_duplicate_reference_link: hasDuplicateReferenceLink });
   };
 
+  const handleStatusFilterChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    const status =
+      normalized && WORKFLOW_STATUSES.includes(normalized as ProductStatus)
+        ? (normalized as ProductStatus)
+        : undefined;
+    handleFilterChange({ status });
+  };
+
+  const handleBulkStatusSubmit = async () => {
+    if (bulkFromStatus === bulkToStatus) {
+      return;
+    }
+
+    try {
+      const payload: {
+        from_status: ProductStatus;
+        to_status: ProductStatus;
+        vendor_id?: number;
+        category_id?: number;
+      } = {
+        from_status: bulkFromStatus,
+        to_status: bulkToStatus,
+      };
+
+      const parsedVendorId = Number(bulkStatusVendorId);
+      const parsedCategoryId = Number(bulkStatusCategoryIds[0] ?? "");
+
+      if (Number.isInteger(parsedVendorId) && parsedVendorId > 0) {
+        payload.vendor_id = parsedVendorId;
+      }
+      if (Number.isInteger(parsedCategoryId) && parsedCategoryId > 0) {
+        payload.category_id = parsedCategoryId;
+      }
+
+      await bulkUpdateStatus.mutateAsync(payload);
+      setBulkStatusModalOpen(false);
+      void refetch();
+    } catch (bulkError) {
+      console.error("Failed to bulk update product statuses:", bulkError);
+    }
+  };
+
+  const getStatusLabel = (status?: ProductStatus) => {
+    if (!status) {
+      return "—";
+    }
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusVariant = (
+    status?: ProductStatus
+  ): "default" | "success" | "danger" | "default2" | "warning" => {
+    if (status === "active") {
+      return "success";
+    }
+    if (status === "review") {
+      return "warning";
+    }
+    if (status === "updated") {
+      return "default2";
+    }
+    return "default";
+  };
+
+  const isReviewProduct = (product: Product) => product.status === "review";
+
   const handleClearAllFilters = () => {
     setSearchTerm("");
     setMinPrice("");
@@ -757,6 +852,43 @@ export function ProductListPage({
         title={title}
         description={description}
         action={{ label: "Create", onClick: handleCreateNew }}
+        extraActions={
+          <>
+            {showViewToggle && onViewModeChange ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant={viewMode === "list" ? "solid" : "outline"}
+                  color="var(--color-primary2)"
+                  onClick={() => onViewModeChange("list")}
+                  className="rounded-full px-3 py-1.5 text-sm"
+                >
+                  <List className="mr-1.5 inline h-4 w-4" />
+                  List view
+                </Button>
+                <Button
+                  variant={viewMode === "review" ? "solid" : "outline"}
+                  color="var(--color-primary2)"
+                  onClick={() => onViewModeChange("review")}
+                  className="rounded-full px-3 py-1.5 text-sm"
+                >
+                  <LayoutGrid className="mr-1.5 inline h-4 w-4" />
+                  Review view
+                </Button>
+              </div>
+            ) : null}
+            {showStatusFilter ? (
+              <Button
+                variant="outline"
+                color="var(--color-primary2)"
+                onClick={() => setBulkStatusModalOpen(true)}
+                className="rounded-full px-4"
+              >
+                <ArrowRightLeft className="mr-2 inline h-4 w-4" />
+                Bulk change status
+              </Button>
+            ) : null}
+          </>
+        }
       />
 
       {(products.length > 0 || hasActiveFilters) && (
@@ -858,6 +990,22 @@ export function ProductListPage({
             </div>
 
             <div className="flex items-center gap-4">
+              {showStatusFilter && !fixedStatus ? (
+                <div className="relative flex-1">
+                  <Select
+                    label="Status"
+                    value={queryParams.status ?? ""}
+                    onChange={handleStatusFilterChange}
+                    options={WORKFLOW_STATUSES.map((status) => ({
+                      value: status,
+                      label: getStatusLabel(status),
+                    }))}
+                    onClear={() => handleStatusFilterChange("")}
+                    multiple={false}
+                    placeholder="All statuses"
+                  />
+                </div>
+              ) : null}
               <div className="relative flex-1">
                 <Select
                   label="Stock"
@@ -985,6 +1133,7 @@ export function ProductListPage({
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">Created At</TableHead>
               <TableHead width="10%">Created By</TableHead>
+              {showStatusFilter ? <TableHead width="7%">Status</TableHead> : null}
               <TableHead width="7%">Visibility</TableHead>
               <TableHead width="8%">Actions</TableHead>
             </TableRow>
@@ -1164,6 +1313,13 @@ export function ProductListPage({
                       <span className="text-gray-400">—</span>
                     )}
                   </TableCell>
+                  {showStatusFilter ? (
+                    <TableCell>
+                      <Badge variant={getStatusVariant(product.status)}>
+                        {getStatusLabel(product.status)}
+                      </Badge>
+                    </TableCell>
+                  ) : null}
                   <TableCell>
                     <div
                       onClick={(event) => handleToggleVisibility(event, product)}
@@ -1216,7 +1372,7 @@ export function ProductListPage({
                           event.stopPropagation();
                           handleDeleteClick(product);
                         }}
-                        title={isPermanentDeleteMode ? "Delete product permanently" : "Delete product"}
+                        title={isReviewProduct(product) ? "Delete product permanently" : "Delete product"}
                       />
                     </div>
                   </TableCell>
@@ -1240,8 +1396,122 @@ export function ProductListPage({
           : undefined}
         confirmText={isPermanentDeleteMode ? "Delete Permanently" : undefined}
         isPermanent={isPermanentDeleteMode}
-        isLoading={deleteProduct.isPending}
+        isLoading={deleteProductMutation.isPending}
       />
+
+      <Modal
+        isOpen={bulkStatusModalOpen}
+        onClose={() => {
+          if (!bulkUpdateStatus.isPending) {
+            setBulkStatusModalOpen(false);
+          }
+        }}
+        className="self-start w-full max-w-3xl"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="space-y-2 pr-8">
+            <h2 className="text-2xl font-black tracking-tight text-slate-950">
+              Bulk change product status
+            </h2>
+            <p className="text-sm leading-7 text-slate-600">
+              Move every product with the current status to a new status. Optional vendor and
+              category filters narrow the update.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Select
+              label="Current status"
+              value={bulkFromStatus}
+              onChange={(value) => {
+                const normalized = Array.isArray(value) ? value[0] : value;
+                if (WORKFLOW_STATUSES.includes(normalized as ProductStatus)) {
+                  setBulkFromStatus(normalized as ProductStatus);
+                }
+              }}
+              options={WORKFLOW_STATUSES.map((status) => ({
+                value: status,
+                label: getStatusLabel(status),
+              }))}
+              multiple={false}
+              disabled={bulkUpdateStatus.isPending}
+            />
+            <Select
+              label="New status"
+              value={bulkToStatus}
+              onChange={(value) => {
+                const normalized = Array.isArray(value) ? value[0] : value;
+                if (WORKFLOW_STATUSES.includes(normalized as ProductStatus)) {
+                  setBulkToStatus(normalized as ProductStatus);
+                }
+              }}
+              options={WORKFLOW_STATUSES.map((status) => ({
+                value: status,
+                label: getStatusLabel(status),
+              }))}
+              multiple={false}
+              disabled={bulkUpdateStatus.isPending}
+            />
+          </div>
+
+          <div
+            className={`grid gap-4 ${
+              vendorsEnabled
+                ? "xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]"
+                : "grid-cols-1"
+            }`}
+          >
+            {vendorsEnabled ? (
+              <Select
+                label="Vendor filter (optional)"
+                value={bulkStatusVendorId}
+                onChange={(value) =>
+                  setBulkStatusVendorId(Array.isArray(value) ? value[0] ?? "" : value)
+                }
+                options={vendorOptions.filter((option) => option.value !== NO_VENDOR_FILTER_VALUE)}
+                search={vendorOptions.length > 6}
+                multiple={false}
+                placeholder="All vendors"
+                disabled={bulkUpdateStatus.isPending}
+              />
+            ) : null}
+            <CategoryTreeSelect
+              categories={categoriesData.data ?? []}
+              selectedIds={bulkStatusCategoryIds}
+              onChange={(ids) => setBulkStatusCategoryIds(ids.slice(0, 1))}
+              singleSelect={true}
+              label="Category filter (optional)"
+              disabled={bulkUpdateStatus.isPending}
+            />
+          </div>
+
+          {bulkFromStatus === bulkToStatus ? (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+              Current status and new status must be different.
+            </div>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              color="var(--color-primary2)"
+              onClick={() => setBulkStatusModalOpen(false)}
+              disabled={bulkUpdateStatus.isPending}
+              className="rounded-full px-4"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="var(--color-primary2)"
+              onClick={() => void handleBulkStatusSubmit()}
+              disabled={bulkUpdateStatus.isPending || bulkFromStatus === bulkToStatus}
+              className="rounded-full px-5"
+            >
+              {bulkUpdateStatus.isPending ? "Updating..." : "Update statuses"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

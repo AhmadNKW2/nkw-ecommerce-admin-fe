@@ -11,6 +11,7 @@ import {
   toCachedSeoSettings,
   writeStoredSiteBranding,
 } from '../../../lib/site-branding-cache';
+import { applyBrandThemeToDocument, resolveBrandTheme } from '../../../lib/brand-theme';
 import { showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
@@ -41,8 +42,9 @@ export const useSeoSettings = (options?: { enabled?: boolean }) => {
     queryFn: fetchSeoSettings,
     select: (response) => response.data,
     enabled: options?.enabled ?? true,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    staleTime: QUERY_CONFIG.staleTime,
+    staleTime: 0,
     placeholderData: storedBranding
       ? () => ({
           data: toCachedSeoSettings(storedBranding),
@@ -61,6 +63,7 @@ export const useUpdateSeoSettings = () => {
       settingsService.updateSeoSettings(data),
     onSuccess: (response) => {
       writeStoredSiteBranding(response.data);
+      applyBrandThemeToDocument(resolveBrandTheme(response.data));
       queryClient.setQueryData(queryKeys.settings.seo(), response);
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast('SEO settings updated successfully');

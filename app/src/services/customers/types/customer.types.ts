@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import type { AdminAccess } from "@/lib/admin-access";
 
 // Wishlist Product (nested in user detail)
 export interface WishlistProduct {
@@ -173,6 +174,7 @@ export interface CreateCustomerDto {
   password: string;
   role?: UserRole;
   product_ids?: number[];
+  adminAccess?: AdminAccess;
 }
 
 // Update Customer DTO (matches PATCH /api/users/:id)
@@ -184,6 +186,7 @@ export interface UpdateCustomerDto {
   role?: UserRole;
   isActive?: boolean;
   product_ids?: number[];
+  adminAccess?: AdminAccess;
 }
 
 // Helper to get full name

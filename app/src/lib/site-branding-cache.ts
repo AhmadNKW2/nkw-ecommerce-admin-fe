@@ -1,7 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { SeoSettings } from "@/services/settings/types/settings.types";
 import { applyBrandThemeToDocument, resolveBrandTheme } from "./brand-theme";
-import { queryKeys } from "./query-keys";
 import { updateDocumentFavicon } from "./site-branding";
 
 const STORAGE_KEY = "nkw-admin-site-branding";
@@ -155,17 +154,6 @@ export function hydrateSiteBrandingQueryClient(queryClient: QueryClient): void {
   if (!stored) {
     return;
   }
-
-  const queryKey = queryKeys.settings.seo();
-  if (queryClient.getQueryData(queryKey)) {
-    return;
-  }
-
-  queryClient.setQueryData(queryKey, {
-    data: toCachedSeoSettings(stored),
-    success: true,
-    message: "",
-  });
 
   applyCachedDocumentBranding();
 }

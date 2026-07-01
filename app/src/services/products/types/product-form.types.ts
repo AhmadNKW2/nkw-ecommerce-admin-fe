@@ -68,7 +68,7 @@ export interface MediaItem {
 }
 
 // Product Form Data Schema
-export const productFormSchema = z.object({
+const productFormObjectSchema = z.object({
   // Basic Information
   slug: z.string().optional(),
   nameEn: z.string().min(1, "English name is required"),
@@ -81,7 +81,11 @@ export const productFormSchema = z.object({
   brandId: z.string().optional(),
   referenceLink: z.string().optional(),
   linked_product_ids: z.array(z.string()).default([]),
-  quantity: z.number().default(0),
+  // Quantity is intentionally optional at the object level — it must be
+  // possible to clear the input entirely while editing. Requiredness is
+  // enforced separately via `createProductFormValidationSchema`'s superRefine
+  // so the field can't be left empty on submit.
+  quantity: z.number().optional(),
   is_out_of_stock: z.boolean().default(false),
   shortDescriptionEn: z.string().optional(),
   shortDescriptionAr: z.string().optional(),
@@ -130,7 +134,7 @@ export const productFormSchema = z.object({
     cost: z.number().min(0).optional(),
     originalVendorPrice: z.number().min(0).optional(),
     originalVendorSalePrice: z.number().min(0).optional(),
-    price: z.number().min(0),
+    price: z.number().min(0).optional(),
     isSale: z.boolean().optional(),
     salePrice: z.number().min(0).optional(),
   }).optional(),
@@ -155,11 +159,51 @@ export const productFormSchema = z.object({
       order: z.number(),
       isPrimary: z.boolean(),
     })
-  ).optional(),
+  ).min(1, "At least one media item is required"),
 
 });
 
-export type ProductFormData = z.infer<typeof productFormSchema>;
+export type ProductFormData = z.infer<typeof productFormObjectSchema>;
+
+/**
+ * Builds the product form validation schema. Quantity is always required
+ * (can't submit with an empty stock value). Pricing's `price` is only
+ * required when the current admin has product-pricing access — admins
+ * without that access never see the pricing section, so it must be
+ * optional for them.
+ */
+export function createProductFormValidationSchema(
+  options: { requirePricing?: boolean } = {}
+) {
+  const { requirePricing = true } = options;
+
+  return productFormObjectSchema.superRefine((data, ctx) => {
+    if (
+      data.quantity === undefined ||
+      data.quantity === null ||
+      Number.isNaN(data.quantity)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["quantity"],
+      });
+    }
+
+    if (requirePricing) {
+      const price = data.pricing?.price;
+      if (price === undefined || price === null || Number.isNaN(price)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["pricing", "price"],
+        });
+      }
+    }
+  });
+}
+
+export const productFormSchema = createProductFormValidationSchema();
 
 // Form Step
 export type FormStep = 1 | 2 | 3 | 4 | 5 | 6;

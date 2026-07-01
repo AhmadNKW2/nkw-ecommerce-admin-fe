@@ -5,7 +5,7 @@
  * Reusable form for creating and editing users (customers and admins)
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import Image from "next/image";
 import { Card } from "../ui/card";
@@ -24,6 +24,14 @@ import {
 } from "../ui/table";
 import { Users, Heart, Package, Pencil, Shield } from "lucide-react";
 import { UserRole, WishlistItem } from "../../services/customers/types/customer.types";
+import {
+  ADMIN_ACCESS_KEYS,
+  ADMIN_ACCESS_LABELS,
+  constrainAdminAccessByFeatureToggles,
+  getAdminAccessKeysVisibleByFeatureToggle,
+  type AdminAccess,
+} from "../../lib/admin-access";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 import { ProductSelectionModal } from "../common/ProductSelectionModal";
 import { ProductItem } from "../common/ProductsTableSection";
 import { OrdersTableSection } from "../common/OrdersTableSection";
@@ -57,6 +65,8 @@ interface UserFormProps {
   onPasswordChange: (value: string) => void;
   onRoleChange: (value: UserRole) => void;
   onIsActiveChange: (value: boolean) => void;
+  adminAccess?: AdminAccess;
+  onAdminAccessChange?: (value: AdminAccess) => void;
   onProductIdsChange?: (productIds: number[]) => void;
   onWishlistChange?: (productIds: number[]) => void;
   isUpdatingWishlist?: boolean;
@@ -104,6 +114,8 @@ export const UserForm: React.FC<UserFormProps> = ({
   onPasswordChange,
   onRoleChange,
   onIsActiveChange,
+  adminAccess,
+  onAdminAccessChange,
   onProductIdsChange,
   onWishlistChange,
   isUpdatingWishlist = false,
@@ -139,6 +151,30 @@ export const UserForm: React.FC<UserFormProps> = ({
   };
 
   const isAdmin = userType === "admin";
+  const { isResolved: featureTogglesResolved, isEnabled } = useResolvedFeatureToggles();
+  const visibleAdminAccessKeys = useMemo(
+    () =>
+      featureTogglesResolved
+        ? getAdminAccessKeysVisibleByFeatureToggle(isEnabled)
+        : [],
+    [featureTogglesResolved, isEnabled],
+  );
+
+  useEffect(() => {
+    if (!isAdmin || !adminAccess || !onAdminAccessChange || !featureTogglesResolved) {
+      return;
+    }
+
+    const constrained = constrainAdminAccessByFeatureToggles(adminAccess, isEnabled);
+    const hasDisabledAccess = ADMIN_ACCESS_KEYS.some(
+      (key) => constrained[key] !== adminAccess[key],
+    );
+
+    if (hasDisabledAccess) {
+      onAdminAccessChange(constrained);
+    }
+  }, [isAdmin, adminAccess, onAdminAccessChange, featureTogglesResolved, isEnabled]);
+
   const Icon = isAdmin ? Shield : Users;
   const title = mode === "create" 
     ? `Create ${isAdmin ? "Admin" : "Customer"}` 
@@ -249,6 +285,50 @@ export const UserForm: React.FC<UserFormProps> = ({
           </div>
         </div>
       </Card>
+
+      {isAdmin && adminAccess && onAdminAccessChange ? (
+        <Card>
+          <h2 className="text-lg font-semibold">Admin Access</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Control which sections this admin can use. Product pricing also controls
+            the pricing view and price fields on the product form. Sections disabled
+            in Feature Settings are hidden here and cannot be granted.
+          </p>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {!featureTogglesResolved
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex animate-pulse items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                    aria-hidden="true"
+                  >
+                    <div className="h-4 w-24 rounded bg-gray-200" />
+                    <div className="h-6 w-11 rounded-full bg-gray-200" />
+                  </div>
+                ))
+              : visibleAdminAccessKeys.map((key) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-medium">{ADMIN_ACCESS_LABELS[key]}</p>
+                    </div>
+                    <Toggle
+                      checked={adminAccess[key]}
+                      onChange={(checked) =>
+                        onAdminAccessChange({
+                          ...adminAccess,
+                          [key]: checked,
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+          </div>
+        </Card>
+      ) : null}
 
       {/* Customer profile overview - edit mode only */}
       {!isAdmin && mode === "edit" ? (

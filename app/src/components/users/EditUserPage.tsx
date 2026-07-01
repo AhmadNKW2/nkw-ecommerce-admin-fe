@@ -19,6 +19,13 @@ import { Button } from "../ui/button";
 import { AlertCircle } from "lucide-react";
 import { validateCustomerForm } from "../../lib/validations/customer.schema";
 import { UserRole } from "../../services/customers/types/customer.types";
+import {
+  createDefaultAdminAccess,
+  constrainAdminAccessByFeatureToggles,
+  normalizeAdminAccess,
+  type AdminAccess,
+} from "../../lib/admin-access";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 import { ProductItem } from "../common/ProductsTableSection";
 import type { Order } from "../../services/orders/types/order.types";
 
@@ -42,6 +49,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [adminAccess, setAdminAccess] = useState<AdminAccess>(createDefaultAdminAccess());
   const [productIds, setProductIds] = useState<number[]>([]);
   const [assignedProducts, setAssignedProducts] = useState<ProductItem[]>([]);
   const [formErrors, setFormErrors] = useState<{
@@ -63,6 +71,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
 
   const updateCustomer = useUpdateCustomer();
   const updateWishlist = useUpdateUserWishlist();
+  const { isEnabled } = useResolvedFeatureToggles();
 
   const userOrders = useMemo<Order[]>(() => {
     if (!user?.orders) return [];
@@ -100,8 +109,15 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setIsActive(user.isActive ?? true);
+      if (isAdmin) {
+        setAdminAccess(
+          normalizeAdminAccess(
+            (user as { adminAccess?: Partial<AdminAccess> }).adminAccess,
+          ),
+        );
+      }
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   const validate = () => {
     const result = validateCustomerForm(
@@ -139,6 +155,9 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
           role,
           isActive,
           product_ids: productIds.length > 0 ? productIds : undefined,
+          adminAccess: isAdmin
+            ? constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
+            : undefined,
         },
       });
 
@@ -270,6 +289,8 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       }}
       onRoleChange={() => {}}
       onIsActiveChange={setIsActive}
+      adminAccess={isAdmin ? adminAccess : undefined}
+      onAdminAccessChange={isAdmin ? setAdminAccess : undefined}
       onProductIdsChange={setProductIds}
       onWishlistChange={!isAdmin ? handleWishlistChange : undefined}
       isUpdatingWishlist={!isAdmin ? updateWishlist.isPending : false}

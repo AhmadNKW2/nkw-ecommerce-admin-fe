@@ -13,6 +13,7 @@ import {
 } from "../../services/settings/hooks/use-settings";
 import { AdminLogo } from "../common/AdminLogo";
 import { queryKeys } from "../../lib/query-keys";
+import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -84,20 +85,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen bg-primary/10">
-        <AppSidebar
-          groups={sidebarConfig.groups}
-          header={sidebarHeader}
-          footer={sidebarConfig.footer}
-        />
-        <main ref={mainRef} className="flex-1 overflow-auto relative">
-          {children}
-          {showOverlay && (
-            <div className="absolute inset-0 z-[9998]" />
-          )}
-        </main>
-        <ScrollToTop scrollContainerRef={mainRef} />
-      </div>
+      <SidebarLayoutProvider>
+        <div className="flex h-screen bg-primary/10">
+          <AppSidebar
+            groups={sidebarConfig.groups}
+            header={sidebarHeader}
+            footer={sidebarConfig.footer}
+          />
+          <main ref={mainRef} className="flex-1 overflow-auto relative">
+            {children}
+            {showOverlay && (
+              <div className="absolute inset-0 z-[9998]" />
+            )}
+          </main>
+          <ScrollToTop scrollContainerRef={mainRef} />
+        </div>
+      </SidebarLayoutProvider>
     </ProtectedRoute>
   );
 }

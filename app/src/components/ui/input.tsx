@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 import { FieldWrapper, getFieldClassesBySize, FIELD_ICON_CLASSES, FIELD_RIGHT_ICON_COLOR, getRightIconPosition } from './field-wrapper';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
-  label?: string;
+  label?: React.ReactNode;
   error?: string | boolean;
   variant?: 'default' | 'search';
   onClear?: () => void;

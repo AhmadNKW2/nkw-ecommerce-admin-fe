@@ -3,6 +3,20 @@ import React from 'react';
 // roles: undefined = everyone, ['admin'] = admin only, ['admin','catalog_manager'] = both
 export type SidebarRole = 'admin' | 'catalog_manager';
 
+export type SidebarLinkAction = 'openPopup';
+
+export type SidebarLinkConfig = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: string | number;
+  exact?: boolean;
+  roles?: SidebarRole[];
+  featureToggle?: string;
+  adminAccess?: string;
+  sidebarAction?: SidebarLinkAction;
+};
+
 export const sidebarConfig = {
   header: {
     title: 'Admin Dashboard',
@@ -99,6 +113,28 @@ export const sidebarConfig = {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <rect x="3" y="7" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
               <path d="M3 7l9 5 9-5" stroke="currentColor" strokeWidth="2" fill="none" />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/popup',
+          label: 'Site Popup',
+          roles: ['admin'] as SidebarRole[],
+          featureToggle: 'popup_enabled' as const,
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H8l-4 4V5z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 9h8M8 13h5"
+              />
             </svg>
           ),
         },
@@ -305,6 +341,21 @@ export const sidebarConfig = {
           ),
         },
         {
+          href: '/settings/appearance',
+          label: 'Appearance',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
+            </svg>
+          ),
+        },
+        {
           href: '/settings/features',
           label: 'Feature Settings',
           roles: ['admin'] as SidebarRole[],
@@ -315,27 +366,6 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m0 10v-2m0 2a2 2 0 100-4m0 4a2 2 0 110-4M6 12H4m2 0h16"
-              />
-            </svg>
-          ),
-        },
-        {
-          href: '/settings/popup',
-          label: 'Site Popup',
-          roles: ['admin'] as SidebarRole[],
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H8l-4 4V5z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 9h8M8 13h5"
               />
             </svg>
           ),
@@ -382,6 +412,21 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/settings/sidebar',
+          label: 'Sidebar',
+          roles: ['admin'] as SidebarRole[],
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
               />
             </svg>
           ),

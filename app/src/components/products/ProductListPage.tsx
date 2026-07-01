@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import { ProductBulkStatusModal } from "@/components/products/ProductBulkStatusModal";
 import { ProductFiltersPanel } from "@/components/products/ProductFiltersPanel";
-import { ProductsPageHeader } from "@/components/products/ProductsPageHeader";
+import { ProductsPageHeader, type ProductsViewMode } from "@/components/products/ProductsPageHeader";
 import { getStatusLabel, getStatusVariant } from "@/components/products/product-filter-shared";
 import { useProductFilters } from "@/components/products/useProductFilters";
 import {
@@ -44,10 +44,12 @@ interface ProductListPageProps {
   storageKey: string;
   fixedStatus?: ProductStatus;
   showViewToggle?: boolean;
-  viewMode?: "list" | "review";
-  onViewModeChange?: (mode: "list" | "review") => void;
+  showPricingViewToggle?: boolean;
+  viewMode?: ProductsViewMode;
+  onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
   initialStatus?: ProductStatus;
+  onStatusCleared?: () => void;
 }
 
 const formatPriceValue = (value: number) => {
@@ -181,16 +183,23 @@ export function ProductListPage({
   storageKey,
   fixedStatus,
   showViewToggle = false,
+  showPricingViewToggle = false,
   viewMode = "list",
   onViewModeChange,
   showStatusFilter = false,
   initialStatus,
+  onStatusCleared,
 }: ProductListPageProps) {
   const router = useRouter();
   const { isEnabled } = useResolvedFeatureToggles();
   const ratingsEnabled = isEnabled("ratings_enabled");
   const { setShowOverlay } = useLoading();
-  const filters = useProductFilters({ storageKey, fixedStatus, initialStatus });
+  const filters = useProductFilters({
+    storageKey,
+    fixedStatus,
+    initialStatus,
+    onStatusCleared,
+  });
   const {
     queryParams,
     searchTerm,
@@ -410,6 +419,7 @@ export function ProductListPage({
         description={description}
         onCreate={handleCreateNew}
         showViewToggle={showViewToggle}
+        showPricingViewToggle={showPricingViewToggle}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showStatusFilter={showStatusFilter}

@@ -580,7 +580,7 @@ export interface CreateProductDto {
   vendor_id?: number;
   brand_id?: number;
   reference_link?: string | null;
-  cost?: number;
+  cost?: number | null;
   price?: number;
   sale_price?: number | null;
   original_vendor_price?: number | null;
@@ -698,7 +698,7 @@ export interface UpdateProductDto {
   vendor_id?: number;
   brand_id?: number;
   reference_link?: string | null;
-  cost?: number;
+  cost?: number | null;
   price?: number;
   sale_price?: number | null;
   original_vendor_price?: number | null;

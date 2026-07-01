@@ -4,9 +4,9 @@ import { Checkbox } from "../../ui/checkbox";
 import { Card } from "@/components/ui";
 
 interface StockSectionProps {
-    quantity: number;
+    quantity?: number;
     isOutOfStock: boolean;
-    onChangeQuantity: (value: number) => void;
+    onChangeQuantity: (value: number | undefined) => void;
     onChangeIsOutOfStock: (value: boolean) => void;
     errors?: Record<string, string | boolean>;
 }
@@ -27,15 +27,20 @@ export const StockSection: React.FC<StockSectionProps> = ({
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-end">
                     <Input
-                        id="stock.quantity"
-                        label="Quantity"
+                        id="quantity"
+                        label={
+                            <>
+                                Quantity <span className="text-red-500">*</span>
+                            </>
+                        }
                         type="number"
                         min="0"
                         step="1"
-                        value={quantity?.toString() || "0"}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            onChangeQuantity(parseInt(e.target.value) || 0)
-                        }
+                        value={quantity === undefined || quantity === null ? "" : quantity.toString()}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const raw = e.target.value;
+                            onChangeQuantity(raw === "" ? undefined : parseInt(raw, 10));
+                        }}
                         error={errors["quantity"]}
                     />
 

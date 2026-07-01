@@ -8,9 +8,9 @@ import {
     AlertCircle,
     Boxes,
     Check,
-    CheckCircle2,
     Clock3,
     ExternalLink,
+    Eye,
     ImageOff,
     Loader2,
     Package,
@@ -18,13 +18,11 @@ import {
     RefreshCw,
     Store,
     Tag,
-    TriangleAlert,
     X,
 } from "lucide-react";
-import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { ProductBulkStatusModal } from "@/components/products/ProductBulkStatusModal";
 import { ProductFiltersPanel } from "@/components/products/ProductFiltersPanel";
-import { ProductsPageHeader } from "@/components/products/ProductsPageHeader";
+import { ProductsPageHeader, type ProductsViewMode } from "@/components/products/ProductsPageHeader";
 import { useProductFilters } from "@/components/products/useProductFilters";
 import { CategoryTreeSelect } from "@/components/products/CategoryTreeSelect";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +44,9 @@ import { useLoading } from "@/providers/loading-provider";
 import { productService } from "@/services/products/api/product.service";
 import {
     useBulkReviewReimportAi,
-    usePermanentDeleteProduct,
     useProducts,
     useReimportProductAi,
     useUpdateProduct,
-    useUpdateProductWorkflowStatus,
 } from "@/services/products/hooks/use-products";
 import {
     BulkReviewReimportAiDto,
@@ -59,6 +55,8 @@ import {
     UpdateProductDto,
 } from "@/services/products/types/product.types";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
+import { responsiveGridColsClass } from "@/lib/settings-links";
+import { STOREFRONT_CONFIG } from "@/lib/constants";
 import type { ProductFieldToggles } from "@/services/settings/types/settings.types";
 
 type ProductLike = Product & Record<string, any>;
@@ -761,7 +759,7 @@ function LabelList({
                     key={label}
                     className="inline-flex max-w-full items-center rounded-full border border-primary/12 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold leading-5 text-slate-700"
                 >
-                    <span className="break-words whitespace-normal">{label}</span>
+                    <span className="wrap-break-word whitespace-normal">{label}</span>
                 </span>
             ))}
         </div>
@@ -886,32 +884,31 @@ function ProductGroupSection({
 
 function ProductReviewCard({
     item,
-    onApprove,
     onReimport,
     onSavePrice,
-    onDelete,
-    isApproving,
     isBulkReimporting,
     isReimporting,
     isSavingPrice,
     toggles,
+    allowPriceEdit = false,
 }: {
     item: QueueItem;
-    onApprove: (productId: number) => Promise<void>;
     onReimport: (productId: number) => Promise<void>;
     onSavePrice: (product: Product, values: PriceOverride) => Promise<void>;
-    onDelete: (product: Product) => void;
-    isApproving: boolean;
     isBulkReimporting: boolean;
     isReimporting: boolean;
     isSavingPrice: boolean;
     toggles: ProductFieldToggles;
+    allowPriceEdit?: boolean;
 }) {
     const { product, snapshot } = item;
     const vendorsEnabled = toggles.vendors_enabled;
     const attributesEnabled = toggles.attributes_enabled;
     const specificationsEnabled = toggles.specifications_enabled;
     const referenceLinksEnabled = toggles.reference_links_enabled;
+    const importAiEnabled = toggles.import_ai_products_enabled;
+    const secondaryActionCount =
+        (referenceLinksEnabled ? 1 : 0) + (importAiEnabled ? 1 : 0);
     const beforePrice = snapshot.displayPrice?.price ?? null;
     const afterPrice = snapshot.displayPrice?.salePrice ?? null;
     const hasTwoPrices = Boolean(beforePrice && afterPrice);
@@ -1052,7 +1049,7 @@ function ProductReviewCard({
 
                 <div className="flex min-w-0 flex-col gap-4">
 
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                    <div className={responsiveGridColsClass((vendorsEnabled ? 1 : 0) + 3)}>
                         {vendorsEnabled && (
                         <InfoTile
                             icon={<Store className="h-4 w-4" />}
@@ -1122,20 +1119,20 @@ function ProductReviewCard({
                                 Price
                             </p>
 
-                            {!isEditingPrice ? (
+                            {!isEditingPrice && allowPriceEdit ? (
                                 <ReviewActionButton
                                     icon={<PencilLine className="h-4 w-4" />}
                                     label="Edit"
                                     color="var(--color-primary)"
                                     onClick={handleStartEditingPrice}
-                                    disabled={isApproving || isSavingPrice || isReimporting || isBulkReimporting}
+                                    disabled={isSavingPrice || isReimporting || isBulkReimporting}
                                     variant="outline"
                                     className="border-slate-200 bg-white text-slate-700"
                                 />
                             ) : null}
                         </div>
 
-                        {isEditingPrice ? (
+                        {allowPriceEdit && isEditingPrice ? (
                             <form
                                 className="flex flex-col gap-4"
                                 onSubmit={(event) => {
@@ -1234,13 +1231,14 @@ function ProductReviewCard({
                     </div>
 
                     <div className="grid gap-4">
-                        <div className="grid grid-cols-2 gap-2">
+                        {secondaryActionCount > 0 ? (
+                        <div className={responsiveGridColsClass(secondaryActionCount, "grid gap-2")}>
+                            {referenceLinksEnabled && (
                             <ReviewActionButton
                                 icon={<ExternalLink className="h-4 w-4" />}
                                 label="Reference"
                                 onClick={() => openExternalLink(snapshot.referenceUrl)}
                                 disabled={
-                                    !referenceLinksEnabled ||
                                     !snapshot.referenceUrl ||
                                     isSavingPrice ||
                                     isReimporting ||
@@ -1250,6 +1248,8 @@ function ProductReviewCard({
                                 color="var(--color-primary2)"
                                 className="w-full border-slate-200 bg-white text-slate-700"
                             />
+                            )}
+                            {importAiEnabled && (
                             <ReviewActionButton
                                 icon={
                                     isReimporting ? (
@@ -1261,13 +1261,36 @@ function ProductReviewCard({
                                 label={isReimporting ? "Re-importing" : "Re-import"}
                                 color="var(--color-primary2)"
                                 onClick={() => onReimport(product.id)}
-                                disabled={isReimporting || isApproving || isSavingPrice || isEditingPrice || isBulkReimporting}
+                                disabled={isReimporting || isSavingPrice || isEditingPrice || isBulkReimporting}
                                 variant="outline"
                                 className="w-full border-primary2/20 bg-primary2/5 text-primary2"
                             />
+                            )}
                         </div>
+                        ) : null}
 
                         <div className="grid grid-cols-2 gap-2">
+                            <ReviewActionButton
+                                icon={<Eye className="h-4 w-4" />}
+                                label="Preview"
+                                onClick={() => {
+                                    if (!product.slug) return;
+                                    window.open(
+                                        `${STOREFRONT_CONFIG.baseUrl}/products/${product.slug}`,
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                    );
+                                }}
+                                disabled={
+                                    !product.slug ||
+                                    isSavingPrice ||
+                                    isReimporting ||
+                                    isBulkReimporting
+                                }
+                                variant="outline"
+                                color="var(--color-primary2)"
+                                className="w-full border-slate-200 bg-white text-slate-700"
+                            />
                             <ReviewActionButton
                                 icon={
                                     <PencilLine className="h-4 w-4" />
@@ -1279,32 +1302,7 @@ function ProductReviewCard({
                                 variant="outline"
                                 className="w-full border-slate-200 bg-white text-slate-700"
                             />
-                            <ReviewActionButton
-                                icon={<TriangleAlert className="h-4 w-4" />}
-                                label="Delete"
-                                color="var(--color-danger)"
-                                onClick={() => onDelete(product)}
-                                disabled={isApproving || isSavingPrice || isReimporting || isBulkReimporting}
-                                variant="outline"
-                                className="w-full border-rose-200 bg-rose-50 text-rose-700"
-                            />
-                            <ReviewActionButton
-                                icon={
-                                    isApproving ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <CheckCircle2 className="h-4 w-4" />
-                                    )
-                                }
-                                label={isApproving ? "Approving" : "Approve"}
-                                variant="solid"
-                                color="var(--color-success)"
-                                onClick={() => onApprove(product.id)}
-                                disabled={isApproving || isSavingPrice || isEditingPrice || isReimporting || isBulkReimporting}
-                                className="w-full border-success/30 bg-success text-white shadow-[0_12px_28px_-16px_var(--color-success)]"
-                            />
                         </div>
-
                     </div>
                 </div>
             </aside>
@@ -1348,28 +1346,35 @@ export function ProductReviewWorkspace({
   description = "Manage your product inventory",
   storageKey = "products_review",
   showViewToggle = false,
+  showPricingViewToggle = false,
   viewMode = "review",
   onViewModeChange,
   showStatusFilter = false,
   initialStatus,
+  onStatusCleared,
+  allowPriceEdit = false,
 }: {
   hideImportActions?: boolean;
   title?: string;
   description?: string;
   storageKey?: string;
   showViewToggle?: boolean;
-  viewMode?: "list" | "review";
-  onViewModeChange?: (mode: "list" | "review") => void;
+  showPricingViewToggle?: boolean;
+  viewMode?: ProductsViewMode;
+  onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
   initialStatus?: ProductStatus;
+  onStatusCleared?: () => void;
+  allowPriceEdit?: boolean;
 } = {}) {
     const router = useRouter();
     const { addJob, activeJobs } = useJobTracker();
     const { setShowOverlay } = useLoading();
     const filters = useProductFilters({
         storageKey,
-        fixedStatus: showStatusFilter ? undefined : "review",
+        fixedStatus: undefined,
         initialStatus: showStatusFilter ? initialStatus : undefined,
+        onStatusCleared,
     });
     const {
         queryParams,
@@ -1422,14 +1427,15 @@ export function ProductReviewWorkspace({
         import_ai_products_enabled: false,
         linked_products_enabled: false,
         reference_links_enabled: false,
+        product_status_enabled: false,
+        pricing_view_enabled: false,
         easy_purchase_enabled: false,
         cart_sidebar_button_enabled: false,
+        popup_enabled: false,
         reference_link_visible_admin: false,
         meta_title_visible_admin: false,
         meta_description_visible_admin: false,
     };
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [priceOverrides, setPriceOverrides] = useState<Partial<Record<number, PriceOverride>>>({});
     const [activeReimportProductIds, setActiveReimportProductIds] = useState<number[]>([]);
     const [isBulkReimporting, setIsBulkReimporting] = useState(false);
@@ -1458,16 +1464,9 @@ export function ProductReviewWorkspace({
     ];
 
     const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
-    const approveProduct = useUpdateProductWorkflowStatus();
     const bulkReviewReimport = useBulkReviewReimportAi();
     const reimportProduct = useReimportProductAi();
     const updateProduct = useUpdateProduct();
-    const permanentDeleteProduct = usePermanentDeleteProduct({
-        onSuccess: () => {
-            setDeleteModalOpen(false);
-            setProductToDelete(null);
-        },
-    });
 
     const products = data?.data.data || [];
 
@@ -1632,14 +1631,6 @@ export function ProductReviewWorkspace({
         setBulkReimportCategoryIds(ids.slice(0, 1));
     };
 
-    const handleApproveProduct = async (productId: number) => {
-        try {
-            await approveProduct.mutateAsync({ id: productId, status: "active" });
-        } catch (approveError) {
-            console.error("Failed to approve product", approveError);
-        }
-    };
-
     const handleReimportProduct = async (productId: number) => {
         if (computedIsBulkReimporting || computedActiveReimportProductIds.includes(productId)) {
             return;
@@ -1749,23 +1740,6 @@ export function ProductReviewWorkspace({
         }
     };
 
-    const handleDeleteRequest = (product: Product) => {
-        setProductToDelete(product);
-        setDeleteModalOpen(true);
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!productToDelete) {
-            return;
-        }
-
-        try {
-            await permanentDeleteProduct.mutateAsync(productToDelete.id);
-        } catch (deleteError) {
-            console.error("Failed to permanently delete product", deleteError);
-        }
-    };
-
     if (isError) {
         return (
             <div className="min-h-screen w-full bg-[#f6f3ee] px-4 py-10 text-slate-950 md:px-8">
@@ -1800,6 +1774,7 @@ export function ProductReviewWorkspace({
                 description={description}
                 onCreate={handleCreateNew}
                 showViewToggle={showViewToggle}
+                showPricingViewToggle={showPricingViewToggle}
                 viewMode={viewMode}
                 onViewModeChange={onViewModeChange}
                 showStatusFilter={showStatusFilter}
@@ -1854,13 +1829,8 @@ export function ProductReviewWorkspace({
                         <ProductReviewCard
                             key={item.product.id}
                             item={item}
-                            onApprove={handleApproveProduct}
                             onReimport={handleReimportProduct}
                             onSavePrice={handleSavePrice}
-                            onDelete={handleDeleteRequest}
-                            isApproving={
-                                approveProduct.isPending && approveProduct.variables?.id === item.product.id
-                            }
                             isBulkReimporting={computedIsBulkReimporting}
                             isReimporting={
                                 computedActiveReimportProductIds.includes(item.product.id)
@@ -1869,6 +1839,7 @@ export function ProductReviewWorkspace({
                                 updateProduct.isPending && updateProduct.variables?.id === item.product.id
                             }
                             toggles={reviewToggles}
+                            allowPriceEdit={allowPriceEdit}
                         />
                     ))}
                 </div>
@@ -2006,21 +1977,6 @@ export function ProductReviewWorkspace({
                     </div>
                 </Modal>
                 )}
-
-                <DeleteConfirmationModal
-                    isOpen={deleteModalOpen}
-                    onClose={() => {
-                        setDeleteModalOpen(false);
-                        setProductToDelete(null);
-                    }}
-                    onConfirm={handleDeleteConfirm}
-                    title="Delete Product Permanently?"
-                    message="This action cannot be undone. The product will be removed from the system permanently."
-                    confirmText="Delete Permanently"
-                    cancelText="Cancel"
-                    isPermanent={true}
-                    isLoading={permanentDeleteProduct.isPending}
-                />
 
             <ProductBulkStatusModal
                 isOpen={bulkStatusModalOpen}

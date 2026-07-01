@@ -14,11 +14,12 @@ import { STOREFRONT_CONFIG } from "../../lib/constants";
 import { useAttributes } from "../../services/attributes/hooks/use-attributes";
 import { useSpecifications } from "../../services/specifications/hooks/use-specifications";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
+import { useAdminAccess } from "../../hooks/use-admin-access";
 import { Button } from "../ui/button";
 import { PageHeader } from "../common/PageHeader";
 import {
   ProductFormData,
-  productFormSchema,
+  createProductFormValidationSchema,
   Attribute,
   ProductSpecificationSelection
 } from "../../services/products/types/product-form.types";
@@ -128,7 +129,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const metaDescriptionVisible = isEnabled("meta_description_visible_admin");
   const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
   const linkedProductsEnabled = isEnabled("linked_products_enabled");
-  const statusVisible = importAiProductsEnabled;
+  const productStatusEnabled = isEnabled("product_status_enabled");
+  const statusVisible = productStatusEnabled;
+  const { canEditProductPricing } = useAdminAccess();
 
   // Draft persistence – only active in create mode.
   const { restoredDraft, saveDraft, clearDraft } = useProductFormDraft({
@@ -146,7 +149,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     brandId: "",
     referenceLink: "",
     linked_product_ids: [],
-    quantity: 0,
+    quantity: undefined,
     is_out_of_stock: false,
     shortDescriptionEn: "",
     shortDescriptionAr: "",
@@ -221,7 +224,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         brandId: "",
         referenceLink: "",
         linked_product_ids: [],
-        quantity: 0,
+        quantity: undefined,
         is_out_of_stock: false,
         shortDescriptionEn: "",
         shortDescriptionAr: "",
@@ -241,8 +244,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [isEditMode, initialDataJson]);
 
-  // Build dynamic Zod schema based on form state
-  const zodSchema = React.useMemo(() => productFormSchema, []);
+  // Build dynamic Zod schema based on form state — pricing is only
+  // required when this admin has product-pricing access.
+  const zodSchema = React.useMemo(
+    () => createProductFormValidationSchema({ requirePricing: canEditProductPricing }),
+    [canEditProductPricing]
+  );
   
   const { errors, validateForm, validateField, clearFieldError, isSubmitted } = useZodValidation<ProductFormData>({
     schema: zodSchema,
@@ -257,13 +264,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       nameAr: formData.nameAr || '',
       sku: formData.sku || '',
       record: formData.record || '',
-      status: importAiProductsEnabled ? (formData.status || 'active') : 'active',
+      status: productStatusEnabled ? (formData.status || 'active') : 'active',
       categoryIds: formData.categoryIds || [],
       vendorId: formData.vendorId || '',
       brandId: formData.brandId || '',
       referenceLink: formData.referenceLink || '',
       linked_product_ids: linkedProductsEnabled ? (formData.linked_product_ids || []) : [],
-      quantity: formData.quantity || 0,
+      quantity: formData.quantity,
       is_out_of_stock: formData.is_out_of_stock || false,
       shortDescriptionEn: formData.shortDescriptionEn || '',
       shortDescriptionAr: formData.shortDescriptionAr || '',
@@ -737,7 +744,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
       {/* Stock Management */}
       <StockSection
-          quantity={formData.quantity || 0}
+          quantity={formData.quantity}
           isOutOfStock={formData.is_out_of_stock || false}
           onChangeQuantity={(q) => handleFieldChange("quantity", q)}
           onChangeIsOutOfStock={(isOut) => handleFieldChange("is_out_of_stock", isOut)}
@@ -745,6 +752,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         />
 
       {/* Pricing Configuration */}
+      {canEditProductPricing ? (
       <PricingSection
         pricing={formData.pricing}
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
@@ -752,6 +760,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         errors={errors}
         vendorSourcePricesVisible={referenceLinksEnabled}
       />
+      ) : null}
 
       {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}
       {weightAndDimensionsEnabled && (

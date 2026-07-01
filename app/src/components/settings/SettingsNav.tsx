@@ -3,28 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
-
-const settingsLinks = [
-  { href: "/settings/seo", label: "SEO" },
-  { href: "/settings/appearance", label: "Appearance" },
-  { href: "/settings/features", label: "Feature Settings" },
-  { href: "/settings/popup", label: "Site Popup" },
-  { href: "/settings/inventory", label: "Inventory" },
-  { href: "/settings/pricing", label: "Pricing Rules" },
-];
+import { useSidebarCustomization } from "@/hooks/use-sidebar-customization";
+import {
+  SETTINGS_LINK_DEFINITIONS,
+  filterSettingsLinksByFeatureToggle,
+} from "@/lib/settings-links";
 
 export function SettingsNav() {
   const pathname = usePathname();
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
-  const importAiEnabled = isResolved && isEnabled("import_ai_products_enabled");
+  const { applyOrder } = useSidebarCustomization();
 
-  const links = importAiEnabled
-    ? [
-        ...settingsLinks.slice(0, 4),
-        { href: "/settings/product-import", label: "Product Import" },
-        ...settingsLinks.slice(4),
-      ]
-    : settingsLinks;
+  const orderedLinks = applyOrder(SETTINGS_LINK_DEFINITIONS);
+  const links = isResolved
+    ? filterSettingsLinksByFeatureToggle(orderedLinks, (key) => isEnabled(key))
+    : orderedLinks;
 
   return (
     <div className="w-full rounded-r1 border border-primary/20 bg-white p-2 shadow-s1">
@@ -42,7 +35,7 @@ export function SettingsNav() {
                   : "bg-gray-50 text-gray-600 hover:bg-primary/10 hover:text-primary"
               }`}
             >
-              {link.label}
+              {link.navLabel}
             </Link>
           );
         })}

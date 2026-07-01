@@ -9,7 +9,7 @@ export function FeatureToggleGuard({
   redirectTo = "/products",
   children,
 }: {
-  toggle: "import_ai_products_enabled" | "banners_enabled";
+  toggle: "import_ai_products_enabled" | "banners_enabled" | "popup_enabled";
   redirectTo?: string;
   children: React.ReactNode;
 }) {

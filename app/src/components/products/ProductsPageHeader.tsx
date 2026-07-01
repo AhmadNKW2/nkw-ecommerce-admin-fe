@@ -1,16 +1,20 @@
 "use client";
 
-import { ArrowRightLeft, LayoutGrid, List, Package } from "lucide-react";
+import { ArrowRightLeft, Coins, LayoutGrid, List, Package } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
+
+export type ProductsViewMode = "list" | "review" | "pricing";
 
 interface ProductsPageHeaderProps {
   title: string;
   description: string;
   onCreate: () => void;
   showViewToggle?: boolean;
-  viewMode?: "list" | "review";
-  onViewModeChange?: (mode: "list" | "review") => void;
+  showPricingViewToggle?: boolean;
+  showCreate?: boolean;
+  viewMode?: ProductsViewMode;
+  onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
   onBulkStatusClick?: () => void;
 }
@@ -20,6 +24,8 @@ export function ProductsPageHeader({
   description,
   onCreate,
   showViewToggle = false,
+  showPricingViewToggle = false,
+  showCreate = true,
   viewMode = "list",
   onViewModeChange,
   showStatusFilter = false,
@@ -30,11 +36,11 @@ export function ProductsPageHeader({
       icon={<Package />}
       title={title}
       description={description}
-      action={{ label: "Create", onClick: onCreate }}
+      action={showCreate ? { label: "Create", onClick: onCreate } : undefined}
       extraActions={
         <>
           {showViewToggle && onViewModeChange ? (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant={viewMode === "list" ? "solid" : "outline"}
                 color="var(--color-primary2)"
@@ -53,6 +59,17 @@ export function ProductsPageHeader({
                 <LayoutGrid className="mr-1.5 inline h-4 w-4" />
                 Review view
               </Button>
+              {showPricingViewToggle ? (
+                <Button
+                  variant={viewMode === "pricing" ? "solid" : "outline"}
+                  color="var(--color-primary2)"
+                  onClick={() => onViewModeChange("pricing")}
+                  className="rounded-full px-3 py-1.5 text-sm"
+                >
+                  <Coins className="mr-1.5 inline h-4 w-4" />
+                  Pricing view
+                </Button>
+              ) : null}
             </div>
           ) : null}
           {showStatusFilter && onBulkStatusClick ? (

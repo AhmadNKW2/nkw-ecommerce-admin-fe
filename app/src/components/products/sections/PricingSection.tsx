@@ -74,9 +74,9 @@ export function PricingSection({
                                             : ""
                                     }
                                 />
-                                {errors && errors["pricing.originalVendorPrice"] && (
+                                {errors && typeof errors["pricing.originalVendorPrice"] === "string" && (
                                     <p className="text-sm text-red-500">
-                                        {String(errors["pricing.originalVendorPrice"])}
+                                        {errors["pricing.originalVendorPrice"]}
                                     </p>
                                 )}
                             </div>
@@ -103,9 +103,9 @@ export function PricingSection({
                                             : ""
                                     }
                                 />
-                                {errors && errors["pricing.originalVendorSalePrice"] && (
+                                {errors && typeof errors["pricing.originalVendorSalePrice"] === "string" && (
                                     <p className="text-sm text-red-500">
-                                        {String(errors["pricing.originalVendorSalePrice"])}
+                                        {errors["pricing.originalVendorSalePrice"]}
                                     </p>
                                 )}
                             </div>
@@ -142,9 +142,13 @@ export function PricingSection({
                                 size="sm"
                                 className="w-full"
                                 value={pricing?.cost ?? ""}
-                                onChange={(e) =>
-                                    handleFieldChange("cost", parseFloat(e.target.value) || undefined)
-                                }
+                                onChange={(e) => {
+                                    const raw = e.target.value;
+                                    handleFieldChange(
+                                        "cost",
+                                        raw === "" ? undefined : parseFloat(raw),
+                                    );
+                                }}
                                 placeholder="0.00"
                             />
                         </div>
@@ -154,6 +158,7 @@ export function PricingSection({
                                 Price <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                id="pricing.price"
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -170,9 +175,9 @@ export function PricingSection({
                                 placeholder="0.00"
                                 error={errors?.["pricing.price"]}
                             />
-                            {errors && errors["pricing.price"] && (
+                            {errors && typeof errors["pricing.price"] === "string" && (
                                 <p className="text-sm text-red-500">
-                                    {String(errors["pricing.price"])}
+                                    {errors["pricing.price"]}
                                 </p>
                             )}
                         </div>
@@ -190,18 +195,19 @@ export function PricingSection({
                                         size="sm"
                                         className="w-full"
                                         value={pricing?.salePrice ?? ""}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                            const raw = e.target.value;
                                             handleFieldChange(
                                                 "salePrice",
-                                                parseFloat(e.target.value) || undefined,
-                                            )
-                                        }
+                                                raw === "" ? undefined : parseFloat(raw),
+                                            );
+                                        }}
                                         placeholder="0.00"
                                         error={errors?.["pricing.salePrice"]}
                                     />
-                                    {errors && errors["pricing.salePrice"] && (
+                                    {errors && typeof errors["pricing.salePrice"] === "string" && (
                                         <p className="text-sm text-red-500">
-                                            {String(errors["pricing.salePrice"])}
+                                            {errors["pricing.salePrice"]}
                                         </p>
                                     )}
                                 </div>

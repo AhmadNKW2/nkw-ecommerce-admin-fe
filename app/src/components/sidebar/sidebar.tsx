@@ -227,7 +227,7 @@ interface SidebarLinkProps {
   label: string;
   badge?: string | number;
   exact?: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export function SidebarLink({

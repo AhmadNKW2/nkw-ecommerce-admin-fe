@@ -25,7 +25,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
-  permissions?: string[];
+  adminAccess?: import("@/lib/admin-access").AdminAccess;
 }
 
 export type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";

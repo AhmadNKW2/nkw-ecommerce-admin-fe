@@ -20,12 +20,14 @@ interface UseProductFiltersOptions {
   storageKey: string;
   fixedStatus?: ProductStatus;
   initialStatus?: ProductStatus;
+  onStatusCleared?: () => void;
 }
 
 export function useProductFilters({
   storageKey,
   fixedStatus,
   initialStatus,
+  onStatusCleared,
 }: UseProductFiltersOptions) {
   const { isEnabled, isResolved } = useResolvedFeatureToggles();
   const vendorsEnabled = isEnabled("vendors_enabled");
@@ -155,12 +157,21 @@ export function useProductFilters({
   }, [isResolved, vendorsEnabled, referenceLinksEnabled]);
 
   const handleFilterChange = (filters: ProductFilters) => {
-    setQueryParams((prev) => ({
-      ...prev,
-      ...filters,
-      status: fixedStatus ?? filters.status ?? prev.status,
-      page: 1,
-    }));
+    setQueryParams((prev) => {
+      const next = {
+        ...prev,
+        ...filters,
+        page: 1,
+      };
+
+      if (fixedStatus) {
+        next.status = fixedStatus;
+      } else if ("status" in filters) {
+        next.status = filters.status;
+      }
+
+      return next;
+    });
   };
 
   const handleSearchChange = (value: string) => {
@@ -298,6 +309,9 @@ export function useProductFilters({
         ? (normalized as ProductStatus)
         : undefined;
     handleFilterChange({ status });
+    if (!status) {
+      onStatusCleared?.();
+    }
   };
 
   const handleClearAllFilters = () => {

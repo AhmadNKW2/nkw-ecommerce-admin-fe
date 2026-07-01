@@ -11,6 +11,9 @@ import { useCreateCustomer } from "../../services/customers/hooks/use-customers"
 import { UserForm } from "./UserForm";
 import { validateCustomerForm } from "../../lib/validations/customer.schema";
 import { UserRole } from "../../services/customers/types/customer.types";
+import { createDefaultAdminAccess, constrainAdminAccessByFeatureToggles } from "../../lib/admin-access";
+import type { AdminAccess } from "../../lib/admin-access";
+import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
 export interface CreateUserPageProps {
   userType: "customer" | "admin";
@@ -30,6 +33,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [adminAccess, setAdminAccess] = useState<AdminAccess>(createDefaultAdminAccess());
   const [productIds, setProductIds] = useState<number[]>([]);
   const [formErrors, setFormErrors] = useState<{
     firstName?: string;
@@ -40,6 +44,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
   }>({});
 
   const createCustomer = useCreateCustomer();
+  const { isEnabled } = useResolvedFeatureToggles();
 
   const validate = () => {
     const result = validateCustomerForm(
@@ -75,6 +80,9 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
         password,
         role,
         product_ids: productIds.length > 0 ? productIds : undefined,
+        adminAccess: isAdmin
+          ? constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
+          : undefined,
       });
 
       router.push(basePath);
@@ -122,6 +130,8 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
       }}
       onRoleChange={() => {}} // Role is fixed
       onIsActiveChange={setIsActive}
+      adminAccess={isAdmin ? adminAccess : undefined}
+      onAdminAccessChange={isAdmin ? setAdminAccess : undefined}
       onProductIdsChange={setProductIds}
       formErrors={formErrors}
       onSubmit={handleSubmit}

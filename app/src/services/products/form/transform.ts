@@ -224,18 +224,27 @@ export function transformFormDataToDto(
     visible: data.visible,
   };
 
-  if (!data.pricing) {
-    throw new Error("Pricing is required");
-  }
+  if (data.pricing) {
+    if (data.pricing.originalVendorPrice === undefined) {
+      dto.original_vendor_price = data.pricing.price;
+      dto.original_vendor_sale_price = data.pricing.isSale === true
+        ? (data.pricing.salePrice ?? null)
+        : null;
+    } else {
+      dto.original_vendor_price = data.pricing.originalVendorPrice;
+      dto.original_vendor_sale_price = data.pricing.originalVendorSalePrice ?? null;
+    }
 
-  if (data.pricing.originalVendorPrice === undefined) {
-    dto.original_vendor_price = data.pricing.price;
-    dto.original_vendor_sale_price = data.pricing.isSale === true
-      ? (data.pricing.salePrice ?? null)
-      : null;
-  } else {
-    dto.original_vendor_price = data.pricing.originalVendorPrice;
-    dto.original_vendor_sale_price = data.pricing.originalVendorSalePrice ?? null;
+    dto.cost =
+      data.pricing.cost !== undefined &&
+      data.pricing.cost !== null &&
+      !Number.isNaN(data.pricing.cost)
+        ? data.pricing.cost
+        : null;
+    if (data.pricing.price !== undefined) {
+      dto.price = data.pricing.price;
+    }
+    dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
   }
 
   const vendorId = parseOptionalId(data.vendorId);
@@ -249,10 +258,6 @@ export function transformFormDataToDto(
   if (attributesPayload.length > 0 || includeEmptyRelations) {
     dto.attributes = attributesPayload;
   }
-
-  dto.cost = data.pricing.cost;
-  dto.price = data.pricing.price;
-  dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
 
   if (data.weightDimensions) {
     dto.weight = data.weightDimensions.weight;

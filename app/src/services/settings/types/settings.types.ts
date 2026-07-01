@@ -47,8 +47,11 @@ export interface FeatureToggles {
   import_ai_products_enabled: boolean;
   linked_products_enabled: boolean;
   reference_links_enabled: boolean;
+  product_status_enabled: boolean;
+  pricing_view_enabled: boolean;
   easy_purchase_enabled: boolean;
   cart_sidebar_button_enabled: boolean;
+  popup_enabled: boolean;
   // Appearance-only toggles — admin dashboard UI only; BE ignores them.
   reference_link_visible_admin: boolean;
   meta_title_visible_admin: boolean;

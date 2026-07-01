@@ -86,6 +86,12 @@ const platformModules: Array<{
       "Show the View Cart button in the storefront cart sidebar. When disabled, the button is hidden from the sidebar footer.",
   },
   {
+    key: "popup_enabled",
+    label: "Site Popup",
+    description:
+      "Show the storefront welcome popup and the Site Popup editor in the sidebar.",
+  },
+  {
     key: "partners_enabled",
     label: "Partners",
     description:
@@ -107,7 +113,19 @@ const platformModules: Array<{
     key: "import_ai_products_enabled",
     label: "Import AI Products",
     description:
-      "Show Products Review and Updated Products in the admin panel, product status in the product form, and enable the AI import workflow.",
+      "Enable the AI import workflow and re-import actions. List and review views always stay available.",
+  },
+  {
+    key: "product_status_enabled",
+    label: "Product Status",
+    description:
+      "Show product status in filters and tables, allow status changes in the product form, and enable bulk status updates in the admin panel.",
+  },
+  {
+    key: "pricing_view_enabled",
+    label: "Pricing View",
+    description:
+      "Show the Pricing view toggle on the Products page for admins with product-pricing access.",
   },
 ];
 

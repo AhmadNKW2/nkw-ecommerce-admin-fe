@@ -1,11 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '../../contexts/auth.context';
 import type { SidebarRole } from './sidebar.config';
+import { sidebarConfig } from './sidebar.config';
 import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-toggles';
 import type { FeatureToggles } from '../../services/settings/types/settings.types';
 import { AdminLogo } from '../common/AdminLogo';
+import { useAdminAccess } from '../../hooks/use-admin-access';
+import type { AdminAccessKey } from '../../lib/admin-access';
+import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
+import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization';
 
 import {
   Sidebar,
@@ -35,18 +41,15 @@ interface SidebarLinkItem {
     | 'cashback_enabled'
     | 'banners_enabled'
     | 'import_ai_products_enabled'
+    | 'popup_enabled'
   >;
+  adminAccess?: AdminAccessKey;
 }
 
-interface SidebarGroupItem {
-  label: string;
-  icon: ReactNode;
-  defaultOpen?: boolean;
-  links: SidebarLinkItem[];
-}
+type SidebarGroupItem = ResolvedSidebarGroup;
 
 interface AppSidebarProps {
-  groups: SidebarGroupItem[];
+  groups?: SidebarGroupItem[];
   header?: {
     title: string;
     subtitle?: string;
@@ -63,10 +66,17 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   const { logout, user } = useAuth();
   const { isCollapsed } = useSidebar();
   const userRole = user?.role;
-  const {
-    isVisibilityPending,
-    isEnabled,
-  } = useResolvedFeatureToggles();
+  const { isVisibilityPending, isEnabled } = useResolvedFeatureToggles();
+  const { canAccess } = useAdminAccess();
+  const { applyLayoutToGroups, layoutVersion } = useSidebarCustomization();
+
+  const customizedGroups = useMemo(
+    () =>
+      applyLayoutToGroups(
+        (groups ?? sidebarConfig.groups) as Parameters<typeof applyLayoutToGroups>[0],
+      ),
+    [applyLayoutToGroups, groups, layoutVersion],
+  );
 
   const passesRoleCheck = (link: SidebarLinkItem): boolean => {
     if (!link.roles) return true;
@@ -81,13 +91,18 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
     return isEnabled(link.featureToggle);
   };
 
+  const isAdminAccessEnabled = (link: SidebarLinkItem): boolean => {
+    if (!link.adminAccess) return true;
+    return canAccess(link.adminAccess);
+  };
+
   const isFeatureTogglePending = (link: SidebarLinkItem): boolean =>
     Boolean(link.featureToggle) &&
     isVisibilityPending &&
     passesRoleCheck(link);
 
   const canSeeLink = (link: SidebarLinkItem): boolean =>
-    passesRoleCheck(link) && isFeatureToggleEnabled(link);
+    passesRoleCheck(link) && isFeatureToggleEnabled(link) && isAdminAccessEnabled(link);
 
   const userDisplayName = user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ")
@@ -114,16 +129,17 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
         </SidebarHeader>
       )}
 
-      <SidebarContent>
-        {groups.map((group, groupIndex) => {
-          const visibleLinks = group.links.filter(canSeeLink);
-          const pendingLinks = group.links.filter(isFeatureTogglePending);
+      <SidebarContent key={layoutVersion}>
+        {customizedGroups.map((group, groupIndex) => {
+          const groupLinks = group.links as SidebarLinkItem[];
+          const visibleLinks = groupLinks.filter(canSeeLink);
+          const pendingLinks = groupLinks.filter(isFeatureTogglePending);
 
           if (visibleLinks.length === 0 && pendingLinks.length === 0) {
             return null;
           }
 
-          const showDivider = groupIndex === groups.length - 2;
+          const showDivider = groupIndex === customizedGroups.length - 2;
 
           return (
             <div key={`group-wrapper-${groupIndex}`}>
@@ -166,7 +182,6 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                 {(userDisplayName || footer.userName).charAt(0).toUpperCase()}
               </div>
             )}
-            {/* Name & email — hidden when collapsed */}
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">
@@ -175,7 +190,6 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                 <p className="text-xs truncate">{user?.email || footer.userEmail}</p>
               </div>
             )}
-            {/* Logout button — hidden when collapsed to save space */}
             {!isCollapsed && (
               <button
                 onClick={handleLogout}

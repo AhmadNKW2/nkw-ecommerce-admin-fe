@@ -3,36 +3,44 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, ImageIcon } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
-import { SettingsNav } from "../../src/components/settings/SettingsNav";
+import { FeatureToggleGuard } from "../../src/components/settings/FeatureToggleGuard";
 import { Card } from "../../src/components/ui/card";
 import { Input } from "../../src/components/ui/input";
-import { Toggle } from "../../src/components/ui/toggle";
 import { Button } from "../../src/components/ui/button";
 import { ImageUpload, ImageUploadItem } from "../../src/components/ui/image-upload";
 import {
   useSitePopupSettings,
   useUpdateSitePopupSettings,
 } from "../../src/services/settings/hooks/use-settings";
+import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 import { mediaService } from "../../src/services/media/api/media.service";
 import type { UpdateSitePopupSettingsDto } from "../../src/services/settings/types/settings.types";
 
 type FormState = {
-  enabled: boolean;
   image: ImageUploadItem | null;
   link_url: string;
   dismiss_after_seconds: number;
 };
 
 const emptyFormState: FormState = {
-  enabled: false,
   image: null,
   link_url: "",
   dismiss_after_seconds: 8,
 };
 
 export default function SitePopupSettingsPage() {
+  return (
+    <FeatureToggleGuard toggle="popup_enabled" redirectTo="/settings/features">
+      <SitePopupSettingsPageContent />
+    </FeatureToggleGuard>
+  );
+}
+
+function SitePopupSettingsPageContent() {
   const { data, isLoading, isError, error, refetch } = useSitePopupSettings();
   const updateSitePopupSettings = useUpdateSitePopupSettings();
+  const { isEnabled } = useResolvedFeatureToggles();
+  const popupFeatureEnabled = isEnabled("popup_enabled");
   const [formState, setFormState] = useState<FormState>(emptyFormState);
 
   useEffect(() => {
@@ -41,7 +49,6 @@ export default function SitePopupSettingsPage() {
     }
 
     setFormState({
-      enabled: data.enabled ?? false,
       image: data.image_url
         ? {
             id: "site-popup-image",
@@ -68,7 +75,7 @@ export default function SitePopupSettingsPage() {
     }
 
     const payload: UpdateSitePopupSettingsDto = {
-      enabled: formState.enabled,
+      enabled: popupFeatureEnabled,
       image_url: imageUrl,
       link_url: formState.link_url.trim() || null,
       dismiss_after_seconds: Number(formState.dismiss_after_seconds) || 0,
@@ -85,7 +92,6 @@ export default function SitePopupSettingsPage() {
           title="Site Popup"
           description="Configure the storefront welcome popup shown once per session."
         />
-        <SettingsNav />
         <Card>
           <div className="p-12 text-center">
             <div className="flex justify-center">
@@ -121,36 +127,18 @@ export default function SitePopupSettingsPage() {
         }}
       />
 
-      <SettingsNav />
-
       <Card className="w-full max-w-3xl">
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
-          <div className="pr-4">
-            <p className="font-medium">Enable popup</p>
-            <p className="text-sm text-gray-500">
-              When enabled, clients see the popup once per session if an image is uploaded.
-            </p>
-          </div>
-          <Toggle
-            checked={formState.enabled}
-            onChange={(value) => setFormState((prev) => ({ ...prev, enabled: value }))}
-            disabled={saving}
-          />
-        </div>
-
-        <div className="mt-6">
-          <ImageUpload
-            label="Popup image"
-            value={formState.image ? [formState.image] : []}
-            onChange={(items) =>
-              setFormState((prev) => ({ ...prev, image: items[0] ?? null }))
-            }
-            isMulti={false}
-            accept="image/*"
-            placeholder="Upload popup image"
-            previewSize="lg"
-          />
-        </div>
+        <ImageUpload
+          label="Popup image"
+          value={formState.image ? [formState.image] : []}
+          onChange={(items) =>
+            setFormState((prev) => ({ ...prev, image: items[0] ?? null }))
+          }
+          isMulti={false}
+          accept="image/*"
+          placeholder="Upload popup image"
+          previewSize="lg"
+        />
 
         <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
           <Input

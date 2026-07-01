@@ -1,0 +1,413 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
+import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
+import { useVendors } from "@/services/vendors/hooks/use-vendors";
+import { useBrands } from "@/services/brands/hooks/use-brands";
+import { useCategories } from "@/services/categories/hooks/use-categories";
+import { useCustomers } from "@/services/customers/hooks/use-customers";
+import type { ProductFilters, ProductStatus } from "@/services/products/types/product.types";
+import {
+  NO_BRAND_FILTER_VALUE,
+  NO_CATEGORY_FILTER_VALUE,
+  NO_VENDOR_FILTER_VALUE,
+  WORKFLOW_STATUSES,
+  normalizeStoredProductFilters,
+} from "./product-filter-shared";
+
+interface UseProductFiltersOptions {
+  storageKey: string;
+  fixedStatus?: ProductStatus;
+  initialStatus?: ProductStatus;
+}
+
+export function useProductFilters({
+  storageKey,
+  fixedStatus,
+  initialStatus,
+}: UseProductFiltersOptions) {
+  const { isEnabled, isResolved } = useResolvedFeatureToggles();
+  const vendorsEnabled = isEnabled("vendors_enabled");
+  const referenceLinksEnabled = isEnabled("reference_links_enabled");
+
+  const {
+    page: storedPage,
+    setPage: setStoredPage,
+    limit: storedLimit,
+    setLimit: setStoredLimit,
+  } = useSessionStoragePage(storageKey);
+  const filtersStorageKey = `${storageKey}_filters`;
+
+  const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem(filtersStorageKey);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          return normalizeStoredProductFilters(parsed, storedPage, storedLimit, fixedStatus);
+        } catch {
+          // Ignore parse errors.
+        }
+      }
+    }
+
+    return {
+      page: storedPage,
+      limit: storedLimit,
+      status: fixedStatus ?? initialStatus,
+    };
+  });
+
+  const [searchTerm, setSearchTerm] = useState(queryParams.search || "");
+  const [minPrice, setMinPrice] = useState(queryParams.minPrice?.toString() || "");
+  const [maxPrice, setMaxPrice] = useState(queryParams.maxPrice?.toString() || "");
+  const [startDate, setStartDate] = useState(queryParams.start_date || "");
+  const [endDate, setEndDate] = useState(queryParams.end_date || "");
+  const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([
+    ...(queryParams.has_no_vendor ? [NO_VENDOR_FILTER_VALUE] : []),
+    ...(queryParams.vendor_ids?.split(",") || []),
+  ]);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([
+    ...(queryParams.has_no_brand ? [NO_BRAND_FILTER_VALUE] : []),
+    ...(queryParams.brand_ids?.split(",") || []),
+  ]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+    queryParams.categoryId === NO_CATEGORY_FILTER_VALUE
+      ? [NO_CATEGORY_FILTER_VALUE]
+      : queryParams.category_ids?.split(",") || []
+  );
+  const [selectedCreatedByIds, setSelectedCreatedByIds] = useState<string[]>(
+    queryParams.created_by?.split(",") || []
+  );
+
+  const { data: vendorsData } = useVendors();
+  const { data: brandsData } = useBrands();
+  const categoriesData = useCategories();
+  const { data: adminsData } = useCustomers({
+    role: ["admin", "constant_token_admin", "catalog_manager"],
+    limit: 100,
+  } as any);
+
+  useEffect(() => {
+    if (!fixedStatus && initialStatus) {
+      setQueryParams((prev) =>
+        prev.status === initialStatus ? prev : { ...prev, status: initialStatus, page: 1 }
+      );
+    }
+  }, [fixedStatus, initialStatus]);
+
+  useEffect(() => {
+    setStoredPage(queryParams.page ?? 1);
+  }, [queryParams.page, setStoredPage]);
+
+  useEffect(() => {
+    if (queryParams.limit) {
+      setStoredLimit(queryParams.limit);
+    }
+  }, [queryParams.limit, setStoredLimit]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const { page, limit, status, ...filtersToStore } = queryParams;
+      const payload = fixedStatus ? filtersToStore : { ...filtersToStore, status };
+      sessionStorage.setItem(filtersStorageKey, JSON.stringify(payload));
+    }
+  }, [filtersStorageKey, fixedStatus, queryParams]);
+
+  useEffect(() => {
+    if (!isResolved) {
+      return;
+    }
+
+    if (!vendorsEnabled) {
+      setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
+      setQueryParams((prev) => {
+        if (
+          !prev.vendor_ids &&
+          !prev.vendor_id &&
+          !prev.vendorId &&
+          !prev.has_no_vendor
+        ) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next.vendor_ids;
+        delete next.vendor_id;
+        delete next.vendorId;
+        delete next.has_no_vendor;
+        return { ...next, page: 1 };
+      });
+    }
+
+    if (!referenceLinksEnabled) {
+      setQueryParams((prev) => {
+        if (prev.has_duplicate_reference_link === undefined) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next.has_duplicate_reference_link;
+        return { ...next, page: 1 };
+      });
+    }
+  }, [isResolved, vendorsEnabled, referenceLinksEnabled]);
+
+  const handleFilterChange = (filters: ProductFilters) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      ...filters,
+      status: fixedStatus ?? filters.status ?? prev.status,
+      page: 1,
+    }));
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value.slice(0, 150));
+  };
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      if (searchTerm !== (queryParams.search || "")) {
+        setQueryParams((prev) => ({
+          ...prev,
+          search: searchTerm || undefined,
+          page: 1,
+        }));
+      }
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [queryParams.search, searchTerm]);
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      const numMin = minPrice ? Number(minPrice) : undefined;
+      const numMax = maxPrice ? Number(maxPrice) : undefined;
+
+      if (numMin !== queryParams.minPrice || numMax !== queryParams.maxPrice) {
+        setQueryParams((prev) => ({
+          ...prev,
+          minPrice: numMin,
+          maxPrice: numMax,
+          page: 1,
+        }));
+      }
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [maxPrice, minPrice, queryParams.maxPrice, queryParams.minPrice]);
+
+  const handleDateChange = (field: "start_date" | "end_date", value: string) => {
+    if (field === "start_date") {
+      setStartDate(value);
+    } else {
+      setEndDate(value);
+    }
+
+    handleFilterChange({ [field]: value || undefined });
+  };
+
+  const handleVendorChange = (value: string | string[]) => {
+    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
+    const hasNoVendor = normalized.includes(NO_VENDOR_FILTER_VALUE);
+    const vendorIds = normalized.filter((id) => id !== NO_VENDOR_FILTER_VALUE);
+    setSelectedVendorIds(normalized);
+    handleFilterChange({
+      vendor_id: undefined,
+      vendorId: undefined,
+      vendor_ids: vendorIds.length > 0 ? vendorIds.join(",") : undefined,
+      has_no_vendor: hasNoVendor || undefined,
+    });
+  };
+
+  const handleBrandChange = (value: string | string[]) => {
+    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
+    const hasNoBrand = normalized.includes(NO_BRAND_FILTER_VALUE);
+    const brandIds = normalized.filter((id) => id !== NO_BRAND_FILTER_VALUE);
+    setSelectedBrandIds(normalized);
+    handleFilterChange({
+      brandId: undefined,
+      brand_ids: brandIds.length > 0 ? brandIds.join(",") : undefined,
+      has_no_brand: hasNoBrand || undefined,
+    });
+  };
+
+  const handleCategoryChange = (ids: string[]) => {
+    const normalizedIds = Array.from(new Set(ids.filter(Boolean)));
+    const hasNoCategory = normalizedIds.includes(NO_CATEGORY_FILTER_VALUE);
+    const categoryIds = normalizedIds.filter((id) => id !== NO_CATEGORY_FILTER_VALUE);
+
+    if (hasNoCategory && categoryIds.length === 0) {
+      setSelectedCategoryIds([NO_CATEGORY_FILTER_VALUE]);
+      handleFilterChange({ categoryId: NO_CATEGORY_FILTER_VALUE, category_ids: undefined });
+      return;
+    }
+
+    setSelectedCategoryIds(categoryIds);
+    handleFilterChange({
+      categoryId: undefined,
+      category_ids: categoryIds.length > 0 ? categoryIds.join(",") : undefined,
+    });
+  };
+
+  const handleCreatedByChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
+    setSelectedCreatedByIds(normalized);
+    handleFilterChange({ created_by: normalized.length > 0 ? normalized.join(",") : undefined });
+  };
+
+  const handleStockChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    let inStock = undefined;
+    if (normalized === "true") {
+      inStock = true;
+    } else if (normalized === "false") {
+      inStock = false;
+    }
+    handleFilterChange({ in_stock: inStock });
+  };
+
+  const handleVisibilityChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    let visible = undefined;
+    if (normalized === "true") {
+      visible = true;
+    } else if (normalized === "false") {
+      visible = false;
+    }
+    handleFilterChange({ visible });
+  };
+
+  const handleDuplicateReferenceLinkChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    let hasDuplicateReferenceLink = undefined;
+    if (normalized === "true") {
+      hasDuplicateReferenceLink = true;
+    } else if (normalized === "false") {
+      hasDuplicateReferenceLink = false;
+    }
+    handleFilterChange({ has_duplicate_reference_link: hasDuplicateReferenceLink });
+  };
+
+  const handleStatusFilterChange = (value: string | string[]) => {
+    const normalized = Array.isArray(value) ? value[0] : value;
+    const status =
+      normalized && WORKFLOW_STATUSES.includes(normalized as ProductStatus)
+        ? (normalized as ProductStatus)
+        : undefined;
+    handleFilterChange({ status });
+  };
+
+  const handleClearAllFilters = () => {
+    setSearchTerm("");
+    setMinPrice("");
+    setMaxPrice("");
+    setStartDate("");
+    setEndDate("");
+    setSelectedVendorIds([]);
+    setSelectedBrandIds([]);
+    setSelectedCategoryIds([]);
+    setSelectedCreatedByIds([]);
+    setQueryParams({ page: 1, limit: storedLimit, status: fixedStatus });
+  };
+
+  const hasActiveFilters = Object.keys(queryParams).some((key) => {
+    if (key === "page" || key === "limit") {
+      return false;
+    }
+    if (fixedStatus && key === "status") {
+      return false;
+    }
+    return queryParams[key as keyof ProductFilters] !== undefined;
+  });
+
+  const vendorOptions = useMemo(
+    () => [
+      { value: NO_VENDOR_FILTER_VALUE, label: "No Vendor" },
+      ...(vendorsData?.data ?? []).map((vendor: any) => ({
+        value: String(vendor.id),
+        label: vendor.name_en || vendor.name || String(vendor.id),
+      })),
+    ],
+    [vendorsData?.data]
+  );
+
+  const brandOptions = useMemo(
+    () => [
+      { value: NO_BRAND_FILTER_VALUE, label: "No Brand" },
+      ...(brandsData?.data ?? []).map((brand: any) => ({
+        value: String(brand.id),
+        label: brand.name_en || brand.name || String(brand.id),
+      })),
+    ],
+    [brandsData?.data]
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      (categoriesData.data ?? []).map((category: any) => ({
+        value: String(category.id),
+        label: category.name_en || category.name || String(category.id),
+      })),
+    [categoriesData.data]
+  );
+
+  const adminOptions = useMemo(
+    () =>
+      (adminsData?.data ?? []).map((admin: any) => ({
+        value: String(admin.id),
+        label:
+          [admin.firstName, admin.lastName].filter(Boolean).join(" ") ||
+          admin.email ||
+          String(admin.id),
+      })),
+    [adminsData?.data]
+  );
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate()
+  ).padStart(2, "0")}`;
+
+  return {
+    queryParams,
+    setQueryParams,
+    searchTerm,
+    minPrice,
+    maxPrice,
+    startDate,
+    endDate,
+    selectedVendorIds,
+    selectedBrandIds,
+    selectedCategoryIds,
+    selectedCreatedByIds,
+    vendorsEnabled,
+    referenceLinksEnabled,
+    vendorOptions,
+    brandOptions,
+    categoryOptions,
+    adminOptions,
+    categoriesData,
+    hasActiveFilters,
+    todayStr,
+    storedLimit,
+    handleSearchChange,
+    setMinPrice,
+    setMaxPrice,
+    handleDateChange,
+    handleVendorChange,
+    handleBrandChange,
+    handleCategoryChange,
+    handleCreatedByChange,
+    handleStockChange,
+    handleVisibilityChange,
+    handleDuplicateReferenceLinkChange,
+    handleStatusFilterChange,
+    handleClearAllFilters,
+    handlePageChange: (page: number) => setQueryParams((prev) => ({ ...prev, page })),
+    handlePageSizeChange: (pageSize: number) =>
+      setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1 })),
+  };
+}

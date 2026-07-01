@@ -43,9 +43,13 @@ export default function ProductsPageClient() {
         <ProductReviewWorkspace
           hideImportActions
           title="Products"
+          description="Manage your product inventory"
+          storageKey="products"
           showViewToggle
           viewMode="review"
           onViewModeChange={handleViewModeChange}
+          showStatusFilter={importAiEnabled}
+          initialStatus={initialStatus}
         />
       </FeatureToggleGuard>
     );

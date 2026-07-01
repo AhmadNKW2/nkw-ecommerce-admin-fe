@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "@/hooks/use-loading-router";
 import { useJobTracker } from "../../providers/job-tracker-provider";
 import Image from "next/image";
 import {
@@ -21,6 +22,10 @@ import {
     X,
 } from "lucide-react";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
+import { ProductBulkStatusModal } from "@/components/products/ProductBulkStatusModal";
+import { ProductFiltersPanel } from "@/components/products/ProductFiltersPanel";
+import { ProductsPageHeader } from "@/components/products/ProductsPageHeader";
+import { useProductFilters } from "@/components/products/useProductFilters";
 import { CategoryTreeSelect } from "@/components/products/CategoryTreeSelect";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +34,6 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
-import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import {
     finishToastError,
     finishToastSuccess,
@@ -40,7 +44,6 @@ import {
 } from "@/lib/toast";
 import { useLoading } from "@/providers/loading-provider";
 import { productService } from "@/services/products/api/product.service";
-import { useCategories } from "@/services/categories/hooks/use-categories";
 import {
     useBulkReviewReimportAi,
     usePermanentDeleteProduct,
@@ -52,10 +55,9 @@ import {
 import {
     BulkReviewReimportAiDto,
     Product,
-    ProductFilters,
+    ProductStatus,
     UpdateProductDto,
 } from "@/services/products/types/product.types";
-import { useVendors } from "@/services/vendors/hooks/use-vendors";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import type { ProductFieldToggles } from "@/services/settings/types/settings.types";
 
@@ -106,8 +108,6 @@ type PriceCandidate = {
     numericValue: number;
 };
 
-const REVIEW_STORAGE_KEY = "products_review";
-const REVIEW_FILTERS_STORAGE_KEY = `${REVIEW_STORAGE_KEY}_filters`;
 const IMPORT_JOB_POLL_INTERVAL_MS = 2500;
 const IMPORT_JOB_MAX_ATTEMPTS = 120;
 const BULK_REIMPORT_LOADING_MESSAGE = "Re-importing review products with AI...";
@@ -1314,11 +1314,9 @@ function ProductReviewCard({
 function ReviewEmptyState({
     hasActiveFilters,
     onClearFilters,
-    onRefresh,
 }: {
     hasActiveFilters: boolean;
     onClearFilters: () => void;
-    onRefresh: () => void;
 }) {
     return (
         <Card className="w-full rounded-4xl border border-slate-200 bg-white p-10 text-center shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)] md:p-14">
@@ -1327,25 +1325,18 @@ function ReviewEmptyState({
                     <Package className="h-8 w-8" />
                 </div>
                 <h3 className="text-2xl font-black tracking-tight text-slate-950">
-                    {hasActiveFilters
-                        ? "No products match these filters"
-                        : "No products waiting for review"}
+                    {hasActiveFilters ? "No products match these filters" : "No products found"}
                 </h3>
                 <p className="text-sm leading-7 text-slate-600">
                     {hasActiveFilters
-                        ? "Clear the filters to bring the full queue back."
-                        : "New submissions will appear here automatically when they enter the review queue."}
+                        ? "Clear the filters to see more products."
+                        : "Try adjusting your filters or add new products."}
                 </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                    {hasActiveFilters ? (
-                        <Button onClick={onClearFilters} color="var(--color-primary2)">
-                            Reset filters
-                        </Button>
-                    ) : null}
-                    <Button variant="outline" onClick={onRefresh} color="var(--color-primary2)">
-                        Refresh queue
+                {hasActiveFilters ? (
+                    <Button onClick={onClearFilters} color="var(--color-primary2)">
+                        Reset filters
                     </Button>
-                </div>
+                ) : null}
             </div>
         </Card>
     );
@@ -1354,27 +1345,70 @@ function ReviewEmptyState({
 export function ProductReviewWorkspace({
   hideImportActions = false,
   title = "Review products.",
+  description = "Manage your product inventory",
+  storageKey = "products_review",
   showViewToggle = false,
   viewMode = "review",
   onViewModeChange,
+  showStatusFilter = false,
+  initialStatus,
 }: {
   hideImportActions?: boolean;
   title?: string;
+  description?: string;
+  storageKey?: string;
   showViewToggle?: boolean;
   viewMode?: "list" | "review";
   onViewModeChange?: (mode: "list" | "review") => void;
+  showStatusFilter?: boolean;
+  initialStatus?: ProductStatus;
 } = {}) {
+    const router = useRouter();
     const { addJob, activeJobs } = useJobTracker();
     const { setShowOverlay } = useLoading();
+    const filters = useProductFilters({
+        storageKey,
+        fixedStatus: showStatusFilter ? undefined : "review",
+        initialStatus: showStatusFilter ? initialStatus : undefined,
+    });
     const {
-        page: storedPage,
-        setPage: setStoredPage,
-        limit: storedLimit,
-        setLimit: setStoredLimit,
-    } = useSessionStoragePage(REVIEW_STORAGE_KEY);
-
-    // Feature toggles — hide gated review UI until settings are resolved.
-    const { toggles, isResolved } = useResolvedFeatureToggles();
+        queryParams,
+        searchTerm,
+        minPrice,
+        maxPrice,
+        startDate,
+        endDate,
+        selectedVendorIds,
+        selectedBrandIds,
+        selectedCategoryIds,
+        selectedCreatedByIds,
+        vendorsEnabled,
+        referenceLinksEnabled,
+        vendorOptions,
+        brandOptions,
+        categoryOptions,
+        adminOptions,
+        categoriesData,
+        hasActiveFilters,
+        todayStr,
+        handleSearchChange,
+        setMinPrice,
+        setMaxPrice,
+        handleDateChange,
+        handleVendorChange,
+        handleBrandChange,
+        handleCategoryChange,
+        handleCreatedByChange,
+        handleStockChange,
+        handleVisibilityChange,
+        handleDuplicateReferenceLinkChange,
+        handleStatusFilterChange,
+        handleClearAllFilters,
+        handlePageChange,
+        handlePageSizeChange,
+    } = filters;
+    const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
+    const { toggles } = useResolvedFeatureToggles();
     const reviewToggles: ProductFieldToggles = toggles ?? {
         id: 0,
         vendors_enabled: false,
@@ -1394,40 +1428,6 @@ export function ProductReviewWorkspace({
         meta_title_visible_admin: false,
         meta_description_visible_admin: false,
     };
-    const vendorsEnabled = reviewToggles.vendors_enabled !== false;
-
-    const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
-        if (typeof window !== "undefined") {
-            const stored = sessionStorage.getItem(REVIEW_FILTERS_STORAGE_KEY);
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    return {
-                        ...parsed,
-                        page: storedPage,
-                        limit: storedLimit,
-                        status: "review",
-                    };
-                } catch {
-                    // Ignore parse errors.
-                }
-            }
-        }
-
-        return {
-            page: storedPage,
-            limit: storedLimit,
-            status: "review",
-        };
-    });
-
-    const [searchTerm, setSearchTerm] = useState(queryParams.search || "");
-    const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>(
-        queryParams.vendor_ids?.split(",") || []
-    );
-    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
-        queryParams.category_ids?.split(",") || []
-    );
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [priceOverrides, setPriceOverrides] = useState<Partial<Record<number, PriceOverride>>>({});
@@ -1457,7 +1457,7 @@ export function ProductReviewWorkspace({
             .filter(id => id > 0)
     ];
 
-    const { data, isLoading, isFetching, isError, error, refetch } = useProducts(queryParams);
+    const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
     const approveProduct = useUpdateProductWorkflowStatus();
     const bulkReviewReimport = useBulkReviewReimportAi();
     const reimportProduct = useReimportProductAi();
@@ -1469,8 +1469,6 @@ export function ProductReviewWorkspace({
         },
     });
 
-    const { data: vendorsData } = useVendors();
-    const categoriesData = useCategories();
     const products = data?.data.data || [];
 
     useEffect(() => {
@@ -1482,68 +1480,8 @@ export function ProductReviewWorkspace({
     }, []);
 
     useEffect(() => {
-        setStoredPage(queryParams.page ?? 1);
-    }, [queryParams.page, setStoredPage]);
-
-    useEffect(() => {
-        if (queryParams.limit) {
-            setStoredLimit(queryParams.limit);
-        }
-    }, [queryParams.limit, setStoredLimit]);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const { page, limit, status, ...filtersToStore } = queryParams;
-            sessionStorage.setItem(REVIEW_FILTERS_STORAGE_KEY, JSON.stringify(filtersToStore));
-        }
-    }, [queryParams]);
-
-    useEffect(() => {
         setShowOverlay(isLoading);
     }, [isLoading, setShowOverlay]);
-
-    useEffect(() => {
-        if (!isResolved || vendorsEnabled) {
-            return;
-        }
-
-        setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
-        setBulkReimportVendorId((current) => (current ? "" : current));
-        setQueryParams((prev) => {
-            if (!prev.vendor_ids) {
-                return prev;
-            }
-
-            const next = { ...prev };
-            delete next.vendor_ids;
-            delete next.vendor_id;
-            delete next.vendorId;
-            delete next.has_no_vendor;
-            return { ...next, page: 1, status: "review" };
-        });
-    }, [isResolved, vendorsEnabled]);
-
-    useEffect(() => {
-        const debounce = setTimeout(() => {
-            if (searchTerm !== (queryParams.search || "")) {
-                setQueryParams((prev) => ({
-                    ...prev,
-                    search: searchTerm || undefined,
-                    page: 1,
-                    status: "review",
-                }));
-            }
-        }, 350);
-
-        return () => clearTimeout(debounce);
-    }, [queryParams.search, searchTerm]);
-
-    const vendorOptions = useMemo(() => {
-        return (vendorsData?.data ?? []).map((vendor: any) => ({
-            value: String(vendor.id),
-            label: vendor.name_en || vendor.name || String(vendor.id),
-        }));
-    }, [vendorsData?.data]);
 
     const queueItems = useMemo<QueueItem[]>(() => {
         return products.map((product) => {
@@ -1558,10 +1496,6 @@ export function ProductReviewWorkspace({
         });
     }, [priceOverrides, products, reviewToggles]);
 
-    const hasActiveFilters =
-        Boolean(searchTerm.trim()) ||
-        (vendorsEnabled && selectedVendorIds.length > 0) ||
-        selectedCategoryIds.length > 0;
     const hasAnyActiveReimport = computedIsBulkReimporting || computedActiveReimportProductIds.length > 0;
     const bulkReimportScopeMessage =
         (vendorsEnabled && bulkReimportVendorId) || bulkReimportCategoryIds.length > 0
@@ -1666,44 +1600,8 @@ export function ProductReviewWorkspace({
         });
     };
 
-    const handleVendorChange = (value: string | string[]) => {
-        const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
-        setSelectedVendorIds(normalized);
-        setQueryParams((prev) => ({
-            ...prev,
-            vendor_ids: normalized.length > 0 ? normalized.join(",") : undefined,
-            page: 1,
-            status: "review",
-        }));
-    };
-
-    const handleCategoryChange = (ids: string[]) => {
-        setSelectedCategoryIds(ids);
-        setQueryParams((prev) => ({
-            ...prev,
-            category_ids: ids.length > 0 ? ids.join(",") : undefined,
-            page: 1,
-            status: "review",
-        }));
-    };
-
-    const handlePageChange = (page: number) => {
-        setQueryParams((prev) => ({ ...prev, page, status: "review" }));
-    };
-
-    const handlePageSizeChange = (pageSize: number) => {
-        setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1, status: "review" }));
-    };
-
-    const handleClearFilters = () => {
-        setSearchTerm("");
-        setSelectedVendorIds([]);
-        setSelectedCategoryIds([]);
-        setQueryParams({
-            page: 1,
-            limit: storedLimit,
-            status: "review",
-        });
+    const handleCreateNew = () => {
+        router.push("/products/create");
     };
 
     const openBulkReimportModal = () => {
@@ -1890,165 +1788,93 @@ export function ProductReviewWorkspace({
     }
 
     return (
-        <div className="min-h-screen w-full text-slate-950">
-            <div className="mx-auto flex w-full max-w-none flex-col gap-6 px-4 py-5 md:px-8 md:py-8">
-                {hideImportActions ? null : importJobs.length > 0 && (
-                    <section className="flex flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
-                        {renderImportJobStatusCards(importJobs)}
-                    </section>
-                )}
-
-                <section className="overflow-hidden rounded-[34px] border border-slate-200 bg-white/95 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)]">
-                    <div className="flex flex-col gap-4 p-6 md:p-8 xl:flex-row xl:items-center xl:justify-between">
-                        <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                            {title}
-                        </h1>
-
-                        <div className="flex flex-wrap gap-2">
-                            {showViewToggle && onViewModeChange ? (
-                                <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1">
-                                    <Button
-                                        variant={viewMode === "list" ? "solid" : "outline"}
-                                        color="var(--color-primary2)"
-                                        onClick={() => onViewModeChange("list")}
-                                        className="rounded-full px-3 py-1.5 text-sm"
-                                    >
-                                        List view
-                                    </Button>
-                                    <Button
-                                        variant={viewMode === "review" ? "solid" : "outline"}
-                                        color="var(--color-primary2)"
-                                        onClick={() => onViewModeChange("review")}
-                                        className="rounded-full px-3 py-1.5 text-sm"
-                                    >
-                                        Review view
-                                    </Button>
-                                </div>
-                            ) : null}
-                            {hasActiveFilters ? (
-                                <Button
-                                    onClick={handleClearFilters}
-                                    variant="outline"
-                                    color="var(--color-primary2)"
-                                    className="rounded-full px-4"
-                                >
-                                    Clear filters
-                                </Button>
-                            ) : null}
-                            <Button
-                                variant="outline"
-                                color="var(--color-primary2)"
-                                onClick={() => refetch()}
-                                className="rounded-full px-4"
-                            >
-                                <RefreshCw
-                                    className={`mr-2 inline h-4 w-4 ${isFetching && !isLoading ? "animate-spin" : ""}`}
-                                />
-                                Refresh queue
-                            </Button>
-                            {hideImportActions ? null : (
-                            <>
-                            <Button
-                                variant="outline"
-                                color="var(--color-primary2)"
-                                onClick={openBulkReimportModal}
-                                disabled={hasAnyActiveReimport}
-                                className="rounded-full px-4"
-                            >
-                                {computedIsBulkReimporting ? "Re-importing reviews" : "Bulk re-import reviews"}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                color="var(--color-primary2)"
-                                onClick={openImportStatusModal}
-                                className="rounded-full px-4"
-                            >
-                                View import status
-                            </Button>
-                            </>
-                            )}
-                        </div>
-                    </div>
+        <div className="flex flex-col justify-center items-center gap-5 p-5 w-full text-slate-950">
+            {hideImportActions ? null : importJobs.length > 0 ? (
+                <section className="flex w-full flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
+                    {renderImportJobStatusCards(importJobs)}
                 </section>
+            ) : null}
 
-                <section className="rounded-[30px] border border-slate-200 bg-white/95 p-5 shadow-[0_20px_55px_-42px_rgba(15,23,42,0.3)]">
-                    <div
-                        className={`grid gap-4 ${
-                            vendorsEnabled
-                                ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(240px,0.8fr)_minmax(280px,1fr)]"
-                                : "xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,1fr)]"
-                        }`}
-                    >
-                        <Input
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value.slice(0, 150))}
-                            label="Search review queue"
-                            variant="search"
-                            maxLength={150}
+            <ProductsPageHeader
+                title={title}
+                description={description}
+                onCreate={handleCreateNew}
+                showViewToggle={showViewToggle}
+                viewMode={viewMode}
+                onViewModeChange={onViewModeChange}
+                showStatusFilter={showStatusFilter}
+                onBulkStatusClick={() => setBulkStatusModalOpen(true)}
+            />
+
+            <ProductFiltersPanel
+                visible={products.length > 0 || hasActiveFilters}
+                hasActiveFilters={hasActiveFilters}
+                onClearAllFilters={handleClearAllFilters}
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                categories={categoriesData.data ?? []}
+                selectedCategoryIds={selectedCategoryIds}
+                onCategoryChange={handleCategoryChange}
+                categoryOptionsCount={categoryOptions.length}
+                vendorsEnabled={vendorsEnabled}
+                selectedVendorIds={selectedVendorIds}
+                onVendorChange={handleVendorChange}
+                vendorOptions={vendorOptions}
+                selectedBrandIds={selectedBrandIds}
+                onBrandChange={handleBrandChange}
+                brandOptions={brandOptions}
+                startDate={startDate}
+                endDate={endDate}
+                onDateChange={handleDateChange}
+                todayStr={todayStr}
+                selectedCreatedByIds={selectedCreatedByIds}
+                onCreatedByChange={handleCreatedByChange}
+                adminOptions={adminOptions}
+                showStatusFilter={showStatusFilter}
+                queryParams={queryParams}
+                onStatusFilterChange={handleStatusFilterChange}
+                onStockChange={handleStockChange}
+                onVisibilityChange={handleVisibilityChange}
+                referenceLinksEnabled={referenceLinksEnabled}
+                onDuplicateReferenceLinkChange={handleDuplicateReferenceLinkChange}
+                minPrice={minPrice}
+                maxPrice={maxPrice}
+                onMinPriceChange={setMinPrice}
+                onMaxPriceChange={setMaxPrice}
+            />
+
+            {!isLoading && queueItems.length === 0 ? (
+                <ReviewEmptyState
+                    hasActiveFilters={hasActiveFilters}
+                    onClearFilters={handleClearAllFilters}
+                />
+            ) : (
+                <div className="flex w-full flex-col gap-6">
+                    {queueItems.map((item) => (
+                        <ProductReviewCard
+                            key={item.product.id}
+                            item={item}
+                            onApprove={handleApproveProduct}
+                            onReimport={handleReimportProduct}
+                            onSavePrice={handleSavePrice}
+                            onDelete={handleDeleteRequest}
+                            isApproving={
+                                approveProduct.isPending && approveProduct.variables?.id === item.product.id
+                            }
+                            isBulkReimporting={computedIsBulkReimporting}
+                            isReimporting={
+                                computedActiveReimportProductIds.includes(item.product.id)
+                            }
+                            isSavingPrice={
+                                updateProduct.isPending && updateProduct.variables?.id === item.product.id
+                            }
+                            toggles={reviewToggles}
                         />
+                    ))}
+                </div>
+            )}
 
-                        {vendorsEnabled && (
-                        <div className="relative z-20">
-                            <Select
-                                label="Vendor"
-                                value={selectedVendorIds}
-                                onChange={handleVendorChange}
-                                options={vendorOptions}
-                                search={vendorOptions.length > 6}
-                                multiple={true}
-                                placeholder="All vendors"
-                                disabled={vendorOptions.length === 0}
-                            />
-                        </div>
-                        )}
-
-                        <div className="relative z-30">
-                            <CategoryTreeSelect
-                                categories={categoriesData.data ?? []}
-                                selectedIds={selectedCategoryIds}
-                                onChange={handleCategoryChange}
-                                singleSelect={false}
-                                label="Category"
-                                disabled={(categoriesData.data ?? []).length === 0}
-                            />
-                        </div>
-                    </div>
-
-                </section>
-
-                {!isLoading && queueItems.length === 0 ? (
-                    <ReviewEmptyState
-                        hasActiveFilters={hasActiveFilters}
-                        onClearFilters={handleClearFilters}
-                        onRefresh={() => refetch()}
-                    />
-                ) : (
-                    <div className="flex w-full flex-col gap-6">
-                        {queueItems.map((item) => (
-                            <ProductReviewCard
-                                key={item.product.id}
-                                item={item}
-                                onApprove={handleApproveProduct}
-                                onReimport={handleReimportProduct}
-                                onSavePrice={handleSavePrice}
-                                onDelete={handleDeleteRequest}
-                                isApproving={
-                                    approveProduct.isPending && approveProduct.variables?.id === item.product.id
-                                }
-                                isBulkReimporting={computedIsBulkReimporting}
-                                isReimporting={
-                                    computedActiveReimportProductIds.includes(item.product.id)
-                                }
-                                isSavingPrice={
-                                    updateProduct.isPending && updateProduct.variables?.id === item.product.id
-                                }
-                                toggles={reviewToggles}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {data?.data.pagination ? (
+            {data?.data.pagination ? (
                     <Card className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_45px_-35px_rgba(15,23,42,0.35)] md:p-5">
                         <Pagination
                             pagination={{
@@ -2195,7 +2021,15 @@ export function ProductReviewWorkspace({
                     isPermanent={true}
                     isLoading={permanentDeleteProduct.isPending}
                 />
-            </div>
+
+            <ProductBulkStatusModal
+                isOpen={bulkStatusModalOpen}
+                onClose={() => setBulkStatusModalOpen(false)}
+                vendorsEnabled={vendorsEnabled}
+                vendorOptions={vendorOptions}
+                categories={categoriesData.data ?? []}
+                onSuccess={() => void refetch()}
+            />
         </div>
     );
 }

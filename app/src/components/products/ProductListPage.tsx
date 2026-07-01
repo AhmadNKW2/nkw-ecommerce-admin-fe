@@ -3,35 +3,30 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "@/hooks/use-loading-router";
-import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useLoading } from "@/providers/loading-provider";
 import {
   useDeleteProduct,
   usePermanentDeleteProduct,
   useProducts,
   useToggleProductStatus,
-  useBulkUpdateProductStatus,
 } from "@/services/products/hooks/use-products";
 import {
   Product,
-  ProductFilters,
   ProductStatus,
 } from "@/services/products/types/product.types";
-import { useVendors } from "@/services/vendors/hooks/use-vendors";
-import { useBrands } from "@/services/brands/hooks/use-brands";
-import { useCategories } from "@/services/categories/hooks/use-categories";
-import { useCustomers } from "@/services/customers/hooks/use-customers";
 import { STOREFRONT_CONFIG } from "@/lib/constants";
 import { normalizeExternalUrl, openReferenceLink } from "@/lib/reference-link";
-import { Package, AlertCircle, Star, List, LayoutGrid, ArrowRightLeft } from "lucide-react";
+import { Package, AlertCircle, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
-import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
+import { ProductBulkStatusModal } from "@/components/products/ProductBulkStatusModal";
+import { ProductFiltersPanel } from "@/components/products/ProductFiltersPanel";
+import { ProductsPageHeader } from "@/components/products/ProductsPageHeader";
+import { getStatusLabel, getStatusVariant } from "@/components/products/product-filter-shared";
+import { useProductFilters } from "@/components/products/useProductFilters";
 import {
   Table,
   TableBody,
@@ -41,9 +36,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
-import { DatePicker } from "@/components/ui/date-picker";
-import { CategoryTreeSelect } from "@/components/products/CategoryTreeSelect";
-import { Select } from "@/components/ui/select";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 
 interface ProductListPageProps {
@@ -57,79 +49,6 @@ interface ProductListPageProps {
   showStatusFilter?: boolean;
   initialStatus?: ProductStatus;
 }
-
-const WORKFLOW_STATUSES: ProductStatus[] = ["active", "review", "updated"];
-
-const NO_CATEGORY_FILTER_VALUE = "none";
-const NO_VENDOR_FILTER_VALUE = "__no_vendor__";
-const NO_BRAND_FILTER_VALUE = "__no_brand__";
-
-const normalizeStoredFilterId = (value: unknown) => {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  const normalized = String(value).trim();
-  return normalized ? normalized : undefined;
-};
-
-const normalizeStoredMultiFilter = (multiValue: unknown, ...singleValues: unknown[]) => {
-  if (typeof multiValue === "string" && multiValue.trim()) {
-    return multiValue;
-  }
-
-  if (Array.isArray(multiValue)) {
-    const values = multiValue
-      .map((value) => normalizeStoredFilterId(value))
-      .filter((value): value is string => Boolean(value));
-
-    if (values.length > 0) {
-      return values.join(",");
-    }
-  }
-
-  for (const singleValue of singleValues) {
-    const normalized = normalizeStoredFilterId(singleValue);
-    if (normalized) {
-      return normalized;
-    }
-  }
-
-  return undefined;
-};
-
-const normalizeStoredProductFilters = (
-  rawFilters: unknown,
-  storedPage: number,
-  storedLimit: number,
-  fixedStatus?: ProductStatus
-): ProductFilters => {
-  if (!rawFilters || typeof rawFilters !== "object") {
-    return {
-      page: storedPage,
-      limit: storedLimit,
-      status: fixedStatus,
-    };
-  }
-
-  const parsed = rawFilters as ProductFilters;
-
-  return {
-    ...parsed,
-    page: storedPage,
-    limit: storedLimit,
-    status: fixedStatus ?? parsed.status,
-    vendor_ids: normalizeStoredMultiFilter(
-      parsed.vendor_ids,
-      parsed.vendor_id,
-      parsed.vendorId
-    ),
-    vendor_id: undefined,
-    vendorId: undefined,
-    brand_ids: normalizeStoredMultiFilter(parsed.brand_ids, parsed.brandId),
-    brandId: undefined,
-  };
-};
 
 const formatPriceValue = (value: number) => {
   return value.toLocaleString("en-US", {
@@ -268,103 +187,51 @@ export function ProductListPage({
   initialStatus,
 }: ProductListPageProps) {
   const router = useRouter();
-  const { isEnabled, isResolved } = useResolvedFeatureToggles();
-  const vendorsEnabled = isEnabled("vendors_enabled");
+  const { isEnabled } = useResolvedFeatureToggles();
   const ratingsEnabled = isEnabled("ratings_enabled");
-  const referenceLinksEnabled = isEnabled("reference_links_enabled");
   const { setShowOverlay } = useLoading();
+  const filters = useProductFilters({ storageKey, fixedStatus, initialStatus });
   const {
-    page: storedPage,
-    setPage: setStoredPage,
-    limit: storedLimit,
-    setLimit: setStoredLimit,
-  } = useSessionStoragePage(storageKey);
-  const filtersStorageKey = `${storageKey}_filters`;
+    queryParams,
+    searchTerm,
+    minPrice,
+    maxPrice,
+    startDate,
+    endDate,
+    selectedVendorIds,
+    selectedBrandIds,
+    selectedCategoryIds,
+    selectedCreatedByIds,
+    vendorsEnabled,
+    referenceLinksEnabled,
+    vendorOptions,
+    brandOptions,
+    categoryOptions,
+    adminOptions,
+    categoriesData,
+    hasActiveFilters,
+    todayStr,
+    handleSearchChange,
+    setMinPrice,
+    setMaxPrice,
+    handleDateChange,
+    handleVendorChange,
+    handleBrandChange,
+    handleCategoryChange,
+    handleCreatedByChange,
+    handleStockChange,
+    handleVisibilityChange,
+    handleDuplicateReferenceLinkChange,
+    handleStatusFilterChange,
+    handleClearAllFilters,
+    handlePageChange,
+    handlePageSizeChange,
+  } = filters;
 
-  const [queryParams, setQueryParams] = useState<ProductFilters>(() => {
-    if (typeof window !== "undefined") {
-      const stored = sessionStorage.getItem(filtersStorageKey);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          return normalizeStoredProductFilters(
-            parsed,
-            storedPage,
-            storedLimit,
-            fixedStatus
-          );
-        } catch {
-          // Ignore parse errors.
-        }
-      }
-    }
-
-    return {
-      page: storedPage,
-      limit: storedLimit,
-      status: fixedStatus ?? initialStatus,
-    };
-  });
-
-  useEffect(() => {
-    if (!fixedStatus && initialStatus) {
-      setQueryParams((prev) =>
-        prev.status === initialStatus ? prev : { ...prev, status: initialStatus, page: 1 }
-      );
-    }
-  }, [fixedStatus, initialStatus]);
-
-  useEffect(() => {
-    setStoredPage(queryParams.page ?? 1);
-  }, [queryParams.page, setStoredPage]);
-
-  useEffect(() => {
-    if (queryParams.limit) {
-      setStoredLimit(queryParams.limit);
-    }
-  }, [queryParams.limit, setStoredLimit]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const { page, limit, status, ...filtersToStore } = queryParams;
-      const payload = fixedStatus ? filtersToStore : { ...filtersToStore, status };
-      sessionStorage.setItem(filtersStorageKey, JSON.stringify(payload));
-    }
-  }, [filtersStorageKey, fixedStatus, queryParams]);
-
-  const [searchTerm, setSearchTerm] = useState(queryParams.search || "");
-  const [minPrice, setMinPrice] = useState(queryParams.minPrice?.toString() || "");
-  const [maxPrice, setMaxPrice] = useState(queryParams.maxPrice?.toString() || "");
-  const [startDate, setStartDate] = useState(queryParams.start_date || "");
-  const [endDate, setEndDate] = useState(queryParams.end_date || "");
-  const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>(
-    [
-      ...(queryParams.has_no_vendor ? [NO_VENDOR_FILTER_VALUE] : []),
-      ...(queryParams.vendor_ids?.split(",") || []),
-    ]
-  );
-  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>(
-    [
-      ...(queryParams.has_no_brand ? [NO_BRAND_FILTER_VALUE] : []),
-      ...(queryParams.brand_ids?.split(",") || []),
-    ]
-  );
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
-    queryParams.categoryId === NO_CATEGORY_FILTER_VALUE
-      ? [NO_CATEGORY_FILTER_VALUE]
-      : queryParams.category_ids?.split(",") || []
-  );
-  const [selectedCreatedByIds, setSelectedCreatedByIds] = useState<string[]>(
-    queryParams.created_by?.split(",") || []
-  );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
   const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
-  const [bulkFromStatus, setBulkFromStatus] = useState<ProductStatus>("updated");
-  const [bulkToStatus, setBulkToStatus] = useState<ProductStatus>("review");
-  const [bulkStatusVendorId, setBulkStatusVendorId] = useState("");
-  const [bulkStatusCategoryIds, setBulkStatusCategoryIds] = useState<string[]>([]);
   const isPermanentDeleteMode = productToDelete?.status === "review";
 
   const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
@@ -372,7 +239,6 @@ export function ProductListPage({
   const permanentDeleteProduct = usePermanentDeleteProduct();
   const deleteProductMutation = isPermanentDeleteMode ? permanentDeleteProduct : archiveProduct;
   const toggleProductStatus = useToggleProductStatus();
-  const bulkUpdateStatus = useBulkUpdateProductStatus();
 
   const handleToggleVisibility = async (event: React.MouseEvent, product: Product) => {
     event.stopPropagation();
@@ -385,37 +251,6 @@ export function ProductListPage({
       console.error("Failed to update visibility", err);
     }
   };
-
-  const { data: vendorsData } = useVendors();
-  const { data: brandsData } = useBrands();
-  const categoriesData = useCategories();
-  const { data: adminsData } = useCustomers({ role: ["admin", "constant_token_admin", "catalog_manager"], limit: 100 } as any);
-
-  const vendorOptions = [
-    { value: NO_VENDOR_FILTER_VALUE, label: "No Vendor" },
-    ...(vendorsData?.data ?? []).map((vendor: any) => ({
-      value: String(vendor.id),
-      label: vendor.name_en || vendor.name || String(vendor.id),
-    })),
-  ];
-  const brandOptions = [
-    { value: NO_BRAND_FILTER_VALUE, label: "No Brand" },
-    ...(brandsData?.data ?? []).map((brand: any) => ({
-      value: String(brand.id),
-      label: brand.name_en || brand.name || String(brand.id),
-    })),
-  ];
-  const categoryOptions = (categoriesData.data ?? []).map((category: any) => ({
-    value: String(category.id),
-    label: category.name_en || category.name || String(category.id),
-  }));
-  const adminOptions = (adminsData?.data ?? []).map((admin: any) => ({
-    value: String(admin.id),
-    label:
-      [admin.firstName, admin.lastName].filter(Boolean).join(" ") ||
-      admin.email ||
-      String(admin.id),
-  }));
 
   const products = data?.data.data || [];
 
@@ -439,62 +274,6 @@ export function ProductListPage({
       }
     }
   }, [isLoading, products.length]);
-
-  useEffect(() => {
-    if (!isResolved) {
-      return;
-    }
-
-    if (!vendorsEnabled) {
-      setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
-      setQueryParams((prev) => {
-        if (
-          !prev.vendor_ids &&
-          !prev.vendor_id &&
-          !prev.vendorId &&
-          !prev.has_no_vendor
-        ) {
-          return prev;
-        }
-
-        const next = { ...prev };
-        delete next.vendor_ids;
-        delete next.vendor_id;
-        delete next.vendorId;
-        delete next.has_no_vendor;
-        return { ...next, page: 1 };
-      });
-    }
-
-    if (!referenceLinksEnabled) {
-      setQueryParams((prev) => {
-        if (prev.has_duplicate_reference_link === undefined) {
-          return prev;
-        }
-
-        const next = { ...prev };
-        delete next.has_duplicate_reference_link;
-        return { ...next, page: 1 };
-      });
-    }
-  }, [isResolved, vendorsEnabled, referenceLinksEnabled]);
-
-  const handleFilterChange = (filters: ProductFilters) => {
-    setQueryParams((prev) => ({
-      ...prev,
-      ...filters,
-      status: fixedStatus ?? prev.status,
-      page: 1,
-    }));
-  };
-
-  const handlePageChange = (page: number) => {
-    setQueryParams((prev) => ({ ...prev, page }));
-  };
-
-  const handlePageSizeChange = (pageSize: number) => {
-    setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1 }));
-  };
 
   const handleDeleteClick = (product: Product) => {
     setProductToDelete(product);
@@ -529,223 +308,7 @@ export function ProductListPage({
     router.push("/products/create");
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value.slice(0, 150));
-  };
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      if (searchTerm !== (queryParams.search || "")) {
-        setQueryParams((prev) => ({
-          ...prev,
-          search: searchTerm || undefined,
-          page: 1,
-        }));
-      }
-    }, 500);
-
-    return () => clearTimeout(debounce);
-  }, [queryParams.search, searchTerm]);
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      const numMin = minPrice ? Number(minPrice) : undefined;
-      const numMax = maxPrice ? Number(maxPrice) : undefined;
-
-      if (numMin !== queryParams.minPrice || numMax !== queryParams.maxPrice) {
-        setQueryParams((prev) => ({
-          ...prev,
-          minPrice: numMin,
-          maxPrice: numMax,
-          page: 1,
-        }));
-      }
-    }, 500);
-
-    return () => clearTimeout(debounce);
-  }, [maxPrice, minPrice, queryParams.maxPrice, queryParams.minPrice]);
-
-  const handleDateChange = (field: "start_date" | "end_date", value: string) => {
-    if (field === "start_date") {
-      setStartDate(value);
-    } else {
-      setEndDate(value);
-    }
-
-    handleFilterChange({ [field]: value || undefined });
-  };
-
-  const handleVendorChange = (value: string | string[]) => {
-    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
-    const hasNoVendor = normalized.includes(NO_VENDOR_FILTER_VALUE);
-    const vendorIds = normalized.filter((id) => id !== NO_VENDOR_FILTER_VALUE);
-    setSelectedVendorIds(normalized);
-    handleFilterChange({
-      vendor_id: undefined,
-      vendorId: undefined,
-      vendor_ids: vendorIds.length > 0 ? vendorIds.join(",") : undefined,
-      has_no_vendor: hasNoVendor || undefined,
-    });
-  };
-
-  const handleBrandChange = (value: string | string[]) => {
-    const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
-    const hasNoBrand = normalized.includes(NO_BRAND_FILTER_VALUE);
-    const brandIds = normalized.filter((id) => id !== NO_BRAND_FILTER_VALUE);
-    setSelectedBrandIds(normalized);
-    handleFilterChange({
-      brandId: undefined,
-      brand_ids: brandIds.length > 0 ? brandIds.join(",") : undefined,
-      has_no_brand: hasNoBrand || undefined,
-    });
-  };
-
-  const handleCategoryChange = (ids: string[]) => {
-    const normalizedIds = Array.from(new Set(ids.filter(Boolean)));
-    const hasNoCategory = normalizedIds.includes(NO_CATEGORY_FILTER_VALUE);
-    const categoryIds = normalizedIds.filter((id) => id !== NO_CATEGORY_FILTER_VALUE);
-
-    if (hasNoCategory && categoryIds.length === 0) {
-      setSelectedCategoryIds([NO_CATEGORY_FILTER_VALUE]);
-      handleFilterChange({ categoryId: NO_CATEGORY_FILTER_VALUE, category_ids: undefined });
-      return;
-    }
-
-    setSelectedCategoryIds(categoryIds);
-    handleFilterChange({
-      categoryId: undefined,
-      category_ids: categoryIds.length > 0 ? categoryIds.join(",") : undefined,
-    });
-  };
-
-  const handleCreatedByChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value : [value].filter(Boolean);
-    setSelectedCreatedByIds(normalized);
-    handleFilterChange({ created_by: normalized.length > 0 ? normalized.join(",") : undefined });
-  };
-
-  const handleStockChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value[0] : value;
-    let inStock = undefined;
-    if (normalized === "true") {
-      inStock = true;
-    } else if (normalized === "false") {
-      inStock = false;
-    }
-    handleFilterChange({ in_stock: inStock });
-  };
-
-  const handleVisibilityChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value[0] : value;
-    let visible = undefined;
-    if (normalized === "true") {
-      visible = true;
-    } else if (normalized === "false") {
-      visible = false;
-    }
-    handleFilterChange({ visible });
-  };
-
-  const handleDuplicateReferenceLinkChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value[0] : value;
-    let hasDuplicateReferenceLink = undefined;
-    if (normalized === "true") {
-      hasDuplicateReferenceLink = true;
-    } else if (normalized === "false") {
-      hasDuplicateReferenceLink = false;
-    }
-    handleFilterChange({ has_duplicate_reference_link: hasDuplicateReferenceLink });
-  };
-
-  const handleStatusFilterChange = (value: string | string[]) => {
-    const normalized = Array.isArray(value) ? value[0] : value;
-    const status =
-      normalized && WORKFLOW_STATUSES.includes(normalized as ProductStatus)
-        ? (normalized as ProductStatus)
-        : undefined;
-    handleFilterChange({ status });
-  };
-
-  const handleBulkStatusSubmit = async () => {
-    if (bulkFromStatus === bulkToStatus) {
-      return;
-    }
-
-    try {
-      const payload: {
-        from_status: ProductStatus;
-        to_status: ProductStatus;
-        vendor_id?: number;
-        category_id?: number;
-      } = {
-        from_status: bulkFromStatus,
-        to_status: bulkToStatus,
-      };
-
-      const parsedVendorId = Number(bulkStatusVendorId);
-      const parsedCategoryId = Number(bulkStatusCategoryIds[0] ?? "");
-
-      if (Number.isInteger(parsedVendorId) && parsedVendorId > 0) {
-        payload.vendor_id = parsedVendorId;
-      }
-      if (Number.isInteger(parsedCategoryId) && parsedCategoryId > 0) {
-        payload.category_id = parsedCategoryId;
-      }
-
-      await bulkUpdateStatus.mutateAsync(payload);
-      setBulkStatusModalOpen(false);
-      void refetch();
-    } catch (bulkError) {
-      console.error("Failed to bulk update product statuses:", bulkError);
-    }
-  };
-
-  const getStatusLabel = (status?: ProductStatus) => {
-    if (!status) {
-      return "—";
-    }
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  const getStatusVariant = (
-    status?: ProductStatus
-  ): "default" | "success" | "danger" | "default2" | "warning" => {
-    if (status === "active") {
-      return "success";
-    }
-    if (status === "review") {
-      return "warning";
-    }
-    if (status === "updated") {
-      return "default2";
-    }
-    return "default";
-  };
-
   const isReviewProduct = (product: Product) => product.status === "review";
-
-  const handleClearAllFilters = () => {
-    setSearchTerm("");
-    setMinPrice("");
-    setMaxPrice("");
-    setStartDate("");
-    setEndDate("");
-    setSelectedVendorIds([]);
-    setSelectedBrandIds([]);
-    setSelectedCategoryIds([]);
-    setSelectedCreatedByIds([]);
-    setQueryParams({ page: 1, limit: storedLimit, status: fixedStatus });
-  };
-
-  const hasActiveFilters = Object.keys(queryParams).some((key) => {
-    if (key === "page" || key === "limit") {
-      return false;
-    }
-    if (fixedStatus && key === "status") {
-      return false;
-    }
-    return queryParams[key as keyof ProductFilters] !== undefined;
-  });
 
   const getVisibilityVariant = (visible?: boolean): "default" | "success" | "danger" => {
     if (visible) {
@@ -840,258 +403,56 @@ export function ProductListPage({
     );
   }
 
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-    today.getDate()
-  ).padStart(2, "0")}`;
-
   return (
     <div className="flex flex-col justify-center items-center gap-5 p-5">
-      <PageHeader
-        icon={<Package />}
+      <ProductsPageHeader
         title={title}
         description={description}
-        action={{ label: "Create", onClick: handleCreateNew }}
-        extraActions={
-          <>
-            {showViewToggle && onViewModeChange ? (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={viewMode === "list" ? "solid" : "outline"}
-                  color="var(--color-primary2)"
-                  onClick={() => onViewModeChange("list")}
-                  className="rounded-full px-3 py-1.5 text-sm"
-                >
-                  <List className="mr-1.5 inline h-4 w-4" />
-                  List view
-                </Button>
-                <Button
-                  variant={viewMode === "review" ? "solid" : "outline"}
-                  color="var(--color-primary2)"
-                  onClick={() => onViewModeChange("review")}
-                  className="rounded-full px-3 py-1.5 text-sm"
-                >
-                  <LayoutGrid className="mr-1.5 inline h-4 w-4" />
-                  Review view
-                </Button>
-              </div>
-            ) : null}
-            {showStatusFilter ? (
-              <Button
-                variant="outline"
-                color="var(--color-primary2)"
-                onClick={() => setBulkStatusModalOpen(true)}
-                className="rounded-full px-4"
-              >
-                <ArrowRightLeft className="mr-2 inline h-4 w-4" />
-                Bulk change status
-              </Button>
-            ) : null}
-          </>
-        }
+        onCreate={handleCreateNew}
+        showViewToggle={showViewToggle}
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        showStatusFilter={showStatusFilter}
+        onBulkStatusClick={() => setBulkStatusModalOpen(true)}
       />
 
-      {(products.length > 0 || hasActiveFilters) && (
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold ">Filters</h2>
-            {hasActiveFilters && (
-              <button
-                onClick={handleClearAllFilters}
-                className="text-sm text-danger hover:text-danger2"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col gap-4">
-            <Input
-              value={searchTerm}
-              onChange={(event) => handleSearchChange(event.target.value)}
-              label="Search"
-              variant="search"
-              maxLength={150}
-            />
-
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 z-50">
-                <CategoryTreeSelect
-                  categories={categoriesData.data ?? []}
-                  selectedIds={selectedCategoryIds}
-                  onChange={handleCategoryChange}
-                  exclusiveOption={{ value: NO_CATEGORY_FILTER_VALUE, label: "No Category" }}
-                  singleSelect={false}
-                  label="Category"
-                  disabled={categoryOptions.length === 0}
-                />
-              </div>
-
-              {vendorsEnabled && (
-              <div className="relative flex-1">
-                <Select
-                  label="Vendor"
-                  value={selectedVendorIds}
-                  onChange={handleVendorChange}
-                  options={vendorOptions}
-                  search={vendorOptions.length > 6}
-                  multiple={true}
-                  placeholder="All Vendors"
-                  disabled={vendorOptions.length === 0}
-                />
-              </div>
-              )}
-
-              <div className="relative flex-1">
-                <Select
-                  label="Brand"
-                  value={selectedBrandIds}
-                  onChange={handleBrandChange}
-                  options={brandOptions}
-                  search={brandOptions.length > 6}
-                  multiple={true}
-                  placeholder="All Brands"
-                  disabled={brandOptions.length === 0}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <DatePicker
-                  label="Create Start Date"
-                  value={startDate}
-                  onChange={(value) => handleDateChange("start_date", value)}
-                  max={endDate || todayStr}
-                />
-              </div>
-
-              <div className="relative flex-1">
-                <DatePicker
-                  label="Create End Date"
-                  value={endDate}
-                  onChange={(value) => handleDateChange("end_date", value)}
-                  min={startDate || undefined}
-                  max={todayStr}
-                />
-              </div>
-
-              <div className="relative flex-1">
-                <Select
-                  label="Created By"
-                  value={selectedCreatedByIds}
-                  onChange={handleCreatedByChange}
-                  options={adminOptions}
-                  search={adminOptions.length > 6}
-                  multiple={true}
-                  placeholder="All Admins"
-                  disabled={adminOptions.length === 0}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {showStatusFilter && !fixedStatus ? (
-                <div className="relative flex-1">
-                  <Select
-                    label="Status"
-                    value={queryParams.status ?? ""}
-                    onChange={handleStatusFilterChange}
-                    options={WORKFLOW_STATUSES.map((status) => ({
-                      value: status,
-                      label: getStatusLabel(status),
-                    }))}
-                    onClear={() => handleStatusFilterChange("")}
-                    multiple={false}
-                    placeholder="All statuses"
-                  />
-                </div>
-              ) : null}
-              <div className="relative flex-1">
-                <Select
-                  label="Stock"
-                  value={
-                    queryParams.in_stock === true
-                      ? "true"
-                      : queryParams.in_stock === false
-                        ? "false"
-                        : ""
-                  }
-                  onChange={handleStockChange}
-                  options={[
-                    { value: "true", label: "In Stock" },
-                    { value: "false", label: "Out of Stock" },
-                  ]}
-                  onClear={() => handleStockChange("")}
-                  multiple={false}
-                  placeholder="All Stock Status"
-                />
-              </div>
-              <div className="relative flex-1">
-                <Select
-                  label="Visibility"
-                  value={
-                    queryParams.visible === true
-                      ? "true"
-                      : queryParams.visible === false
-                        ? "false"
-                        : ""
-                  }
-                  onChange={handleVisibilityChange}
-                  options={[
-                    { value: "true", label: "Visible" },
-                    { value: "false", label: "Hidden" },
-                  ]}
-                  onClear={() => handleVisibilityChange("")}
-                  multiple={false}
-                  placeholder="All Visibility"
-                />
-              </div>
-              {referenceLinksEnabled && (
-              <div className="relative flex-1">
-                <Select
-                  label="Reference Links"
-                  value={
-                    queryParams.has_duplicate_reference_link === true
-                      ? "true"
-                      : queryParams.has_duplicate_reference_link === false
-                        ? "false"
-                        : ""
-                  }
-                  onChange={handleDuplicateReferenceLinkChange}
-                  options={[
-                    { value: "true", label: "Duplicated Reference Links" },
-                    { value: "false", label: "No Duplicated Reference Links" },
-                  ]}
-                  onClear={() => handleDuplicateReferenceLinkChange("")}
-                  multiple={false}
-                  placeholder="All Reference Links"
-                />
-              </div>
-              )}
-              <div className="relative flex-1">
-                <Input
-                  label="Min Price"
-                  type="number"
-                  value={minPrice}
-                  onChange={(event) => setMinPrice(event.target.value)}
-                  placeholder="0.00"
-                  min={0}
-                />
-              </div>
-              <div className="relative flex-1">
-                <Input
-                  label="Max Price"
-                  type="number"
-                  value={maxPrice}
-                  onChange={(event) => setMaxPrice(event.target.value)}
-                  placeholder="0.00"
-                  min={0}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      <ProductFiltersPanel
+        visible={products.length > 0 || hasActiveFilters}
+        hasActiveFilters={hasActiveFilters}
+        onClearAllFilters={handleClearAllFilters}
+        searchTerm={searchTerm}
+        onSearchChange={handleSearchChange}
+        categories={categoriesData.data ?? []}
+        selectedCategoryIds={selectedCategoryIds}
+        onCategoryChange={handleCategoryChange}
+        categoryOptionsCount={categoryOptions.length}
+        vendorsEnabled={vendorsEnabled}
+        selectedVendorIds={selectedVendorIds}
+        onVendorChange={handleVendorChange}
+        vendorOptions={vendorOptions}
+        selectedBrandIds={selectedBrandIds}
+        onBrandChange={handleBrandChange}
+        brandOptions={brandOptions}
+        startDate={startDate}
+        endDate={endDate}
+        onDateChange={handleDateChange}
+        todayStr={todayStr}
+        selectedCreatedByIds={selectedCreatedByIds}
+        onCreatedByChange={handleCreatedByChange}
+        adminOptions={adminOptions}
+        showStatusFilter={showStatusFilter}
+        fixedStatus={fixedStatus}
+        queryParams={queryParams}
+        onStatusFilterChange={handleStatusFilterChange}
+        onStockChange={handleStockChange}
+        onVisibilityChange={handleVisibilityChange}
+        referenceLinksEnabled={referenceLinksEnabled}
+        onDuplicateReferenceLinkChange={handleDuplicateReferenceLinkChange}
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onMinPriceChange={setMinPrice}
+        onMaxPriceChange={setMaxPrice}
+      />
 
       {!isLoading && products.length === 0 ? (
         <EmptyState
@@ -1399,119 +760,14 @@ export function ProductListPage({
         isLoading={deleteProductMutation.isPending}
       />
 
-      <Modal
+      <ProductBulkStatusModal
         isOpen={bulkStatusModalOpen}
-        onClose={() => {
-          if (!bulkUpdateStatus.isPending) {
-            setBulkStatusModalOpen(false);
-          }
-        }}
-        className="self-start w-full max-w-3xl"
-      >
-        <div className="flex flex-col gap-6">
-          <div className="space-y-2 pr-8">
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">
-              Bulk change product status
-            </h2>
-            <p className="text-sm leading-7 text-slate-600">
-              Move every product with the current status to a new status. Optional vendor and
-              category filters narrow the update.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Select
-              label="Current status"
-              value={bulkFromStatus}
-              onChange={(value) => {
-                const normalized = Array.isArray(value) ? value[0] : value;
-                if (WORKFLOW_STATUSES.includes(normalized as ProductStatus)) {
-                  setBulkFromStatus(normalized as ProductStatus);
-                }
-              }}
-              options={WORKFLOW_STATUSES.map((status) => ({
-                value: status,
-                label: getStatusLabel(status),
-              }))}
-              multiple={false}
-              disabled={bulkUpdateStatus.isPending}
-            />
-            <Select
-              label="New status"
-              value={bulkToStatus}
-              onChange={(value) => {
-                const normalized = Array.isArray(value) ? value[0] : value;
-                if (WORKFLOW_STATUSES.includes(normalized as ProductStatus)) {
-                  setBulkToStatus(normalized as ProductStatus);
-                }
-              }}
-              options={WORKFLOW_STATUSES.map((status) => ({
-                value: status,
-                label: getStatusLabel(status),
-              }))}
-              multiple={false}
-              disabled={bulkUpdateStatus.isPending}
-            />
-          </div>
-
-          <div
-            className={`grid gap-4 ${
-              vendorsEnabled
-                ? "xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]"
-                : "grid-cols-1"
-            }`}
-          >
-            {vendorsEnabled ? (
-              <Select
-                label="Vendor filter (optional)"
-                value={bulkStatusVendorId}
-                onChange={(value) =>
-                  setBulkStatusVendorId(Array.isArray(value) ? value[0] ?? "" : value)
-                }
-                options={vendorOptions.filter((option) => option.value !== NO_VENDOR_FILTER_VALUE)}
-                search={vendorOptions.length > 6}
-                multiple={false}
-                placeholder="All vendors"
-                disabled={bulkUpdateStatus.isPending}
-              />
-            ) : null}
-            <CategoryTreeSelect
-              categories={categoriesData.data ?? []}
-              selectedIds={bulkStatusCategoryIds}
-              onChange={(ids) => setBulkStatusCategoryIds(ids.slice(0, 1))}
-              singleSelect={true}
-              label="Category filter (optional)"
-              disabled={bulkUpdateStatus.isPending}
-            />
-          </div>
-
-          {bulkFromStatus === bulkToStatus ? (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-              Current status and new status must be different.
-            </div>
-          ) : null}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              color="var(--color-primary2)"
-              onClick={() => setBulkStatusModalOpen(false)}
-              disabled={bulkUpdateStatus.isPending}
-              className="rounded-full px-4"
-            >
-              Cancel
-            </Button>
-            <Button
-              color="var(--color-primary2)"
-              onClick={() => void handleBulkStatusSubmit()}
-              disabled={bulkUpdateStatus.isPending || bulkFromStatus === bulkToStatus}
-              className="rounded-full px-5"
-            >
-              {bulkUpdateStatus.isPending ? "Updating..." : "Update statuses"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={() => setBulkStatusModalOpen(false)}
+        vendorsEnabled={vendorsEnabled}
+        vendorOptions={vendorOptions}
+        categories={categoriesData.data ?? []}
+        onSuccess={() => void refetch()}
+      />
     </div>
   );
 }

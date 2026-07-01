@@ -79,7 +79,6 @@ export default function NotesPage() {
       <Card>
         <Input
           label="Search notes"
-          placeholder="Search by guest name or email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           isSearch

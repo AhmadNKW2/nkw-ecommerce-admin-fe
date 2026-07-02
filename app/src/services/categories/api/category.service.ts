@@ -57,7 +57,9 @@ class CategoryService {
    * Get a single category by ID
    */
   async getCategory(id: number): Promise<ApiResponse<Category>> {
-    return httpClient.get<ApiResponse<Category>>(`${this.endpoint}/${id}`);
+    return httpClient.get<ApiResponse<Category>>(`${this.endpoint}/${id}`, {
+      is_admin: true,
+    });
   }
 
   /**

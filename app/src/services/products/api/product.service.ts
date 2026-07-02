@@ -48,6 +48,10 @@ import { httpClient } from "../../../lib/api/http-client";
 import { getQueryClient } from "../../../lib/query-client";
 import { queryKeys } from "../../../lib/query-keys";
 
+const ADMIN_PRODUCTS_PROVIDER = (
+  process.env.NEXT_PUBLIC_ADMIN_PRODUCTS_PROVIDER || "products"
+).toLowerCase();
+
 // Product Attributes
 export interface ProductAttributeDto {
   attribute_id: number;
@@ -128,13 +132,20 @@ class ProductService extends BaseService<Product> {
   /**
    * Get all products with filters and pagination
    */
-  async getProducts(
+    async getProducts(
     params?: ProductFilters
   ): Promise<ApiResponse<PaginatedResponse<Product>>> {
+    const endpoint =
+      ADMIN_PRODUCTS_PROVIDER === "search" ? "/search" : this.endpoint;
+    const requestParams =
+      ADMIN_PRODUCTS_PROVIDER === "search"
+        ? { ...params, is_admin: true }
+        : params;
+
     // Call the API
     const response = await httpClient.get<PaginatedApiResponse<Product>>(
-      this.endpoint,
-      params
+      endpoint,
+      requestParams
     );
 
     // Transform backend response (meta) to frontend format (pagination)

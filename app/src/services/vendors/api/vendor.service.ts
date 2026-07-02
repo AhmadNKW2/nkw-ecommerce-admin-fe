@@ -34,7 +34,9 @@ class VendorService {
    * Get a single vendor by ID
    */
   async getVendor(id: number): Promise<ApiResponse<Vendor>> {
-    return httpClient.get<ApiResponse<Vendor>>(`${this.endpoint}/${id}`);
+    return httpClient.get<ApiResponse<Vendor>>(`${this.endpoint}/${id}`, {
+      is_admin: true,
+    });
   }
 
   /**

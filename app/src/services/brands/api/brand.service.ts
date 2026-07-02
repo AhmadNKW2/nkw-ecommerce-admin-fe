@@ -25,7 +25,9 @@ class BrandService {
   }
 
   async getBrand(id: number): Promise<ApiResponse<Brand>> {
-    return httpClient.get<ApiResponse<Brand>>(`${this.endpoint}/${id}`);
+    return httpClient.get<ApiResponse<Brand>>(`${this.endpoint}/${id}`, {
+      is_admin: true,
+    });
   }
 
   async createBrand(data: CreateBrandDto): Promise<ApiResponse<Brand>> {

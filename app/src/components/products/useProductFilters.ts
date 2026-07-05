@@ -20,6 +20,7 @@ interface UseProductFiltersOptions {
   storageKey: string;
   fixedStatus?: ProductStatus;
   initialStatus?: ProductStatus;
+  initialVisible?: boolean;
   onStatusCleared?: () => void;
 }
 
@@ -27,6 +28,7 @@ export function useProductFilters({
   storageKey,
   fixedStatus,
   initialStatus,
+  initialVisible,
   onStatusCleared,
 }: UseProductFiltersOptions) {
   const { isEnabled, isResolved } = useResolvedFeatureToggles();
@@ -58,6 +60,7 @@ export function useProductFilters({
       page: storedPage,
       limit: storedLimit,
       status: fixedStatus ?? initialStatus,
+      visible: initialVisible,
     };
   });
 
@@ -98,6 +101,14 @@ export function useProductFilters({
       );
     }
   }, [fixedStatus, initialStatus]);
+
+  useEffect(() => {
+    if (initialVisible !== undefined) {
+      setQueryParams((prev) =>
+        prev.visible === initialVisible ? prev : { ...prev, visible: initialVisible, page: 1 }
+      );
+    }
+  }, [initialVisible]);
 
   useEffect(() => {
     setStoredPage(queryParams.page ?? 1);

@@ -9,7 +9,7 @@ import { useResolvedFeatureToggles } from "../src/hooks/use-resolved-feature-tog
 import type { ProductStatus } from "../src/services/products/types/product.types";
 import type { ProductsViewMode } from "../src/components/products/ProductsPageHeader";
 
-const VALID_STATUSES = new Set<ProductStatus>(["active", "review", "updated"]);
+const VALID_STATUSES = new Set<ProductStatus>(["active", "review", "updated", "archived"]);
 
 export default function ProductsPageClient() {
   const router = useRouter();
@@ -52,6 +52,10 @@ export default function ProductsPageClient() {
     router.replace(query ? `/products?${query}` : "/products");
     return null;
   }
+
+  const visibleParam = searchParams.get("visible");
+  const initialVisible =
+    visibleParam === "true" ? true : visibleParam === "false" ? false : undefined;
 
   const handleViewModeChange = (next: ProductsViewMode) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -124,6 +128,7 @@ export default function ProductsPageClient() {
       onViewModeChange={handleViewModeChange}
       showStatusFilter={productStatusEnabled}
       initialStatus={initialStatus}
+      initialVisible={initialVisible}
       onStatusCleared={handleStatusCleared}
     />
   );

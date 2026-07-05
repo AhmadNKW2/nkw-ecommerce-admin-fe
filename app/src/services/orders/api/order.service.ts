@@ -1,6 +1,15 @@
 import { httpClient } from "../../../lib/api/http-client";
 import type { ApiResponse } from "../../../types/common.types";
-import type { CreateOrderDto, Order, OrderFilters, OrderListResponse, OrderStatus, UpdateItemCostDto } from "../types/order.types";
+import type {
+  AdminCreateOrderDto,
+  CreateOrderDto,
+  Order,
+  OrderFilters,
+  OrderListResponse,
+  OrderStatus,
+  UpdateItemCostDto,
+  UpdateOrderDto,
+} from "../types/order.types";
 import { objectToQueryParams } from "../../../lib/utils";
 
 class OrderService {
@@ -30,8 +39,23 @@ class OrderService {
     return httpClient.post<ApiResponse<Order>>(this.endpoint, data);
   }
 
+  /** Admin-facing order creation: build an order for an existing customer or a guest. */
+  createOrderAdmin(data: AdminCreateOrderDto): Promise<ApiResponse<Order>> {
+    return httpClient.post<ApiResponse<Order>>(`${this.endpoint}/admin`, data);
+  }
+
+  /** Admin-facing general order edit (addresses, notes, tracking, payment, status). */
+  updateOrder(id: number, data: UpdateOrderDto): Promise<ApiResponse<Order>> {
+    return httpClient.patch<ApiResponse<Order>>(`${this.endpoint}/${id}`, data);
+  }
+
   updateItemCosts(id: number, payload: UpdateItemCostDto): Promise<ApiResponse<Order>> {
     return httpClient.patch<ApiResponse<Order>>(`${this.endpoint}/${id}/items/cost`, payload);
+  }
+
+  /** Permanently delete an order (restores stock/wallet unless already cancelled/refunded). */
+  deleteOrder(id: number): Promise<ApiResponse<{ success: boolean; id: number }>> {
+    return httpClient.delete<ApiResponse<{ success: boolean; id: number }>>(`${this.endpoint}/${id}`);
   }
 }
 

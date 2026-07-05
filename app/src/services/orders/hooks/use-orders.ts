@@ -2,7 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/query-keys";
 import { showSuccessToast } from "../../../lib/toast";
 import { orderService } from "../api/order.service";
-import type { CreateOrderDto, OrderFilters, OrderStatus, UpdateItemCostDto } from "../types/order.types";
+import type {
+  AdminCreateOrderDto,
+  CreateOrderDto,
+  OrderFilters,
+  OrderStatus,
+  UpdateItemCostDto,
+  UpdateOrderDto,
+} from "../types/order.types";
 
 export const useOrders = (filters?: OrderFilters) => {
   return useQuery({
@@ -44,6 +51,45 @@ export const useCreateOrder = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
       showSuccessToast("Order created successfully");
+    },
+  });
+};
+
+export const useCreateOrderAdmin = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: AdminCreateOrderDto) => orderService.createOrderAdmin(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      showSuccessToast("Order created successfully");
+    },
+  });
+};
+
+export const useUpdateOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateOrderDto }) =>
+      orderService.updateOrder(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
+      showSuccessToast("Order updated successfully");
+    },
+  });
+};
+
+export const useDeleteOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => orderService.deleteOrder(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      queryClient.removeQueries({ queryKey: queryKeys.orders.detail(id) });
+      showSuccessToast("Order deleted successfully");
     },
   });
 };

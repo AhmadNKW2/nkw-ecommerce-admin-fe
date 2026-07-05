@@ -49,6 +49,7 @@ interface ProductListPageProps {
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
   initialStatus?: ProductStatus;
+  initialVisible?: boolean;
   onStatusCleared?: () => void;
 }
 
@@ -188,6 +189,7 @@ export function ProductListPage({
   onViewModeChange,
   showStatusFilter = false,
   initialStatus,
+  initialVisible,
   onStatusCleared,
 }: ProductListPageProps) {
   const router = useRouter();
@@ -198,6 +200,7 @@ export function ProductListPage({
     storageKey,
     fixedStatus,
     initialStatus,
+    initialVisible,
     onStatusCleared,
   });
   const {

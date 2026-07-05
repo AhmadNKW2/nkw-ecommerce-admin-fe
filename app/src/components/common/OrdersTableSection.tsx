@@ -81,7 +81,7 @@ export const OrdersTableSection: React.FC<OrdersTableSectionProps> = ({
                 <TableRow key={order.id}>
                   <TableCell className="font-mono">#{order.id}</TableCell>
                   <TableCell>
-                    <Badge variant={(order.status === "delivered" || order.status === "shipped") ? "success" : "default"}>
+                    <Badge variant={order.status === "delivered" ? "success" : "default"}>
                       {order.status || "-"}
                     </Badge>
                   </TableCell>

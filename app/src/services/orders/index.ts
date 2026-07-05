@@ -1,3 +1,22 @@
-export { useOrders, useOrder, useCreateOrder } from "./hooks/use-orders";
-export type { Order, OrderItem, CreateOrderDto, ShippingAddress } from "./types/order.types";
+export {
+  useOrders,
+  useOrder,
+  useCreateOrder,
+  useCreateOrderAdmin,
+  useUpdateOrder,
+  useUpdateOrderStatus,
+  useUpdateOrderItemCosts,
+  useDeleteOrder,
+} from "./hooks/use-orders";
+export type {
+  Order,
+  OrderItem,
+  OrderStatus,
+  PaymentMethod,
+  CreateOrderDto,
+  AdminCreateOrderDto,
+  AdminOrderItemInput,
+  UpdateOrderDto,
+  ShippingAddress,
+} from "./types/order.types";
 export { orderService } from "./api/order.service";

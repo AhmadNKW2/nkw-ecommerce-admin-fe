@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useLoading } from "../src/providers/loading-provider";
-import { useOrders } from "../src/services/orders/hooks/use-orders";
-import type { OrderStatus, OrderFilters } from "../src/services/orders/types/order.types";
+import { useOrders, useDeleteOrder } from "../src/services/orders/hooks/use-orders";
+import type { Order, OrderStatus, OrderFilters } from "../src/services/orders/types/order.types";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { Card } from "../src/components/ui/card";
 import { Input } from "../src/components/ui/input";
 import { EmptyState } from "../src/components/common/EmptyState";
-import { Pagination } from "../src/components/ui/pagination";
+import { DeleteConfirmationModal } from "../src/components/common/DeleteConfirmationModal";
 import {
   Table,
   TableBody,
@@ -20,10 +20,14 @@ import {
   TableRow,
 } from "../src/components/ui/table";
 import { Badge } from "../src/components/ui/badge";
-import { Receipt, RefreshCw, Eye } from "lucide-react";
+import {
+  Receipt,
+  RefreshCw,
+  Clock,
+  PackageCheck,
+  Wallet,
+} from "lucide-react";
 import { Button } from "../src/components/ui/button";
-import { Select } from "../src/components/ui/select";
-import { PAGINATION } from "../src/lib/constants";
 import { IconButton } from "../src/components/ui/icon-button";
 
 function getOrderDate(dateString?: string): string {
@@ -32,14 +36,12 @@ function getOrderDate(dateString?: string): string {
   return Number.isNaN(date.getTime()) ? dateString : date.toLocaleString();
 }
 
-function getStatusColor(status: OrderStatus | string): "default" | "success" | "warning" | "danger" {
+function getStatusColor(status: OrderStatus | string): "default" | "success" | "warning" | "danger" | "secondary" | "primary" {
   switch (status) {
     case "completed":
     case "delivered":
-    case "shipped":
       return "success";
     case "pending":
-    case "processing":
       return "warning";
     case "cancelled":
     case "refunded":
@@ -49,10 +51,18 @@ function getStatusColor(status: OrderStatus | string): "default" | "success" | "
   }
 }
 
+const STATUS_FILTERS: Array<{ value: OrderStatus | ""; label: string }> = [
+  { value: "", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Refunded" },
+];
+
 export default function OrdersPage() {
   const router = useRouter();
   const { setShowOverlay } = useLoading();
-  
+
   const { page: storedPage, setPage: setStoredPage, limit: storedLimit, setLimit: setStoredLimit } = useSessionStoragePage("orders");
   const [queryParams, setQueryParams] = useState<OrderFilters>({
     page: storedPage,
@@ -61,21 +71,18 @@ export default function OrdersPage() {
     status: "",
   });
 
-  // Persist current page to sessionStorage whenever it changes
   useEffect(() => {
     setStoredPage(queryParams.page ?? 1);
   }, [queryParams.page, setStoredPage]);
 
-  // Persist current limit to sessionStorage whenever it changes
   useEffect(() => {
     if (queryParams.limit) setStoredLimit(queryParams.limit);
   }, [queryParams.limit, setStoredLimit]);
 
-  // Debounced search
   const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => {
     const handler = setTimeout(() => {
-        setQueryParams(prev => ({ ...prev, search: searchTerm, page: 1 }));
+      setQueryParams((prev) => ({ ...prev, search: searchTerm, page: 1 }));
     }, 500);
     return () => clearTimeout(handler);
   }, [searchTerm]);
@@ -83,6 +90,19 @@ export default function OrdersPage() {
   const { data: response, isLoading, isError, error, refetch } = useOrders(queryParams);
   const orders = response?.data || [];
   const meta = response?.meta || { total: 0, page: 1, limit: 10, totalPages: 1 };
+
+  const deleteOrder = useDeleteOrder();
+  const [orderPendingDelete, setOrderPendingDelete] = useState<Order | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!orderPendingDelete) return;
+    try {
+      await deleteOrder.mutateAsync(orderPendingDelete.id);
+      setOrderPendingDelete(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     setShowOverlay(isLoading);
@@ -96,55 +116,113 @@ export default function OrdersPage() {
     setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1 }));
   };
 
-  const statusOptions = [
-      { value: "", label: "All Statuses" },
-      { value: "pending", label: "Pending" },
-      { value: "processing", label: "Processing" },
-      { value: "shipped", label: "Shipped" },
-      { value: "delivered", label: "Delivered" },
-      { value: "cancelled", label: "Cancelled" },
-      { value: "refunded", label: "Refunded" },
-  ];
+  const pageStats = useMemo(() => {
+    const revenue = orders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+    const pending = orders.filter((o) => o.status === "pending").length;
+    const fulfilled = orders.filter((o) => o.status === "delivered").length;
+    return { revenue, pending, fulfilled };
+  }, [orders]);
 
   return (
     <div className="flex flex-col justify-center items-center gap-5 p-5">
       <PageHeader
         icon={<Receipt />}
         title="Orders"
-        description="View customer orders and inspect details"
-        action={{
+        description="View, create and manage customer orders"
+        cancelAction={{
           label: "Refresh",
           onClick: () => refetch(),
         }}
+        action={{
+          label: "Create Order",
+          onClick: () => router.push("/orders/create"),
+        }}
       />
 
+      {/* Snapshot */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Orders</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{meta.total}</p>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-r1 text-primary">
+              <Receipt className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Pending (this page)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.pending}</p>
+            </div>
+            <div className="p-3 bg-yellow-50 rounded-r1 text-yellow-600">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Delivered</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.fulfilled}</p>
+            </div>
+            <div className="p-3 bg-green-50 rounded-r1 text-green-600">
+              <PackageCheck className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Revenue (this page)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.revenue.toFixed(2)} JOD</p>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-r1 text-blue-600">
+              <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
       <Card className="p-4">
-        <div className="flex flex-col md:flex-row items-center gap-3">
-          <div className="flex-1 w-full">
-            <Input
-              label="Search"
-              placeholder="Search by Order ID or User Email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              isSearch
-            />
-          </div>
-          <div className="w-full md:w-64">
-             <Select
-                label="Status"
-                options={statusOptions}
-                value={queryParams.status as string}
-                onChange={(val) => setQueryParams(prev => ({ ...prev, status: val as any, page: 1 }))}
-             />
-          </div>
-          <div className="flex items-end self-end">
-            <Button
-                variant="outline"
-                onClick={() => refetch()}
-                className="h-10"
-            >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <div className="flex-1 w-full">
+              <Input
+                label="Search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                isSearch
+              />
+            </div>
+            <div className="flex items-end self-end">
+              <Button variant="outline" onClick={() => refetch()} className="h-13">
                 <RefreshCw className="w-4 h-4" />
-            </Button>
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {STATUS_FILTERS.map((filter) => {
+              const isActive = (queryParams.status || "") === filter.value;
+              return (
+                <button
+                  key={filter.value || "all"}
+                  type="button"
+                  onClick={() => setQueryParams((prev) => ({ ...prev, status: filter.value as any, page: 1 }))}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    isActive
+                      ? "bg-primary text-white border-primary"
+                      : "border-primary/20 text-gray-600 hover:bg-primary/5"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </Card>
@@ -157,9 +235,7 @@ export default function OrdersPage() {
             description={(error as any)?.message || "Please try again."}
           />
           <div className="flex justify-center mt-4">
-            <Button onClick={() => refetch()} >
-              Retry
-            </Button>
+            <Button onClick={() => refetch()}>Retry</Button>
           </div>
         </div>
       ) : orders.length === 0 && !isLoading ? (
@@ -169,59 +245,97 @@ export default function OrdersPage() {
           description="Try adjusting your filters or search criteria."
         />
       ) : (
-        <>
-            <Card className="p-0 overflow-hidden">
-            <Table
-                pagination={{
-                    currentPage: meta.page,
-                    totalPages: meta.totalPages,
-                    pageSize: meta.limit,
-                    totalItems: meta.total,
-                    hasNextPage: meta.page < meta.totalPages,
-                    hasPreviousPage: meta.page > 1
-                }}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-            >
-                <TableHeader>
-                <TableRow>
-                    <TableHead className="w-24">ID</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Total Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {orders.map((order) => (
-                    <TableRow
-                        key={order.id}
-                        className="hover:bg-gray-50/50"
-                    >
-                        <TableCell className="font-mono font-medium">#{order.id}</TableCell>
-                        <TableCell>{order.user?.email || "Guest"}</TableCell>
-                        <TableCell className="font-semibold">{order.totalAmount} JOD</TableCell>
-                        <TableCell>
-                        <Badge variant={getStatusColor(order.status)}>
-                            {(order.status || "Unknown").toUpperCase()}
-                        </Badge>
-                        </TableCell>
-                        <TableCell>{getOrderDate(order.created_at || order.createdAt)}</TableCell>
-                        <TableCell>
-                            <IconButton 
-                                href={`/orders/${order.id}`}
-                                variant="view"
-                                title="View Details"
-                            />
-                        </TableCell>
-                    </TableRow>
-                ))}
-                </TableBody>
-            </Table>
-            </Card>
-        </>
+        <Card className="p-0 overflow-hidden">
+          <Table
+            pagination={{
+              currentPage: meta.page,
+              totalPages: meta.totalPages,
+              pageSize: meta.limit,
+              totalItems: meta.total,
+              hasNextPage: meta.page < meta.totalPages,
+              hasPreviousPage: meta.page > 1,
+            }}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-24">ID</TableHead>
+                <TableHead width="320px">Customer</TableHead>
+                <TableHead>Shipping Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead width="180px">Date</TableHead>
+                <TableHead className="w-[140px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => {
+                const itemsCount = Array.isArray(order.items) ? order.items.length : 0;
+                const shipping = order.shippingAddress || (order as any).shipping || {};
+                const isLoggedIn = Boolean(order.user);
+                const customerLabel = isLoggedIn ? order.user!.email : "Guest";
+                const shippingName = shipping.fullName?.trim() || "-";
+                const shippingPhone = shipping.phone?.trim() || "-";
+                return (
+                  <TableRow
+                    key={order.id}
+                    className="hover:bg-gray-50/50 cursor-pointer"
+                    onClick={() => router.push(`/orders/${order.id}`)}
+                  >
+                    <TableCell className="font-mono font-medium">#{order.id}</TableCell>
+                    <TableCell className="min-w-[320px] w-[320px]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold uppercase">
+                          {customerLabel[0]?.toUpperCase() || "G"}
+                        </div>
+                        <p className="font-medium text-gray-900 whitespace-normal wrap-break-word">{customerLabel}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="truncate font-medium text-gray-900">{shippingName}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="truncate text-gray-700">{shippingPhone}</p>
+                    </TableCell>
+                    <TableCell>{itemsCount}</TableCell>
+                    <TableCell className="font-semibold">{Number(order.totalAmount).toFixed(2)} JOD</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(order.status)}>
+                        {(order.status || "Unknown").toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="min-w-[180px] w-[180px] whitespace-nowrap">{getOrderDate(order.created_at || order.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <IconButton href={`/orders/${order.id}`} variant="view" title="View Details" />
+                        <IconButton href={`/orders/${order.id}/edit`} variant="edit" title="Edit Order" />
+                        <IconButton
+                          variant="delete"
+                          title="Delete Order"
+                          onClick={() => setOrderPendingDelete(order)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={!!orderPendingDelete}
+        onClose={() => setOrderPendingDelete(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteOrder.isPending}
+        title="Delete this order?"
+        message="This will permanently delete the order and restore any reserved stock. This action cannot be undone."
+        itemName={orderPendingDelete ? `Order #${orderPendingDelete.id}` : undefined}
+      />
     </div>
   );
 }

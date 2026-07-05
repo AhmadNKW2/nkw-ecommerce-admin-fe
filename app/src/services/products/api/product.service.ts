@@ -126,6 +126,60 @@ export interface UpdateStockDto {
 
 
 
+/**
+ * The `/search` endpoint (Typesense-backed) validates its query params against a
+ * strict allowlisted DTO (unknown properties are rejected with a 400). Its field
+ * names also differ from the `/products` REST endpoint's `ProductFilters` shape,
+ * so requests must be translated rather than passed through as-is.
+ */
+function mapProductFiltersToSearchParams(
+  params: ProductFilters = {}
+): Record<string, unknown> {
+  const toBoolean = (value: unknown): boolean | undefined => {
+    if (typeof value === "boolean") return value;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return undefined;
+  };
+
+  const mapped: Record<string, unknown> = {
+    q: params.search || "*",
+    page: params.page,
+    limit: params.limit,
+    sort_by: "created_at:desc",
+    min_price: params.minPrice,
+    max_price: params.maxPrice,
+    in_stock: toBoolean(params.in_stock),
+    category_id:
+      typeof params.categoryId === "number" ? params.categoryId : undefined,
+    category_ids: params.category_ids,
+    vendor_id:
+      typeof params.vendorId === "number"
+        ? params.vendorId
+        : typeof params.vendor_id === "number"
+          ? params.vendor_id
+          : undefined,
+    vendor_ids: params.vendor_ids,
+    brand_id: typeof params.brandId === "number" ? params.brandId : undefined,
+    brand_ids: params.brand_ids,
+    status: params.status,
+    visible: toBoolean(params.visible),
+    start_date: params.start_date,
+    end_date: params.end_date,
+    created_by: params.created_by,
+    has_no_vendor: toBoolean(params.has_no_vendor),
+    has_no_brand: toBoolean(params.has_no_brand),
+    has_duplicate_reference_link: toBoolean(params.has_duplicate_reference_link),
+    is_admin: true,
+  };
+
+  return Object.fromEntries(
+    Object.entries(mapped).filter(
+      ([, value]) => value !== undefined && value !== ""
+    )
+  );
+}
+
 class ProductService extends BaseService<Product> {
   protected endpoint = "/products";
 
@@ -139,7 +193,7 @@ class ProductService extends BaseService<Product> {
       ADMIN_PRODUCTS_PROVIDER === "search" ? "/search" : this.endpoint;
     const requestParams =
       ADMIN_PRODUCTS_PROVIDER === "search"
-        ? { ...params, is_admin: true }
+        ? mapProductFiltersToSearchParams(params)
         : params;
 
     // Call the API

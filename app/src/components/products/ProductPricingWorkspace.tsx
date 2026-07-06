@@ -214,6 +214,8 @@ export function ProductPricingWorkspace({
 
   const {
     queryParams,
+    productQueryParams,
+    isAwaitingSearchResults,
     searchTerm,
     minPrice,
     maxPrice,
@@ -253,14 +255,16 @@ export function ProductPricingWorkspace({
   const [fieldErrors, setFieldErrors] = useState<Record<number, PricingFieldErrors>>({});
   const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
 
-  const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
+  const { data, isLoading, isFetching, isError, error, refetch } =
+    useProducts(productQueryParams);
   const updateProduct = useUpdateProduct();
 
   const products = data?.data.data || [];
+  const isProductsLoading = isLoading || isAwaitingSearchResults;
 
   useEffect(() => {
-    setShowOverlay(isLoading);
-  }, [isLoading, setShowOverlay]);
+    setShowOverlay(isProductsLoading || isFetching);
+  }, [isProductsLoading, isFetching, setShowOverlay]);
 
   const getDraft = (product: Product) => drafts[product.id] ?? buildDraft(product);
 
@@ -441,14 +445,14 @@ export function ProductPricingWorkspace({
         onMaxPriceChange={setMaxPrice}
       />
 
-      {!isLoading && products.length === 0 ? (
+      {!isProductsLoading && products.length === 0 ? (
         <EmptyState
           icon={<Package />}
           title="No products found"
           description="Try adjusting your filters or add new products"
         />
       ) : (
-        !isLoading && (
+        !isProductsLoading && (
           <Table
             pagination={
               data?.data.pagination

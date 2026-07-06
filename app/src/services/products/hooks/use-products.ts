@@ -7,6 +7,7 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
+  keepPreviousData,
   type UseQueryOptions,
   type UseMutationOptions,
 } from "@tanstack/react-query";
@@ -54,6 +55,7 @@ export function useProducts(
     queryFn: () => productService.getProducts(params),
     refetchOnMount: true,
     staleTime: 0,
+    placeholderData: keepPreviousData,
     ...options,
   });
 }

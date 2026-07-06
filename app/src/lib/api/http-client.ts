@@ -6,6 +6,7 @@
 
 import { API_CONFIG } from "../constants";
 import { ApiError, ApiResponse } from "../../types/common.types";
+import type { RefreshTokenResponse } from "../../services/auth/types/auth.types";
 import {
   dismissToast,
   finishToastError,
@@ -31,7 +32,8 @@ class HttpClient {
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
   private isRefreshing: boolean = false;
-  private refreshPromise: Promise<boolean> | null = null;
+  private refreshPromise: Promise<ApiResponse<RefreshTokenResponse> | null> | null =
+    null;
   private authStateHandlers: Set<AuthStateChangeHandler> = new Set();
   private isRedirecting: boolean = false;
 
@@ -223,77 +225,116 @@ class HttpClient {
     this.authStateHandlers.forEach(handler => handler(isAuthenticated));
   }
 
-  /**
-   * Attempt to refresh the access token using refresh token cookie
-   */
-  private async refreshToken(): Promise<boolean> {
-    // If already refreshing, wait for the existing promise
-    if (this.isRefreshing && this.refreshPromise) {
-      return this.refreshPromise;
+  private applyRefreshSideEffects(
+    json: Partial<ApiResponse<RefreshTokenResponse>> & {
+      access_token?: string;
+      expires_in?: number;
+    },
+  ): ApiResponse<RefreshTokenResponse> | null {
+    const success = typeof json?.success === "boolean" ? json.success : true;
+    if (!success) {
+      return null;
     }
 
-    this.isRefreshing = true;
-    this.refreshPromise = (async () => {
-      try {
-        // Include default headers (like Authorization) in the refresh request
-        // Some backends require the expired access token to be present
-        const headers = { ...this.defaultHeaders } as Record<string, string>;
-        if (!headers['Content-Type']) {
-          headers['Content-Type'] = 'application/json';
-        }
+    const tokenFromBody =
+      json.data?.access_token ?? json.access_token;
+    if (typeof tokenFromBody === "string" && tokenFromBody.length > 0) {
+      this.setAuthToken(tokenFromBody);
+    }
 
-        const response = await fetch(`${this.baseURL}${HttpClient.AUTH_REFRESH_ENDPOINT}`, {
-          method: 'POST',
-          credentials: 'include',
-          headers,
-        });
+    const expiresIn = json.data?.expires_in ?? json.expires_in;
+    if (typeof expiresIn === "number") {
+      const sessionInfo = sessionManager.getSessionInfo();
+      sessionManager.setSessionInfo({
+        ...(sessionInfo ?? { rememberMe: false }),
+        expiresAt: Date.now() + expiresIn * 1000,
+        lastActivity: Date.now(),
+      });
+      sessionManager.broadcastEvent({
+        type: "session_refresh",
+        timestamp: Date.now(),
+      });
+    }
 
-        if (!response.ok) {
-          return false;
-        }
+    return json as ApiResponse<RefreshTokenResponse>;
+  }
 
-        // Prefer backend-declared success when JSON is available.
-        // Some backends may return 200 with { success: false }.
-        try {
-          const json = (await response.clone().json()) as Partial<ApiResponse<{ access_token?: string, expires_in?: number }>> & {
-            access_token?: string;
-            expires_in?: number;
-          };
-
-          const success = typeof json?.success === "boolean" ? json.success : true;
-
-          // If backend returns an access token in body, keep it as a bearer fallback.
-          const tokenFromBody = (json as any)?.data?.access_token ?? (json as any)?.access_token;
-          if (success && typeof tokenFromBody === "string" && tokenFromBody.length > 0) {
-            this.setAuthToken(tokenFromBody);
-          }
-
-          const expiresIn = (json as any)?.data?.expires_in ?? (json as any)?.expires_in;
-          if (success && typeof expiresIn === "number") {
-             const sessionInfo = sessionManager.getSessionInfo();
-             sessionManager.setSessionInfo({
-               ...(sessionInfo ?? { rememberMe: false }),
-               expiresAt: Date.now() + (expiresIn * 1000),
-               lastActivity: Date.now(),
-             });
-             sessionManager.broadcastEvent({ type: 'session_refresh', timestamp: Date.now() });
-          }
-
-          return success;
-        } catch {
-          // Non-JSON response; assume cookies were refreshed.
-          return true;
-        }
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        return false;
-      } finally {
-        this.isRefreshing = false;
+  /**
+   * Single-flight refresh used by auth context, job tracker, and 401 retries.
+   * Concurrent refresh calls with the same cookie revoke all sessions on the backend.
+   */
+  public refreshSessionTokens(): Promise<ApiResponse<RefreshTokenResponse>> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.executeRefreshRequest().finally(() => {
         this.refreshPromise = null;
-      }
-    })();
+        this.isRefreshing = false;
+      });
+    }
 
-    return this.refreshPromise;
+    return this.refreshPromise.then((result) => {
+      if (result?.success) {
+        return result;
+      }
+
+      throw {
+        message: "Session expired. Please login again.",
+        statusCode: 401,
+      } as ApiError;
+    });
+  }
+
+  private async executeRefreshRequest(): Promise<ApiResponse<RefreshTokenResponse> | null> {
+    this.isRefreshing = true;
+
+    try {
+      const headers = { ...this.defaultHeaders } as Record<string, string>;
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const response = await fetch(
+        `${this.baseURL}${HttpClient.AUTH_REFRESH_ENDPOINT}`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers,
+        },
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      try {
+        const json = (await response.clone().json()) as Partial<
+          ApiResponse<RefreshTokenResponse>
+        > & {
+          access_token?: string;
+          expires_in?: number;
+        };
+        return this.applyRefreshSideEffects(json);
+      } catch {
+        return {
+          success: true,
+          data: {
+            access_token: "",
+            expires_in: 3600,
+          },
+        } as ApiResponse<RefreshTokenResponse>;
+      }
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return null;
+    }
+  }
+
+  private async refreshToken(): Promise<boolean> {
+    try {
+      await this.refreshSessionTokens();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -438,6 +479,14 @@ class HttpClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const method = (options.method ?? "GET").toUpperCase();
+    if (
+      endpoint === HttpClient.AUTH_REFRESH_ENDPOINT &&
+      method === "POST"
+    ) {
+      return this.refreshSessionTokens() as Promise<T>;
+    }
+
     const url = `${this.baseURL}${endpoint}`;
 
     let config: RequestInit = {

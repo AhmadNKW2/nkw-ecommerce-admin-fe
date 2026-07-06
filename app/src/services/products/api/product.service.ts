@@ -142,11 +142,13 @@ function mapProductFiltersToSearchParams(
     return undefined;
   };
 
+  const search = params.search?.trim();
+
   const mapped: Record<string, unknown> = {
-    q: params.search || "*",
+    q: search || "*",
     page: params.page,
     limit: params.limit,
-    sort_by: "created_at:desc",
+    ...(search ? {} : { sort_by: "created_at:desc" }),
     min_price: params.minPrice,
     max_price: params.maxPrice,
     in_stock: toBoolean(params.in_stock),

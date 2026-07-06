@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { useVendors } from "@/services/vendors/hooks/use-vendors";
@@ -65,6 +66,18 @@ export function useProductFilters({
   });
 
   const [searchTerm, setSearchTerm] = useState(queryParams.search || "");
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
+  const isSearchDebouncing = searchTerm.trim() !== debouncedSearch.trim();
+  const isAwaitingSearchResults =
+    isSearchDebouncing && Boolean(searchTerm.trim()) && !debouncedSearch.trim();
+
+  const productQueryParams = useMemo(() => {
+    const search = debouncedSearch.trim() || undefined;
+    return {
+      ...queryParams,
+      search,
+    };
+  }, [queryParams, debouncedSearch]);
   const [minPrice, setMinPrice] = useState(queryParams.minPrice?.toString() || "");
   const [maxPrice, setMaxPrice] = useState(queryParams.maxPrice?.toString() || "");
   const [startDate, setStartDate] = useState(queryParams.start_date || "");
@@ -190,18 +203,19 @@ export function useProductFilters({
   };
 
   useEffect(() => {
-    const debounce = setTimeout(() => {
-      if (searchTerm !== (queryParams.search || "")) {
-        setQueryParams((prev) => ({
-          ...prev,
-          search: searchTerm || undefined,
-          page: 1,
-        }));
+    const nextSearch = debouncedSearch.trim() || undefined;
+    setQueryParams((prev) => {
+      if ((prev.search || "") === (nextSearch || "")) {
+        return prev;
       }
-    }, 500);
 
-    return () => clearTimeout(debounce);
-  }, [queryParams.search, searchTerm]);
+      return {
+        ...prev,
+        search: nextSearch,
+        page: 1,
+      };
+    });
+  }, [debouncedSearch]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -398,6 +412,9 @@ export function useProductFilters({
 
   return {
     queryParams,
+    productQueryParams,
+    isSearchDebouncing,
+    isAwaitingSearchResults,
     setQueryParams,
     searchTerm,
     minPrice,

@@ -38,11 +38,7 @@ export const authService = {
    * Refresh access token using refresh token cookie
    * Backend reads refresh_token from cookie and issues new access_token
    */
-  refreshToken: () => {
-    return httpClient.post<ApiResponse<RefreshTokenResponse>>(
-      AUTH_ENDPOINTS.REFRESH
-    );
-  },
+  refreshToken: () => httpClient.refreshSessionTokens(),
 
   /**
    * Get current user profile

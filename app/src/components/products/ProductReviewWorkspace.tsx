@@ -1378,6 +1378,8 @@ export function ProductReviewWorkspace({
     });
     const {
         queryParams,
+        productQueryParams,
+        isAwaitingSearchResults,
         searchTerm,
         minPrice,
         maxPrice,
@@ -1463,7 +1465,8 @@ export function ProductReviewWorkspace({
             .filter(id => id > 0)
     ];
 
-    const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
+    const { data, isLoading, isFetching, isError, error, refetch } =
+        useProducts(productQueryParams);
     const bulkReviewReimport = useBulkReviewReimportAi();
     const reimportProduct = useReimportProductAi();
     const updateProduct = useUpdateProduct();
@@ -1479,8 +1482,8 @@ export function ProductReviewWorkspace({
     }, []);
 
     useEffect(() => {
-        setShowOverlay(isLoading);
-    }, [isLoading, setShowOverlay]);
+        setShowOverlay(isLoading || isAwaitingSearchResults || isFetching);
+    }, [isLoading, isAwaitingSearchResults, isFetching, setShowOverlay]);
 
     const queueItems = useMemo<QueueItem[]>(() => {
         return products.map((product) => {

@@ -205,6 +205,8 @@ export function ProductListPage({
   });
   const {
     queryParams,
+    productQueryParams,
+    isAwaitingSearchResults,
     searchTerm,
     minPrice,
     maxPrice,
@@ -246,7 +248,9 @@ export function ProductListPage({
   const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
   const isPermanentDeleteMode = productToDelete?.status === "review";
 
-  const { data, isLoading, isError, error, refetch } = useProducts(queryParams);
+  const { data, isLoading, isFetching, isError, error, refetch } =
+    useProducts(productQueryParams);
+
   const archiveProduct = useDeleteProduct();
   const permanentDeleteProduct = usePermanentDeleteProduct();
   const deleteProductMutation = isPermanentDeleteMode ? permanentDeleteProduct : archiveProduct;
@@ -265,13 +269,14 @@ export function ProductListPage({
   };
 
   const products = data?.data.data || [];
+  const isProductsLoading = isLoading || isAwaitingSearchResults;
 
   useEffect(() => {
-    setShowOverlay(isLoading);
-  }, [isLoading, setShowOverlay]);
+    setShowOverlay(isProductsLoading || isFetching);
+  }, [isProductsLoading, isFetching, setShowOverlay]);
 
   useEffect(() => {
-    if (!isLoading && products.length > 0) {
+    if (!isProductsLoading && products.length > 0) {
       const id = sessionStorage.getItem("highlighted_product_id");
       if (id) {
         setHighlightedProductId(id);
@@ -285,7 +290,7 @@ export function ProductListPage({
         }, 300);
       }
     }
-  }, [isLoading, products.length]);
+  }, [isProductsLoading, products.length]);
 
   const handleDeleteClick = (product: Product) => {
     setProductToDelete(product);
@@ -467,7 +472,7 @@ export function ProductListPage({
         onMaxPriceChange={setMaxPrice}
       />
 
-      {!isLoading && products.length === 0 ? (
+      {!isProductsLoading && products.length === 0 ? (
         <EmptyState
           icon={<Package />}
           title="No products found"
@@ -477,7 +482,7 @@ export function ProductListPage({
               : "Try adjusting your filters or add new products"
           }
         />
-      ) : !isLoading && (
+      ) : !isProductsLoading && (
         <Table
           pagination={
             data?.data.pagination

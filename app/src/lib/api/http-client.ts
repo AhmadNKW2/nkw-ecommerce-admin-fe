@@ -180,6 +180,63 @@ class HttpClient {
     }
   }
 
+  /**
+   * Large uploads bypass the admin /api proxy on Vercel (≈1MB serverless body cap).
+   * Uses BACKEND_ORIGIN with Bearer auth; JSON calls keep using same-origin /api.
+   */
+  private getDirectUploadBaseUrl(): string | null {
+    if (typeof window === "undefined") return null;
+
+    const origin = API_CONFIG.backendOrigin;
+    if (!origin) return null;
+
+    try {
+      const parsed = new URL(origin);
+      if (parsed.origin === window.location.origin) return null;
+      return `${parsed.origin}/api`;
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveUploadUrl(endpoint: string): string {
+    const directBase = this.getDirectUploadBaseUrl();
+    return `${directBase ?? this.baseURL}${endpoint}`;
+  }
+
+  private usesDirectUpload(endpoint: string): boolean {
+    return this.getDirectUploadBaseUrl() !== null;
+  }
+
+  private async cloneFormDataBody(body: FormData): Promise<FormData> {
+    const clone = new FormData();
+    for (const [key, value] of body.entries()) {
+      if (typeof value !== "string") {
+        const file = value as File;
+        const buffer = await file.arrayBuffer();
+        clone.append(
+          key,
+          new File([buffer], file.name, {
+            type: file.type,
+            lastModified: file.lastModified,
+          }),
+        );
+      } else {
+        clone.append(key, value);
+      }
+    }
+    return clone;
+  }
+
+  /** Ensure Bearer is set before cross-origin uploads (cookies are not sent to api.*). */
+  private async ensureBearerTokenForDirectUpload(): Promise<void> {
+    const authHeader = (this.defaultHeaders as Record<string, string>)
+      .Authorization;
+    if (authHeader) return;
+
+    await this.refreshSessionTokens();
+  }
+
   private constructor() {
     this.baseURL = this.resolveBaseUrl(API_CONFIG.baseUrl);
     this.defaultHeaders = {
@@ -415,13 +472,25 @@ class HttpClient {
           });
         }
 
+        let retryBody: BodyInit | null | undefined = originalRequest.options.body;
+        if (isFormDataBody) {
+          retryBody = await this.cloneFormDataBody(
+            originalRequest.options.body as FormData,
+          );
+        }
+
+        const retryUrl = isFormDataBody
+          ? this.resolveUploadUrl(originalRequest.endpoint)
+          : `${this.baseURL}${originalRequest.endpoint}`;
+
         // Retry the original request
         const retryResponse = await fetch(
-          `${this.baseURL}${originalRequest.endpoint}`,
+          retryUrl,
           {
             ...originalRequest.options,
+            body: retryBody,
             headers: retryHeaders,
-            credentials: 'include',
+            credentials: originalRequest.options.credentials ?? 'include',
           }
         );
         
@@ -700,37 +769,50 @@ class HttpClient {
    * Invalidates all queries on success to ensure fresh data
    */
   public postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
     const requestToast = this.shouldShowRequestToast(endpoint)
       ? this.startRequestProgressToast("POST", endpoint)
       : null;
 
-    // Don't set Content-Type for FormData - browser will set it with boundary
-    const headers: HeadersInit = {};
-    const authHeader = (this.defaultHeaders as any).Authorization;
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-    }
-
-    if (requestToast) {
-      (headers as any)[HttpClient.REQUEST_TOAST_HEADER] = "1";
-    }
-
     return (async () => {
       this.emitApiLoading(1);
       try {
+        const isDirectUpload = this.usesDirectUpload(endpoint);
+        if (isDirectUpload) {
+          await this.ensureBearerTokenForDirectUpload();
+        }
+
+        const url = this.resolveUploadUrl(endpoint);
+        const headers: HeadersInit = {};
+        const authHeader = (this.defaultHeaders as Record<string, string>)
+          .Authorization;
+        if (authHeader) {
+          headers.Authorization = authHeader;
+        }
+        if (requestToast) {
+          (headers as Record<string, string>)[HttpClient.REQUEST_TOAST_HEADER] =
+            "1";
+        }
+
+        const credentials: RequestCredentials = isDirectUpload
+          ? "omit"
+          : "include";
+
         const response = await fetch(url, {
           method: "POST",
           headers: this.stripInternalHeaders({ headers }).headers as Headers,
           body: formData,
-          credentials: 'include', // Include cookies for auth
+          credentials,
         });
 
         if (!response.ok) {
           await this.handleError(response, {
             endpoint,
-            options: { method: 'POST', headers, body: formData, credentials: 'include' },
+            options: {
+              method: "POST",
+              headers,
+              body: formData,
+              credentials,
+            },
           });
         }
 
@@ -741,9 +823,6 @@ class HttpClient {
         requestToast?.succeed();
         return result;
       } catch (error) {
-        // If a 401 refresh+retry succeeded, handleError throws { __retryResponse }.
-        // Treat it as a success here to avoid upstream retrying the mutation and
-        // accidentally creating duplicates.
         if ((error as any)?.__retryResponse) {
           const retryResponse = (error as any).__retryResponse as Response;
           const result = (await retryResponse.json()) as T;
@@ -767,37 +846,50 @@ class HttpClient {
    * Invalidates all queries on success to ensure fresh data
    */
   public patchFormData<T>(endpoint: string, formData: FormData): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
     const requestToast = this.shouldShowRequestToast(endpoint)
       ? this.startRequestProgressToast("PATCH", endpoint)
       : null;
 
-    // Don't set Content-Type for FormData - browser will set it with boundary
-    const headers: HeadersInit = {};
-    const authHeader = (this.defaultHeaders as any).Authorization;
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-    }
-
-    if (requestToast) {
-      (headers as any)[HttpClient.REQUEST_TOAST_HEADER] = "1";
-    }
-
     return (async () => {
       this.emitApiLoading(1);
       try {
+        const isDirectUpload = this.usesDirectUpload(endpoint);
+        if (isDirectUpload) {
+          await this.ensureBearerTokenForDirectUpload();
+        }
+
+        const url = this.resolveUploadUrl(endpoint);
+        const headers: HeadersInit = {};
+        const authHeader = (this.defaultHeaders as Record<string, string>)
+          .Authorization;
+        if (authHeader) {
+          headers.Authorization = authHeader;
+        }
+        if (requestToast) {
+          (headers as Record<string, string>)[HttpClient.REQUEST_TOAST_HEADER] =
+            "1";
+        }
+
+        const credentials: RequestCredentials = isDirectUpload
+          ? "omit"
+          : "include";
+
         const response = await fetch(url, {
           method: "PATCH",
           headers: this.stripInternalHeaders({ headers }).headers as Headers,
           body: formData,
-          credentials: 'include', // Include cookies for auth
+          credentials,
         });
 
         if (!response.ok) {
           await this.handleError(response, {
             endpoint,
-            options: { method: 'PATCH', headers, body: formData, credentials: 'include' },
+            options: {
+              method: "PATCH",
+              headers,
+              body: formData,
+              credentials,
+            },
           });
         }
 

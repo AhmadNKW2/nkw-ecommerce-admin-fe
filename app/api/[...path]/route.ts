@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getBackendOrigin } from "../../src/lib/backend-origin";
 import {
   createSsrApiRequestLogContext,
   isSsrApiDevLoggingEnabled,
@@ -167,13 +168,6 @@ function serializeError(error: unknown) {
   return {
     message: typeof error === "string" ? error : "Unknown proxy error",
   };
-}
-
-function getBackendOrigin(): string {
-  return (process.env.BACKEND_ORIGIN || "http://localhost:3001").replace(
-    /\/$/,
-    "",
-  );
 }
 
 function buildUpstreamUrl(req: Request, pathSegments: string[]): string {

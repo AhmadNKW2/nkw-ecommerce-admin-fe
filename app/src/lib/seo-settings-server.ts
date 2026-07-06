@@ -1,12 +1,6 @@
 import type { SeoSettings } from "@/services/settings/types/settings.types";
 import type { ApiResponse } from "@/types/common.types";
-
-function getBackendOrigin() {
-  return (process.env.BACKEND_ORIGIN || "http://localhost:3001").replace(
-    /\/$/,
-    "",
-  );
-}
+import { getBackendOrigin } from "./backend-origin";
 
 export async function fetchServerSeoSettings(): Promise<SeoSettings | null> {
   try {

@@ -14,11 +14,18 @@ if (r2PublicUrl) {
   }
 }
 
+const backendOrigin = (process.env.BACKEND_ORIGIN || 'http://localhost:3001').replace(/\/$/, '');
+
 const nextConfig: NextConfig = {
+  // One env var for server + client (API URL is not secret).
+  env: {
+    BACKEND_ORIGIN: backendOrigin,
+  },
   ...(isDevelopment
     ? {}
     : {
       experimental: {
+        // Route handlers still buffer bodies; uploads bypass /api when possible.
         proxyClientMaxBodySize: '50mb',
         optimizePackageImports: ['lucide-react', '@tanstack/react-query', 'framer-motion'],
       },

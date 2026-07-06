@@ -72,6 +72,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const warningIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const isLoggingOutRef = useRef<boolean>(false);
+  const isAuthenticatedRef = useRef<boolean>(false);
+  const handleLogoutRef = useRef<(callApi?: boolean) => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    isAuthenticatedRef.current = authState.isAuthenticated;
+  }, [authState.isAuthenticated]);
 
   // Clear all intervals
   const clearIntervals = useCallback(() => {
@@ -127,7 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Check session and show warning if needed
   const checkSession = useCallback(async () => {
     const sessionInfo = sessionManager.getSessionInfo();
-    if (!sessionInfo || !authState.isAuthenticated) return;
+    if (!sessionInfo || !isAuthenticatedRef.current) return;
     
     const now = Date.now();
     const timeUntilExpiry = sessionInfo.expiresAt - now;
@@ -138,7 +144,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (timeSinceActivity > SESSION_CONFIG.inactivityTimeout) {
         // Session expired due to inactivity
         showInfoToast('Your session has expired due to inactivity');
-        await handleLogout(false);
+        await handleLogoutRef.current(false);
         return;
       }
     }
@@ -176,7 +182,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const refreshed = await refreshSession();
       if (!refreshed) {
         showInfoToast('Your session has expired');
-        await handleLogout(false);
+        await handleLogoutRef.current(false);
       }
       return;
     }
@@ -189,7 +195,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     if (timeUntilExpiry <= SESSION_CONFIG.refreshThreshold) {
       await refreshSession();
     }
-  }, [authState.isAuthenticated, refreshSession]);
+  }, [refreshSession]);
 
   // Handle logout
   const handleLogout = useCallback(async (callApi: boolean = true) => {
@@ -220,6 +226,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
     }
   }, [router, clearIntervals]);
+
+  useEffect(() => {
+    handleLogoutRef.current = handleLogout;
+  }, [handleLogout]);
 
   // Extend session (called when user clicks "Stay logged in")
   const extendSession = useCallback(async () => {
@@ -289,6 +299,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       window.removeEventListener('scroll', throttledActivity);
       if (throttleTimeout) clearTimeout(throttleTimeout);
     };
+  }, []);
+
+  // When returning to this tab, drop stale in-memory Bearer tokens so requests
+  // use the httpOnly cookie refreshed by another tab or a background refresh.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      httpClient.removeAuthToken();
+      lastActivityRef.current = Date.now();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // Initialize auth state and set up cross-tab sync
@@ -375,6 +398,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           // Another tab logged out
           clearIntervals();
           setSessionWarning(null);
+          sessionManager.clearSession();
+          httpClient.removeAuthToken();
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -391,7 +416,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           initAuth();
           break;
         case 'session_refresh':
-          // Another tab refreshed - update our expiry
+          // Another tab refreshed — cookies are fresh; drop stale Bearer header.
+          httpClient.removeAuthToken();
           const sessionInfo = sessionManager.getSessionInfo();
           if (sessionInfo) {
             setAuthState(prev => ({

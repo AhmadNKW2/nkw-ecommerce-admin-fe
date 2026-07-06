@@ -2,13 +2,18 @@
  * Application-wide constants
  */
 
+import { getBackendOrigin } from "./backend-origin";
+
 export const APP_CONFIG = {
   name: "Admin Dashboard",
   description: "Admin panel for storefront management",
 } as const;
 
 export const API_CONFIG = {
+  /** Same-origin path the browser calls for JSON/auth (proxied to BACKEND_ORIGIN). */
   baseUrl: process.env.NEXT_PUBLIC_API_URL || "/api",
+  /** Railway/API host — same value as BACKEND_ORIGIN env var. */
+  backendOrigin: getBackendOrigin(),
   timeout: 30000,
 } as const;
 

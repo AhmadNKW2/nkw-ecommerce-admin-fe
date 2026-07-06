@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   env: {
     BACKEND_ORIGIN: backendOrigin,
   },
-  ...(isDevelopment
+  ...(isDevelopment 
     ? {}
     : {
       experimental: {

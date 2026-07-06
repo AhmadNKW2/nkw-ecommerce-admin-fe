@@ -217,6 +217,7 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       headers: outgoingHeaders,
       body: requestBody ?? undefined,
       redirect: "manual",
+      cache: "no-store",
     });
 
     const resHeaders = new Headers();
@@ -226,8 +227,13 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       const lower = key.toLowerCase();
       if (lower === "content-encoding" || lower === "transfer-encoding" || lower === "connection" || lower === "content-length") return;
       if (lower === "set-cookie") return; // handled separately
+      if (lower === "cache-control") return;
       resHeaders.set(key, value);
     });
+
+    // Never cache authenticated admin API responses at the CDN/browser.
+    resHeaders.set("Cache-Control", "private, no-store, must-revalidate");
+    resHeaders.set("Vary", "Cookie");
 
     // Preserve Set-Cookie properly (can be multiple).
     const setCookies = getSetCookieHeaders(upstreamResp);

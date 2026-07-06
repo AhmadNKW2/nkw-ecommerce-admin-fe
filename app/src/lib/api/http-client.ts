@@ -389,6 +389,7 @@ class HttpClient {
         {
           method: "POST",
           credentials: "include",
+          cache: "no-store",
           headers,
         },
       );
@@ -526,6 +527,7 @@ class HttpClient {
             body: retryBody,
             headers: retryHeaders,
             credentials: originalRequest.options.credentials ?? 'include',
+            cache: 'no-store',
           }
         );
         
@@ -598,6 +600,7 @@ class HttpClient {
     let config: RequestInit = {
       ...options,
       credentials: 'include', // Always include cookies for auth
+      cache: 'no-store',
       headers: {
         ...this.defaultHeaders,
         ...options.headers,
@@ -840,6 +843,7 @@ class HttpClient {
           headers: this.stripInternalHeaders({ headers }).headers as Headers,
           body: formData,
           credentials,
+          cache: "no-store",
         });
 
         if (!response.ok) {
@@ -918,6 +922,7 @@ class HttpClient {
           headers: this.stripInternalHeaders({ headers }).headers as Headers,
           body: formData,
           credentials,
+          cache: "no-store",
         });
 
         if (!response.ok) {

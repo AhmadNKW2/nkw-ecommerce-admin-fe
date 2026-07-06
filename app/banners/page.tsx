@@ -286,7 +286,7 @@ export default function BannerListPage() {
     }, [isLoading, setShowOverlay]);
 
     return (
-        <div className="flex flex-col justify-center items-center gap-5 p-5">
+        <div className="admin-page">
             <PageHeader
                 title="Banners"
                 description="Manage your website banners"
@@ -312,7 +312,7 @@ export default function BannerListPage() {
 
                         <div className="w-full max-w-130">
                             <div className="space-y-2">
-                                <div className="grid grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <RadioCard
                                         name="banner-language-filter"
                                         value="en"

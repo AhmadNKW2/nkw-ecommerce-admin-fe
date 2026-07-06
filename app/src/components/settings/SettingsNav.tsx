@@ -29,7 +29,7 @@ export function SettingsNav() {
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all sm:px-4 sm:py-2 sm:text-sm ${
                 isActive
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "bg-gray-50 text-gray-600 hover:bg-primary/10 hover:text-primary"

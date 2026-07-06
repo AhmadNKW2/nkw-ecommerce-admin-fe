@@ -72,7 +72,7 @@ export default function EditCashbackRulePage() {
   }
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Wallet />}
         title={rule ? `Edit Rule #${rule.id}` : "Edit Rule"}

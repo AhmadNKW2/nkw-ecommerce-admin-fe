@@ -206,7 +206,7 @@ export default function FeatureSettingsPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-col justify-center items-center gap-5 p-5">
+      <div className="admin-page">
         <PageHeader
           icon={<SlidersHorizontal />}
           title="Feature Settings"
@@ -270,7 +270,7 @@ export default function FeatureSettingsPage() {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<SlidersHorizontal />}
         title="Feature Settings"

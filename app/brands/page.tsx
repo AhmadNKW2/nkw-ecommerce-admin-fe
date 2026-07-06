@@ -293,7 +293,7 @@ export default function BrandsPage() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-bw2 p-8">
+      <div className="admin-state-page">
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">
@@ -317,7 +317,7 @@ export default function BrandsPage() {
   }
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Tags />}
         title="Brands"

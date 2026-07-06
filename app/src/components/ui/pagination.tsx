@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { Select } from './select'; // Ensure this imports your FIXED Select component
+import { Select } from './select';
 import { Button } from './button';
 import { Input } from './input';
 import { Card } from './card';
@@ -79,7 +79,6 @@ export const Pagination: React.FC<PaginationProps> = ({
   const fromItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const toItem = Math.min(currentPage * pageSize, totalItems);
 
-  // Generate page numbers with ellipsis
   const getPageNumbers = (): (number | '...')[] => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -123,47 +122,44 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <Card>
-      <div className={`flex items-center justify-between gap-5 ${className}`}>
-        {/* Left: Rows per page */}
+      <div className={`flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between ${className}`}>
         {showPageSize && onPageSizeChange && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm  whitespace-nowrap">
-              Rows per page:
-            </span>
-            <div className="w-18"> {/* Slightly wider to fit "100" cleanly */}
-              <Select
-                value={String(pageSize)}
-                onChange={(value) => onPageSizeChange(Number(value))}
-                options={pageSizeOptions.map(option => ({
-                  value: String(option),
-                  label: String(option),
-                  disabled:
-                    (option === 10 && totalItems < 10) ||
-                    (option === 20 && totalItems < 10) ||
-                    (option === 50 && totalItems <= 20) ||
-                    (option === 100 && totalItems <= 50)
-                }))}
-                search={false}
-                disabled={totalItems < 10}
-                size='sm'
-              />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm whitespace-nowrap">
+                Rows per page:
+              </span>
+              <div className="w-18">
+                <Select
+                  value={String(pageSize)}
+                  onChange={(value) => onPageSizeChange(Number(value))}
+                  options={pageSizeOptions.map(option => ({
+                    value: String(option),
+                    label: String(option),
+                    disabled:
+                      (option === 10 && totalItems < 10) ||
+                      (option === 20 && totalItems < 10) ||
+                      (option === 50 && totalItems <= 20) ||
+                      (option === 100 && totalItems <= 50)
+                  }))}
+                  search={false}
+                  disabled={totalItems < 10}
+                  size='sm'
+                />
+              </div>
             </div>
 
-            {/* Showing X – Y of Z */}
-            <span className="text-sm whitespace-nowrap text-primary/60 ml-5">
+            <span className="text-sm whitespace-nowrap text-primary/60 sm:ml-3">
               Showing <span className="font-semibold text-primary">{fromItem}</span>
               {' – '}
               <span className="font-semibold text-primary">{toItem}</span>
               {' of '}
               <span className="font-semibold text-primary">{totalItems}</span> items
             </span>
-          
           </div>
         )}
 
-
-        {/* Middle: Page controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <PaginationButton
             onClick={() => onPageChange(1)}
             disabled={!hasPreviousPage}
@@ -178,8 +174,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             title="Previous page"
           />
 
-          {/* Page numbers */}
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             {pages.map((page, index) =>
               page === '...' ? (
                 <span key={`ellipsis-${index}`} className="w-8 h-8 flex items-center justify-center text-primary2 select-none">…</span>
@@ -211,9 +206,8 @@ export const Pagination: React.FC<PaginationProps> = ({
           />
         </div>
 
-        {/* Right: Go to page */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm  whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="text-sm whitespace-nowrap">
             Go to page:
           </span>
           <Input
@@ -225,15 +219,13 @@ export const Pagination: React.FC<PaginationProps> = ({
             size="sm"
             disabled={totalPages <= 1}
           />
-          <div className='w-full'>
-            <Button
-              onClick={handleGoToPage}
-              disabled={totalPages <= 1 || !goToPage || parseInt(goToPage, 10) < 1 || parseInt(goToPage, 10) > totalPages}
-              isSquare={true}
-            >
-              Go
-            </Button>
-          </div>
+          <Button
+            onClick={handleGoToPage}
+            disabled={totalPages <= 1 || !goToPage || parseInt(goToPage, 10) < 1 || parseInt(goToPage, 10) > totalPages}
+            isSquare={true}
+          >
+            Go
+          </Button>
         </div>
       </div>
     </Card>

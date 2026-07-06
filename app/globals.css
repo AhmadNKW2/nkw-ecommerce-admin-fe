@@ -53,6 +53,7 @@
   --color-danger2: var(--brand-danger-2);
 
   --color-b1: var(--border1);
+  --color-bw2: color-mix(in srgb, var(--brand-primary) 5%, #f4f6fb);
 
   --shadow-s1: var(--shadow1);
   --shadow-s2: var(--shadow2);
@@ -223,5 +224,13 @@
   }
   .animation-delay-4000 {
     animation-delay: 4s;
+  }
+
+  .admin-page {
+    @apply flex w-full max-w-full flex-col items-center justify-center gap-4 p-3 sm:gap-5 sm:p-4 md:p-5;
+  }
+
+  .admin-state-page {
+    @apply min-h-screen bg-bw2 p-4 sm:p-6 md:p-8;
   }
 }

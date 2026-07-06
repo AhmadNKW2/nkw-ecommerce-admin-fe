@@ -67,8 +67,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center  px-4">
-      <Card className="w-full max-w-md p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-6 sm:px-6">
+      <Card className="w-full max-w-md p-6 sm:p-8">
         <div className="text-center">
           <div className="mb-4 flex justify-center">
             <AdminLogo
@@ -77,7 +77,7 @@ export default function LoginPage() {
               alt={siteName}
             />
           </div>
-          <h1 className="text-3xl font-bold ">Admin Login</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Admin Login</h1>
           <p className=" mt-2">Sign in to your account</p>
         </div>
 

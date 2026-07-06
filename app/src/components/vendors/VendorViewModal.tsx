@@ -81,7 +81,7 @@ export const VendorViewModal: React.FC<VendorViewModalProps> = ({
         )}
 
         {/* Details Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-500 mb-1">ID</p>
             <p className="font-semibold">{vendor.id}</p>

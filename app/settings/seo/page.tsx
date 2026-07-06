@@ -135,7 +135,7 @@ export default function SeoSettingsPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-col justify-center items-center gap-5 p-5">
+      <div className="admin-page">
         <PageHeader
           icon={<Search />}
           title="SEO Settings"
@@ -163,7 +163,7 @@ export default function SeoSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Search />}
         title="SEO Settings"

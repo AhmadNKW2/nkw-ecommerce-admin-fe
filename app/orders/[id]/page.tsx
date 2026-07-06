@@ -280,18 +280,19 @@ export default function OrderDetailsPage() {
     return (
         <div>
             {/* Top Navigation Bar */}
-            <div className="sticky top-0 z-20 bg-white px-6 py-4 flex items-center justify-between shadow-s2">
-                <div className="flex items-center gap-5">
+            <div className="sticky top-0 z-20 flex flex-col gap-3 bg-white px-3 py-3 shadow-s2 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+                <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-5">
                     <Button
                         variant="outline"
                         onClick={() => router.push("/orders")}
+                        className="shrink-0"
                     >
                         Back
                     </Button>
-                    <div className="h-6 w-px bg-gray-200 mx-2 hidden sm:block"></div>
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h1 className="text-xl font-bold text-gray-900">Order #{order.id}</h1>
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Order #{order.id}</h1>
                             <StatusBadge status={order.status} />
                         </div>
                         <div className="inline-flex items-center gap-2 text-sm text-gray-500">
@@ -306,19 +307,23 @@ export default function OrderDetailsPage() {
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Button
                         variant="outline"
                         color="var(--color-danger)"
                         onClick={() => setShowDeleteModal(true)}
+                        className="flex-1 sm:flex-none"
                     >
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center justify-center gap-2">
                             <Trash2 className="w-4 h-4" />
                             Delete
                         </span>
                     </Button>
-                    <Button onClick={() => router.push(`/orders/${order.id}/edit`)}>
-                        <span className="flex items-center gap-2">
+                    <Button
+                        onClick={() => router.push(`/orders/${order.id}/edit`)}
+                        className="flex-1 sm:flex-none"
+                    >
+                        <span className="flex items-center justify-center gap-2">
                             <Pencil className="w-4 h-4" />
                             Edit Order
                         </span>
@@ -336,7 +341,7 @@ export default function OrderDetailsPage() {
                 itemName={`Order #${order.id}`}
             />
 
-            <div className="flex flex-col justify-center items-center gap-5 p-5">
+            <div className="admin-page">
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 w-full">
                     {/* Left Column (Main) */}

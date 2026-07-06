@@ -184,7 +184,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     : `Update ${isAdmin ? "admin" : "customer"} details`;
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       {/* Header */}
       <PageHeader
         icon={<Icon />}
@@ -206,7 +206,7 @@ export const UserForm: React.FC<UserFormProps> = ({
       <Card>
         <h2 className="text-lg font-semibold">{isAdmin ? "Admin" : "Customer"} Details</h2>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* First Name */}
           <Input
             label="First Name"

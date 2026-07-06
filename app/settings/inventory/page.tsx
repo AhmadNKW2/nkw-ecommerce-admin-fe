@@ -36,7 +36,7 @@ export default function InventorySettingsPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-col justify-center items-center gap-5 p-5">
+      <div className="admin-page">
         <PageHeader
           icon={<Package />}
           title="Inventory Settings"
@@ -64,7 +64,7 @@ export default function InventorySettingsPage() {
   }
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Package />}
         title="Inventory Settings"

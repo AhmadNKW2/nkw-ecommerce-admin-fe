@@ -105,7 +105,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         className={`
-          relative w-full max-h-[95vh] rounded-xl shadow-xl
+          relative w-full max-w-[min(100%,42rem)] max-h-[95vh] rounded-xl shadow-xl
           flex flex-col ${scrollable ? 'overflow-hidden' : 'overflow-visible'}
           transition-all duration-300 ease-out
           ${variant === 'default' ? 'bg-white' : ''}

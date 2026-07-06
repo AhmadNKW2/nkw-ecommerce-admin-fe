@@ -1269,7 +1269,7 @@ function ProductReviewCard({
                         </div>
                         ) : null}
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <ReviewActionButton
                                 icon={<Eye className="h-4 w-4" />}
                                 label="Preview"
@@ -1765,7 +1765,7 @@ export function ProductReviewWorkspace({
     }
 
     return (
-        <div className="flex flex-col justify-center items-center gap-5 p-5 w-full text-slate-950">
+        <div className="admin-page w-full text-slate-950">
             {hideImportActions ? null : importJobs.length > 0 ? (
                 <section className="flex w-full flex-col gap-2 overflow-hidden rounded-[20px] border border-blue-200 bg-blue-50 px-6 py-4 shadow-sm">
                     {renderImportJobStatusCards(importJobs)}

@@ -77,7 +77,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   };
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Tags />}
         title={mode === "create" ? "Create Brand" : "Edit Brand"}
@@ -97,7 +97,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
       <Card>
         <h2 className="text-lg font-semibold">Brand Details</h2>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Input
             label="Name (English)"
             value={nameEn}

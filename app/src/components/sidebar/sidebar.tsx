@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -11,6 +11,9 @@ import { ChevronLeft } from 'lucide-react';
 interface SidebarContextType {
   isCollapsed: boolean;
   toggleCollapsed: () => void;
+  isMobile: boolean;
+  isMobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -21,6 +24,8 @@ export const useSidebar = () => {
   return context;
 };
 
+const MOBILE_BREAKPOINT = 1024;
+
 // ---------- Sidebar ----------
 
 interface SidebarProps {
@@ -29,22 +34,83 @@ interface SidebarProps {
 
 export function Sidebar({ children }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+
+    const syncViewport = () => {
+      const mobile = mediaQuery.matches;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setMobileOpen(false);
+      }
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener('change', syncViewport);
+    return () => mediaQuery.removeEventListener('change', syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileOpen]);
 
   return (
     <SidebarContext.Provider
-      value={{ isCollapsed, toggleCollapsed: () => setIsCollapsed((v) => !v) }}
+      value={{
+        isCollapsed,
+        toggleCollapsed: () => setIsCollapsed((v) => !v),
+        isMobile,
+        isMobileOpen,
+        setMobileOpen,
+      }}
     >
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+interface SidebarPanelProps {
+  children: React.ReactNode;
+}
+
+export function SidebarPanel({ children }: SidebarPanelProps) {
+  const { isCollapsed, isMobile, isMobileOpen, setMobileOpen } = useSidebar();
+
+  return (
+    <>
+      {isMobile && isMobileOpen &&
+        createPortal(
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />,
+          document.body,
+        )}
       <aside
         className={`
-          relative h-screen bg-white shadow-s1
+          relative z-50 h-screen bg-white shadow-s1
           flex flex-col shrink-0
-          transition-[width] duration-300 ease-in-out
-          ${isCollapsed ? 'w-18' : 'w-70'}
+          transition-[width,transform] duration-300 ease-in-out
+          ${isMobile
+            ? `fixed inset-y-0 left-0 w-70 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : isCollapsed ? 'w-18' : 'w-70'
+          }
         `}
       >
         {children}
       </aside>
-    </SidebarContext.Provider>
+    </>
   );
 }
 
@@ -56,27 +122,27 @@ interface SidebarHeaderProps {
 }
 
 export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
-  const { isCollapsed, toggleCollapsed } = useSidebar();
+  const { isCollapsed, toggleCollapsed, isMobile } = useSidebar();
 
   return (
     <div
       className={`
         border-b border-b1 flex items-center py-2
         transition-all duration-300 ease-in-out
-        ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'}
+        ${isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-between px-4'}
       `}
     >
       <div
         className={`
           flex min-w-0 items-center transition-all duration-300 ease-in-out
-          ${isCollapsed ? 'justify-center' : 'flex-1 gap-3 pr-6'}
+          ${isCollapsed && !isMobile ? 'justify-center' : 'flex-1 gap-3 pr-6'}
         `}
       >
         {logo ? (
           <div
             className={`
               shrink-0 transition-all duration-300 ease-in-out
-              ${isCollapsed ? 'h-10 w-10 [&_img]:h-10 [&_img]:w-10 [&>div]:h-10 [&>div]:w-10' : ''}
+              ${isCollapsed && !isMobile ? 'h-10 w-10 [&_img]:h-10 [&_img]:w-10 [&>div]:h-10 [&>div]:w-10' : ''}
             `}
           >
             {logo}
@@ -86,38 +152,40 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
         <div
           className={`
             min-w-0 overflow-hidden transition-all duration-300 ease-in-out
-            ${isCollapsed ? 'max-w-0 opacity-0' : 'flex-1 opacity-100'}
+            ${isCollapsed && !isMobile ? 'max-w-0 opacity-0' : 'flex-1 opacity-100'}
           `}
         >
           {children}
         </div>
       </div>
 
-      <button
-        onClick={toggleCollapsed}
-        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="
-          absolute -right-3.5 top-13 -translate-y-1/2 z-20
-          flex items-center justify-center
-          w-7 h-7 rounded-full shrink-0
-          bg-white text-primary
-          shadow-[0_2px_8px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]
-          hover:shadow-[0_4px_12px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.08)]
-          hover:scale-110
-          transition-all duration-200 ease-out
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
-        "
-      >
-        <ChevronLeft
-          size={15}
-          strokeWidth={2.5}
-          className={`
-            transition-transform duration-300 ease-in-out
-            ${isCollapsed ? 'rotate-180' : 'rotate-0'}
-          `}
-        />
-      </button>
+      {!isMobile && (
+        <button
+          onClick={toggleCollapsed}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="
+            absolute -right-3.5 top-13 -translate-y-1/2 z-20
+            flex items-center justify-center
+            w-7 h-7 rounded-full shrink-0
+            bg-white text-primary
+            shadow-[0_2px_8px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]
+            hover:shadow-[0_4px_12px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.08)]
+            hover:scale-110
+            transition-all duration-200 ease-out
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+          "
+        >
+          <ChevronLeft
+            size={15}
+            strokeWidth={2.5}
+            className={`
+              transition-transform duration-300 ease-in-out
+              ${isCollapsed ? 'rotate-180' : 'rotate-0'}
+            `}
+          />
+        </button>
+      )}
     </div>
   );
 }
@@ -166,14 +234,15 @@ export function SidebarGroup({
   icon,
 }: SidebarGroupProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, isMobile } = useSidebar();
+  const showCollapsed = isCollapsed && !isMobile;
 
   return (
     <div className="mb-4">
       <div
         className={`
           grid transition-all duration-300 ease-in-out
-          ${isCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}
+          ${showCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}
         `}
       >
         <div className="overflow-hidden">
@@ -208,7 +277,7 @@ export function SidebarGroup({
       <div
         className={`
           grid transition-all duration-300 ease-in-out
-          ${isCollapsed || isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
+          ${showCollapsed || isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
         `}
       >
         <div className="overflow-hidden">
@@ -239,7 +308,8 @@ export function SidebarLink({
   onClick,
 }: SidebarLinkProps) {
   const pathname = usePathname();
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, isMobile, setMobileOpen } = useSidebar();
+  const showCollapsed = isCollapsed && !isMobile;
   const isActive = exact
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
@@ -248,25 +318,32 @@ export function SidebarLink({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
   const handleMouseEnter = () => {
-    if (!isCollapsed || !linkRef.current) return;
+    if (!showCollapsed || !linkRef.current) return;
     const rect = linkRef.current.getBoundingClientRect();
     setTooltipPos({ x: rect.right + 10, y: rect.top + rect.height / 2 });
   };
 
   const handleMouseLeave = () => setTooltipPos(null);
 
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+    onClick?.(event);
+  };
+
   return (
     <>
       <Link
         ref={linkRef}
         href={href}
-        onClick={onClick}
+        onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={`
           group relative flex items-center mb-1
           transition-all duration-300 ease-in-out
-          ${isCollapsed
+          ${showCollapsed
             ? 'justify-center px-2 py-1.5 gap-0'
             : `px-3 py-2.5 gap-3 rounded-r1 ${isActive ? 'bg-primary text-white shadow-s2' : 'hover:bg-primary/10'}`
           }
@@ -276,7 +353,7 @@ export function SidebarLink({
           className={`
             flex items-center justify-center shrink-0
             transition-all duration-300 ease-in-out
-            ${isCollapsed
+            ${showCollapsed
               ? `w-10 h-10 rounded-xl ${
                   isActive
                     ? 'bg-primary text-white shadow-s2 scale-105'
@@ -293,7 +370,7 @@ export function SidebarLink({
           className={`
             font-medium text-sm whitespace-nowrap overflow-hidden
             transition-all duration-300 ease-in-out
-            ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-50 flex-1 opacity-100'}
+            ${showCollapsed ? 'max-w-0 opacity-0' : 'max-w-50 flex-1 opacity-100'}
             ${isActive ? 'text-white' : ''}
           `}
         >
@@ -305,7 +382,7 @@ export function SidebarLink({
             className={`
               text-xs font-semibold rounded-full overflow-hidden whitespace-nowrap flex items-center justify-center
               transition-all duration-300 ease-in-out
-              ${isCollapsed ? 'max-w-0 opacity-0 px-0 py-0' : 'max-w-12.5 px-2 py-0.5 opacity-100'}
+              ${showCollapsed ? 'max-w-0 opacity-0 px-0 py-0' : 'max-w-12.5 px-2 py-0.5 opacity-100'}
               ${isActive ? 'bg-white text-primary' : 'bg-primary text-white'}
             `}
           >
@@ -314,7 +391,7 @@ export function SidebarLink({
         )}
       </Link>
 
-      {isCollapsed && tooltipPos &&
+      {showCollapsed && tooltipPos &&
         createPortal(
           <div
             role="tooltip"
@@ -364,23 +441,24 @@ export function SidebarDivider({ className = '' }: SidebarDividerProps) {
 // ---------- Link skeleton (loading placeholder) ----------
 
 export function SidebarLinkSkeleton() {
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, isMobile } = useSidebar();
+  const showCollapsed = isCollapsed && !isMobile;
 
   return (
     <div
       className={`
         mb-1 flex items-center animate-pulse
-        ${isCollapsed ? 'justify-center px-2 py-1.5' : 'gap-3 px-3 py-2.5'}
+        ${showCollapsed ? 'justify-center px-2 py-1.5' : 'gap-3 px-3 py-2.5'}
       `}
       aria-hidden="true"
     >
       <div
         className={`
           shrink-0 rounded-xl bg-gray-200
-          ${isCollapsed ? 'h-10 w-10' : 'h-5 w-5 rounded-full'}
+          ${showCollapsed ? 'h-10 w-10' : 'h-5 w-5 rounded-full'}
         `}
       />
-      {!isCollapsed && (
+      {!showCollapsed && (
         <div className="h-4 max-w-28 flex-1 rounded bg-gray-200" />
       )}
     </div>

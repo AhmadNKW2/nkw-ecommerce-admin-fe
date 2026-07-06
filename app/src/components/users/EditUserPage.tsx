@@ -190,7 +190,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-bw2 p-8">
+      <div className="admin-state-page">
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">
@@ -215,7 +215,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-bw2 p-8">
+      <div className="admin-state-page">
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">

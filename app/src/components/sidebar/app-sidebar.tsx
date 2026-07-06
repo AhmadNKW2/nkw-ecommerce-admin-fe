@@ -14,7 +14,6 @@ import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
 import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization';
 
 import {
-  Sidebar,
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
@@ -64,7 +63,8 @@ interface AppSidebarProps {
 
 function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   const { logout, user } = useAuth();
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, isMobile } = useSidebar();
+  const showCollapsed = isCollapsed && !isMobile;
   const userRole = user?.role;
   const { isVisibilityPending, isEnabled } = useResolvedFeatureToggles();
   const { canAccess } = useAdminAccess();
@@ -170,7 +170,7 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
 
       {footer && (
         <SidebarFooter>
-          <div className={`flex items-center gap-5 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className={`flex items-center gap-5 ${showCollapsed ? 'justify-center' : ''}`}>
             {footer.userAvatar ? (
               <img
                 src={footer.userAvatar}
@@ -182,7 +182,7 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                 {(userDisplayName || footer.userName).charAt(0).toUpperCase()}
               </div>
             )}
-            {!isCollapsed && (
+            {!showCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">
                   {userDisplayName || footer.userName}
@@ -190,7 +190,7 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                 <p className="text-xs truncate">{user?.email || footer.userEmail}</p>
               </div>
             )}
-            {!isCollapsed && (
+            {!showCollapsed && (
               <button
                 onClick={handleLogout}
                 className="p-2 hover: rounded-r1 transition-colors duration-300"
@@ -219,9 +219,5 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
 }
 
 export function AppSidebar({ groups, header, footer }: AppSidebarProps) {
-  return (
-    <Sidebar>
-      <AppSidebarInner groups={groups} header={header} footer={footer} />
-    </Sidebar>
-  );
+  return <AppSidebarInner groups={groups} header={header} footer={footer} />;
 }

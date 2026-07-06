@@ -545,7 +545,7 @@ export const SpecificationForm: React.FC<SpecificationFormProps> = ({
   };
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Tag />}
         title={mode === "create" ? "Create Specification" : "Edit Specification"}

@@ -179,7 +179,7 @@ export default function SidebarSettingsPage() {
   }));
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<LayoutTemplate />}
         title="Sidebar Settings"

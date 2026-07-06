@@ -86,7 +86,7 @@ function SitePopupSettingsPageContent() {
 
   if (isError) {
     return (
-      <div className="flex flex-col justify-center items-center gap-5 p-5">
+      <div className="admin-page">
         <PageHeader
           icon={<ImageIcon />}
           title="Site Popup"
@@ -115,7 +115,7 @@ function SitePopupSettingsPageContent() {
   const saving = updateSitePopupSettings.isPending;
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<ImageIcon />}
         title="Site Popup"

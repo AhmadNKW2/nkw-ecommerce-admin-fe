@@ -141,7 +141,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
     : parentCategories;
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       {/* Header */}
       <PageHeader
         icon={<Folder />}
@@ -163,7 +163,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
       <Card>
         <h2 className="text-lg font-semibold">Category Details</h2>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Name English */}
           <Input
             label="Name (English)"

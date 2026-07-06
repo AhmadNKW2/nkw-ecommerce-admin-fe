@@ -146,7 +146,7 @@ export default function PricingAuditPage() {
     auditMeta.page * auditMeta.limit < auditMeta.total;
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<BarChart3 />}
         title="Pricing Audit"

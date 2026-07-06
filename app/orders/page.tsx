@@ -124,7 +124,7 @@ export default function OrdersPage() {
   }, [orders]);
 
   return (
-    <div className="flex flex-col justify-center items-center gap-5 p-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Receipt />}
         title="Orders"
@@ -286,7 +286,7 @@ export default function OrdersPage() {
                     onClick={() => router.push(`/orders/${order.id}`)}
                   >
                     <TableCell className="font-mono font-medium">#{order.id}</TableCell>
-                    <TableCell className="min-w-[320px] w-[320px]">
+                    <TableCell className="min-w-[180px] sm:min-w-[240px] lg:min-w-[320px] lg:w-[320px]">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold uppercase">
                           {customerLabel[0]?.toUpperCase() || "G"}

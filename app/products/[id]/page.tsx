@@ -1747,7 +1747,7 @@ export default function EditProductPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-bw2">
+      <div className="admin-state-page flex justify-center items-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -1755,7 +1755,7 @@ export default function EditProductPage() {
 
   if (productError) {
     return (
-      <div className="min-h-screen bg-bw2 p-8">
+      <div className="admin-state-page">
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">
@@ -1786,7 +1786,7 @@ export default function EditProductPage() {
 
   if (!productLoading && !productError && !initialData) {
     return (
-      <div className="min-h-screen bg-bw2 p-8">
+      <div className="admin-state-page">
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">

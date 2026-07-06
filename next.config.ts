@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
     ? {}
     : {
       experimental: {
+        proxyClientMaxBodySize: '50mb',
         optimizePackageImports: ['lucide-react', '@tanstack/react-query', 'framer-motion'],
       },
     }),

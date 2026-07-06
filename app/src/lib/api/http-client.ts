@@ -230,11 +230,46 @@ class HttpClient {
 
   /** Ensure Bearer is set before cross-origin uploads (cookies are not sent to api.*). */
   private async ensureBearerTokenForDirectUpload(): Promise<void> {
+    this.sanitizeExpiredBearerHeader();
     const authHeader = (this.defaultHeaders as Record<string, string>)
       .Authorization;
     if (authHeader) return;
 
     await this.refreshSessionTokens();
+  }
+
+  private decodeJwtPayload(token: string): { exp?: number } | null {
+    try {
+      const segment = token.split(".")[1];
+      if (!segment) return null;
+      const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+      const json = atob(normalized);
+      return JSON.parse(json) as { exp?: number };
+    } catch {
+      return null;
+    }
+  }
+
+  private isBearerTokenExpired(token: string): boolean {
+    const payload = this.decodeJwtPayload(token);
+    if (!payload?.exp) return false;
+    return payload.exp <= Math.floor(Date.now() / 1000);
+  }
+
+  /**
+   * Drop expired Bearer headers so httpOnly cookies are used instead.
+   * OptionalJwtAuthGuard treats invalid Bearer as anonymous — that caused
+   * admin /search to return storefront "card" rows without brand/image/etc.
+   */
+  private sanitizeExpiredBearerHeader(): void {
+    const headers = this.defaultHeaders as Record<string, string>;
+    const authHeader = headers.Authorization;
+    if (!authHeader?.startsWith("Bearer ")) return;
+
+    const token = authHeader.slice("Bearer ".length).trim();
+    if (!token || !this.isBearerTokenExpired(token)) return;
+
+    this.removeAuthToken();
   }
 
   private constructor() {
@@ -558,6 +593,8 @@ class HttpClient {
 
     const url = `${this.baseURL}${endpoint}`;
 
+    this.sanitizeExpiredBearerHeader();
+
     let config: RequestInit = {
       ...options,
       credentials: 'include', // Always include cookies for auth
@@ -776,6 +813,7 @@ class HttpClient {
     return (async () => {
       this.emitApiLoading(1);
       try {
+        this.sanitizeExpiredBearerHeader();
         const isDirectUpload = this.usesDirectUpload(endpoint);
         if (isDirectUpload) {
           await this.ensureBearerTokenForDirectUpload();
@@ -853,6 +891,7 @@ class HttpClient {
     return (async () => {
       this.emitApiLoading(1);
       try {
+        this.sanitizeExpiredBearerHeader();
         const isDirectUpload = this.usesDirectUpload(endpoint);
         if (isDirectUpload) {
           await this.ensureBearerTokenForDirectUpload();

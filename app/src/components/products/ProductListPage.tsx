@@ -81,6 +81,16 @@ const getProductImageUrl = (product: Product) => {
     return product.primary_image.url;
   }
 
+  if (Array.isArray((product as { images?: string[] }).images)) {
+    const searchImages = (product as { images?: string[] }).images ?? [];
+    const firstSearchImage = searchImages.find(
+      (url) => typeof url === "string" && url.trim().length > 0,
+    );
+    if (firstSearchImage) {
+      return firstSearchImage;
+    }
+  }
+
   if (typeof product.image === "string" && product.image.trim()) {
     return product.image;
   }

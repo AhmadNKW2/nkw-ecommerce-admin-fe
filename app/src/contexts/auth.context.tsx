@@ -301,18 +301,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, []);
 
-  // When returning to this tab, drop stale in-memory Bearer tokens so requests
-  // use the httpOnly cookie refreshed by another tab or a background refresh.
+  // When returning to this tab, refresh the session so Bearer + cookies stay in sync.
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const handleVisibility = () => {
-      if (document.visibilityState !== 'visible') return;
-      httpClient.removeAuthToken();
+      if (document.visibilityState !== "visible") return;
       lastActivityRef.current = Date.now();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (!isAuthenticatedRef.current) return;
+        httpClient.removeAuthToken();
+        void refreshSession();
+      }, 300);
     };
 
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [refreshSession]);
 
   // Initialize auth state and set up cross-tab sync
   useEffect(() => {

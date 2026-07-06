@@ -2,7 +2,6 @@ import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, Inbox } from 'lucide-react';
 import { Pagination, type PaginationData } from './pagination';
 
-// Context to communicate empty state from TableBody to Table
 const TableContext = React.createContext<{
   isEmpty: boolean;
   setIsEmpty: (value: boolean) => void;
@@ -19,6 +18,7 @@ interface TableProps {
   onPageSizeChange?: (pageSize: number) => void;
   showPageSize?: boolean;
   noPagination?: boolean;
+  minWidth?: string;
 }
 
 export const Table: React.FC<TableProps> = ({
@@ -32,11 +32,12 @@ export const Table: React.FC<TableProps> = ({
   onPageSizeChange,
   showPageSize = true,
   noPagination = false,
+  minWidth = '960px',
 }) => {
   const [isEmpty, setIsEmpty] = React.useState(false);
 
   return (
-    <div className={`flex flex-col gap-4 w-full ${wrapperClassName}`}>
+    <div className={`flex w-full min-w-0 flex-col gap-4 ${wrapperClassName}`}>
       <TableContext.Provider value={{ isEmpty, setIsEmpty }}>
         {isEmpty && (
           <div className="w-full rounded-r1 border border-primary/20 shadow-s1 bg-white">
@@ -53,8 +54,11 @@ export const Table: React.FC<TableProps> = ({
           </div>
         )}
         
-        <div className={`w-full overflow-x-auto overflow-y-visible rounded-r1 border border-primary/20 shadow-s1 ${isEmpty ? 'hidden' : ''} ${innerWrapperClassName}`}>
-          <table className={`w-full border-collapse bg-white ${className}`} style={{ tableLayout: 'fixed' }}>
+        <div className={`w-full min-w-0 overflow-x-auto rounded-r1 border border-primary/20 shadow-s1 ${isEmpty ? 'hidden' : ''} ${innerWrapperClassName}`}>
+          <table
+            className={`w-full border-collapse bg-white ${className}`}
+            style={{ minWidth }}
+          >
             {children}
           </table>
         </div>
@@ -163,7 +167,7 @@ export const TableHead: React.FC<TableHeadProps> = ({
 
   return (
     <th
-      className={`px-4 py-2 text-left text-sm font-semibold tracking-wider ${sortable ? 'cursor-pointer select-none hover:bg-primary/90' : ''} ${className}`}
+      className={`px-3 py-2 text-left text-sm font-semibold tracking-wider whitespace-nowrap lg:px-4 ${sortable ? 'cursor-pointer select-none hover:bg-primary/90' : ''} ${className}`}
       style={{ width }}
       onClick={handleClick}
     >
@@ -189,9 +193,8 @@ interface TableCellProps {
 
 export const TableCell: React.FC<TableCellProps> = ({ children, className = '', width }) => {
   return (
-    <td className={`px-4 py-2 text-sm  text-start overflow-visible ${className}`} style={{ width }}>
+    <td className={`px-3 py-2 text-sm text-start align-middle lg:px-4 ${className}`} style={{ width }}>
       {children}
     </td>
   );
 };
-

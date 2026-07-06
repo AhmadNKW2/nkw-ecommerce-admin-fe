@@ -587,7 +587,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   useEnterToSubmit(handleSubmit, isSubmitting);
 
   return (
-    <div className="mx-auto p-5 flex flex-col gap-5">
+    <div className="admin-page">
       <PageHeader
         icon={<Package />}
         title={isEditMode ? (

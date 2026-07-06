@@ -130,7 +130,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
           }
           onMenuClick={() => setMobileOpen(true)}
         />
-        <main ref={mainRef} className="relative min-h-0 flex-1 overflow-auto">
+        <main ref={mainRef} className="relative min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
           {children}
           {showOverlay && (
             <div className="absolute inset-0 z-9998" />

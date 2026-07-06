@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 
@@ -493,7 +494,155 @@ export function ProductListPage({
           }
         />
       ) : !isProductsLoading && (
+        <>
+          <div className="flex w-full min-w-0 flex-col gap-3 lg:hidden">
+            {products.map((product) => {
+              const imageUrl = getProductImageUrl(product);
+              const displayPrice = getProductDisplayPrice(product);
+              const createdAtParts = getCreatedAtParts(
+                product.created_at || (product as { createdAt?: string }).createdAt,
+              );
+              const isOutOfStock = product.variants?.length
+                ? product.variants.every((variant: { is_out_of_stock?: boolean }) => variant.is_out_of_stock === true)
+                : product.is_out_of_stock === true;
+
+              return (
+                <Card
+                  key={product.id}
+                  className="!p-4"
+                  id={`product-row-${product.id}`}
+                >
+                  <div className="flex gap-3">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-primary/10">
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={product.name_en || ""}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Package className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-gray-900">{product.name_en}</p>
+                      {product.name_ar ? (
+                        <p className="truncate text-sm text-gray-500">{product.name_ar}</p>
+                      ) : null}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {product.categories?.[0] ? (
+                          <Badge variant="default2">{product.categories[0].name_en}</Badge>
+                        ) : null}
+                        {showStatusFilter ? (
+                          <Badge variant={getStatusVariant(product.status)}>
+                            {getStatusLabel(product.status)}
+                          </Badge>
+                        ) : null}
+                        <Badge variant={isOutOfStock ? "danger" : "success"}>
+                          {isOutOfStock ? "Out of Stock" : "In Stock"}
+                        </Badge>
+                        <Badge variant={getVisibilityVariant(product.visible ?? product.is_active)}>
+                          {getVisibilityLabel(product.visible ?? product.is_active)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Brand</p>
+                      <p className="truncate font-medium">{product.brand?.name_en || "—"}</p>
+                    </div>
+                    {vendorsEnabled ? (
+                      <div>
+                        <p className="text-xs text-gray-500">Vendor</p>
+                        <p className="truncate font-medium">
+                          {product.vendor?.name_en || product.vendor?.name || "—"}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="text-xs text-gray-500">Price</p>
+                      <p className="font-semibold">
+                        {displayPrice?.currentPrice ?? "—"}
+                      </p>
+                    </div>
+                    {ratingsEnabled ? (
+                      <div>
+                        <p className="text-xs text-gray-500">Rating</p>
+                        <p className="flex items-center gap-1 font-medium">
+                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                          {formatRating(product.average_rating)}
+                        </p>
+                      </div>
+                    ) : null}
+                    {createdAtParts ? (
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500">Created</p>
+                        <p className="text-sm">
+                          {createdAtParts.date} · {createdAtParts.time}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-primary/10 pt-3">
+                    {referenceLinksEnabled ? (
+                      <IconButton
+                        variant="external"
+                        disabled={!normalizeExternalUrl(product.reference_link)}
+                        onClick={() => openReferenceLink(product.reference_link)}
+                        title="Open reference link"
+                      />
+                    ) : null}
+                    <IconButton
+                      variant="view"
+                      disabled={!product.slug}
+                      onClick={() => handlePreview(product.slug)}
+                      title="Preview product"
+                    />
+                    <IconButton
+                      variant="edit"
+                      href={`/products/${product.id}`}
+                      onClick={() => {
+                        sessionStorage.setItem("highlighted_product_id", product.id.toString());
+                      }}
+                      title="Edit product"
+                    />
+                    <IconButton
+                      variant="delete"
+                      onClick={() => handleDeleteClick(product)}
+                      title={isReviewProduct(product) ? "Delete product permanently" : "Delete product"}
+                    />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {data?.data.pagination ? (
+            <div className="w-full lg:hidden">
+              <Pagination
+                pagination={{
+                  currentPage: data.data.pagination.page,
+                  pageSize: data.data.pagination.limit,
+                  totalItems: data.data.pagination.total,
+                  totalPages: data.data.pagination.totalPages,
+                  hasNextPage: data.data.pagination.page < data.data.pagination.totalPages,
+                  hasPreviousPage: data.data.pagination.page > 1,
+                }}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
+          ) : null}
+
+          <div className="hidden w-full min-w-0 lg:block">
         <Table
+          minWidth="1320px"
           pagination={
             data?.data.pagination
               ? {
@@ -544,7 +693,7 @@ export function ProductListPage({
                 >
                   <TableCell className="font-mono text-sm">{product.id}</TableCell>
                   <TableCell>
-                    <div className="w-20 h-20 relative rounded-lg overflow-hidden bg-primary/10 border border-primary/20">
+                    <div className="h-14 w-14 relative rounded-lg overflow-hidden bg-primary/10 border border-primary/20">
                       {imageUrl ? (
                         <Image
                           src={imageUrl}
@@ -770,6 +919,8 @@ export function ProductListPage({
             })}
           </TableBody>
         </Table>
+          </div>
+        </>
       )}
 
       <DeleteConfirmationModal

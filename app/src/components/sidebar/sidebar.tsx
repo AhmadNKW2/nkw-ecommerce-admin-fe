@@ -83,11 +83,11 @@ interface SidebarPanelProps {
 }
 
 export function SidebarPanel({ children }: SidebarPanelProps) {
-  const { isCollapsed, isMobile, isMobileOpen, setMobileOpen } = useSidebar();
+  const { isCollapsed, isMobileOpen, setMobileOpen } = useSidebar();
 
   return (
     <>
-      {isMobile && isMobileOpen &&
+      {isMobileOpen &&
         createPortal(
           <button
             type="button"
@@ -99,13 +99,12 @@ export function SidebarPanel({ children }: SidebarPanelProps) {
         )}
       <aside
         className={`
-          relative z-50 h-screen bg-white shadow-s1
-          flex flex-col shrink-0
+          z-50 flex h-dvh w-70 flex-col bg-white shadow-s1
           transition-[width,transform] duration-300 ease-in-out
-          ${isMobile
-            ? `fixed inset-y-0 left-0 w-70 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : isCollapsed ? 'w-18' : 'w-70'
-          }
+          fixed inset-y-0 left-0
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:relative lg:inset-auto lg:translate-x-0 lg:shrink-0
+          ${isCollapsed ? 'lg:w-18' : 'lg:w-70'}
         `}
       >
         {children}

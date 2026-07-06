@@ -390,7 +390,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                 )}
 
                 {referenceLinkActionsEnabled && !referenceLinkVisible && (
-                <div className="col-span-2">
+                <div className="col-span-1 md:col-span-2">
                     <button
                         type="button"
                         onClick={() => openReferenceLink(formData.referenceLink)}
@@ -450,7 +450,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
                 )}
 
                 {linkedProductsEnabled && (
-                <div className="col-span-2">
+                <div className="col-span-1 md:col-span-2">
                     <LinkedProductsField
                         value={formData.linked_product_ids || []}
                         onChange={(value) => onChange("linked_product_ids", value)}

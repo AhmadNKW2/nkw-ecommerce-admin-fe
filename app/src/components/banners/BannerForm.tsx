@@ -56,7 +56,7 @@ export const BannerForm: React.FC<BannerFormProps> = ({
     useEnterToSubmit(onSubmit, isSubmitting);
 
     return (
-        <div className="mx-auto p-5 flex flex-col gap-5">
+        <div className="admin-page">
             <PageHeader
                 icon={<ImageIcon />}
                 title={mode === "create" ? "Create Banner" : "Edit Banner"}

@@ -227,7 +227,11 @@
   }
 
   .admin-page {
-    @apply flex w-full max-w-full flex-col items-center justify-center gap-4 p-3 sm:gap-5 sm:p-4 md:p-5;
+    @apply flex w-full min-w-0 max-w-full flex-col gap-4 p-3 sm:gap-5 sm:p-4 md:p-5;
+  }
+
+  .admin-page > * {
+    @apply w-full min-w-0 max-w-full;
   }
 
   .admin-state-page {

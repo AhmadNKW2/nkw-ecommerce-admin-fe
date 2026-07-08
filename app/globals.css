@@ -227,14 +227,45 @@
   }
 
   .admin-page {
-    @apply flex w-full min-w-0 max-w-full flex-col gap-4 p-3 sm:gap-5 sm:p-4 md:p-5;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.75rem;
   }
 
   .admin-page > * {
-    @apply w-full min-w-0 max-w-full;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .admin-state-page {
-    @apply min-h-screen bg-bw2 p-4 sm:p-6 md:p-8;
+    min-height: 100vh;
+    background: color-mix(in srgb, var(--brand-primary) 5%, #f4f6fb);
+    padding: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .admin-page {
+      gap: 1.25rem;
+      padding: 1rem;
+    }
+
+    .admin-state-page {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .admin-page {
+      padding: 1.25rem;
+    }
+
+    .admin-state-page {
+      padding: 2rem;
+    }
   }
 }

@@ -22,11 +22,18 @@ import {
   ProductPriceRule,
 } from "../../src/services/settings/types/settings.types";
 import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
+import { useBrands } from "../../src/services/brands/hooks/use-brands";
+import { useCategories } from "../../src/services/categories/hooks/use-categories";
 import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 import { useEffect, useState } from "react";
 
 type ProductPriceRuleDraft = {
   id: number | null;
+  vendor_id: string;
+  brand_id: string;
+  category_ids: string[];
+  price_condition: "any" | "more_than" | "less_than" | "between";
+  adjustment_type: "increase" | "decrease";
   min_vendor_price: string;
   max_vendor_price: string;
   percentage: string;
@@ -35,6 +42,11 @@ type ProductPriceRuleDraft = {
 
 const createEmptyRuleDraft = (): ProductPriceRuleDraft => ({
   id: null,
+  vendor_id: "",
+  brand_id: "",
+  category_ids: [],
+  price_condition: "between",
+  adjustment_type: "decrease",
   min_vendor_price: "",
   max_vendor_price: "",
   percentage: "1",
@@ -43,6 +55,17 @@ const createEmptyRuleDraft = (): ProductPriceRuleDraft => ({
 
 const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => ({
   id: rule.id,
+  vendor_id:
+    rule.vendor_id === null || rule.vendor_id === undefined
+      ? ""
+      : String(rule.vendor_id),
+  brand_id:
+    rule.brand_id === null || rule.brand_id === undefined
+      ? ""
+      : String(rule.brand_id),
+  category_ids: (rule.category_ids ?? []).map((categoryId) => String(categoryId)),
+  price_condition: rule.price_condition ?? "between",
+  adjustment_type: rule.adjustment_type ?? "decrease",
   min_vendor_price: String(rule.min_vendor_price ?? ""),
   max_vendor_price:
     rule.max_vendor_price === null || rule.max_vendor_price === undefined
@@ -75,6 +98,8 @@ export default function PricingSettingsPage() {
     refetch,
   } = useProductPriceRules({ enabled: importAiProductsEnabled });
   const { data: vendorsData } = useVendors();
+  const { data: brandsData } = useBrands({ page: 1, limit: 1000 });
+  const { data: categoriesData } = useCategories();
   const createProductPriceRule = useCreateProductPriceRule();
   const updateProductPriceRule = useUpdateProductPriceRule();
   const deleteProductPriceRule = useDeleteProductPriceRule();
@@ -107,6 +132,9 @@ export default function PricingSettingsPage() {
   const buildRulePayload = (
     draft: ProductPriceRuleDraft,
   ): CreateProductPriceRuleDto | null => {
+    const vendorId = draft.vendor_id ? Number(draft.vendor_id) : null;
+    const brandId = draft.brand_id ? Number(draft.brand_id) : null;
+    const categoryIds = draft.category_ids.map((value) => Number(value));
     const minVendorPrice = Number(draft.min_vendor_price);
     const maxVendorPrice =
       draft.max_vendor_price.trim() === ""
@@ -134,7 +162,29 @@ export default function PricingSettingsPage() {
       return null;
     }
 
+    if (
+      draft.price_condition === "less_than" &&
+      (maxVendorPrice === null || !Number.isFinite(maxVendorPrice))
+    ) {
+      showErrorToast("Less than condition needs a maximum original price");
+      return null;
+    }
+
+    if (
+      (vendorId !== null && (!Number.isInteger(vendorId) || vendorId < 1)) ||
+      (brandId !== null && (!Number.isInteger(brandId) || brandId < 1)) ||
+      categoryIds.some((categoryId) => !Number.isInteger(categoryId) || categoryId < 1)
+    ) {
+      showErrorToast("Vendor, brand, and category selections are invalid");
+      return null;
+    }
+
     return {
+      vendor_id: vendorId,
+      brand_id: brandId,
+      category_ids: categoryIds.length > 0 ? categoryIds : null,
+      price_condition: draft.price_condition,
+      adjustment_type: draft.adjustment_type,
       min_vendor_price: minVendorPrice,
       max_vendor_price: maxVendorPrice,
       percentage,
@@ -223,6 +273,31 @@ export default function PricingSettingsPage() {
     value: String(vendor.id),
     label: vendor.name_en || vendor.name || String(vendor.id),
   }));
+  const brandOptions = (brandsData?.data ?? []).map((brand: any) => ({
+    value: String(brand.id),
+    label: brand.name_en || brand.name_ar || String(brand.id),
+  }));
+  const flattenCategoryOptions = (
+    nodes: any[],
+    parentPath = "",
+  ): Array<{ value: string; label: string }> => {
+    const options: Array<{ value: string; label: string }> = [];
+
+    for (const node of nodes) {
+      const nodeName = node?.name_en || node?.name_ar || `#${node?.id ?? "?"}`;
+      const label = parentPath ? `${parentPath} / ${nodeName}` : nodeName;
+      if (node?.id) {
+        options.push({ value: String(node.id), label });
+      }
+
+      if (Array.isArray(node?.children) && node.children.length > 0) {
+        options.push(...flattenCategoryOptions(node.children, label));
+      }
+    }
+
+    return options;
+  };
+  const categoryOptions = flattenCategoryOptions(categoriesData ?? []);
 
   return (
     <div className="admin-page">
@@ -315,11 +390,11 @@ export default function PricingSettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold">
-                    AI Import Product Pricing Rules
+                    Product Pricing Rules
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Define the percentage reduction by vendor price range for
-                    AI-imported products only.
+                    Define persisted increase/decrease rules by vendor, brand,
+                    category, and original-price conditions.
                   </p>
                 </div>
               </div>
@@ -358,8 +433,8 @@ export default function PricingSettingsPage() {
             <div className="flex flex-col gap-4">
               {ruleDrafts.length === 0 && !isLoading ? (
                 <div className="rounded-r1 border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-                  No AI import pricing rules yet. Add your first range to
-                  control imported product prices.
+                  No pricing rules yet. Add your first rule to control how
+                  product prices are managed from original source prices.
                 </div>
               ) : null}
 
@@ -373,8 +448,8 @@ export default function PricingSettingsPage() {
                           : `Rule #${rule.id}`}
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
-                        Define the vendor price range and the percentage to
-                        reduce for AI-imported products.
+                        Define rule scope, original-price condition, and
+                        percentage adjustment.
                       </p>
                     </div>
 
@@ -389,6 +464,94 @@ export default function PricingSettingsPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <Select
+                      label="Vendor"
+                      value={rule.vendor_id}
+                      onChange={(value) =>
+                        setRuleField(
+                          index,
+                          "vendor_id",
+                          (Array.isArray(value) ? value[0] : value) ?? "",
+                        )
+                      }
+                      options={[
+                        { value: "", label: "Any vendor" },
+                        ...vendorOptions,
+                      ]}
+                      search={vendorOptions.length > 6}
+                      disabled={isRuleMutationPending}
+                    />
+                    <Select
+                      label="Brand"
+                      value={rule.brand_id}
+                      onChange={(value) =>
+                        setRuleField(
+                          index,
+                          "brand_id",
+                          (Array.isArray(value) ? value[0] : value) ?? "",
+                        )
+                      }
+                      options={[
+                        { value: "", label: "Any brand" },
+                        ...brandOptions,
+                      ]}
+                      search={brandOptions.length > 6}
+                      disabled={isRuleMutationPending}
+                    />
+                    <Select
+                      label="Categories"
+                      value={rule.category_ids}
+                      onChange={(value) =>
+                        setRuleField(
+                          index,
+                          "category_ids",
+                          Array.isArray(value) ? value : value ? [value] : [],
+                        )
+                      }
+                      options={categoryOptions}
+                      multiple={true}
+                      placeholder="Any category"
+                      search={categoryOptions.length > 6}
+                      disabled={isRuleMutationPending}
+                    />
+                    <Select
+                      label="Condition"
+                      value={rule.price_condition}
+                      onChange={(value) =>
+                        setRuleField(
+                          index,
+                          "price_condition",
+                          ((Array.isArray(value) ? value[0] : value) ??
+                            "between") as ProductPriceRuleDraft["price_condition"],
+                        )
+                      }
+                      options={[
+                        { value: "any", label: "Any original price" },
+                        { value: "more_than", label: "More than min" },
+                        { value: "less_than", label: "Less than max" },
+                        { value: "between", label: "Between min and max" },
+                      ]}
+                      search={false}
+                      disabled={isRuleMutationPending}
+                    />
+                    <Select
+                      label="Adjustment"
+                      value={rule.adjustment_type}
+                      onChange={(value) =>
+                        setRuleField(
+                          index,
+                          "adjustment_type",
+                          ((Array.isArray(value) ? value[0] : value) ??
+                            "decrease") as ProductPriceRuleDraft["adjustment_type"],
+                        )
+                      }
+                      options={[
+                        { value: "decrease", label: "Decrease by percentage" },
+                        { value: "increase", label: "Increase by percentage" },
+                      ]}
+                      search={false}
+                      disabled={isRuleMutationPending}
+                    />
                     <Input
                       label="Minimum Vendor Price"
                       type="number"
@@ -420,7 +583,7 @@ export default function PricingSettingsPage() {
                       disabled={isRuleMutationPending}
                     />
                     <Input
-                      label="Reduction Percentage"
+                      label="Percentage"
                       type="number"
                       min="1"
                       step="0.1"

@@ -156,6 +156,8 @@ export const productSchema = z.object({
   sale_price: z.string().optional().nullable(),
   original_vendor_price: z.union([z.number(), z.string()]).optional().nullable(),
   original_vendor_sale_price: z.union([z.number(), z.string()]).optional().nullable(),
+  original_price: z.union([z.number(), z.string()]).optional().nullable(),
+  original_sale_price: z.union([z.number(), z.string()]).optional().nullable(),
   weight: z.union([z.number(), z.string()]).optional().nullable(),
   weight_unit: z.enum(["g", "kg"]).optional().nullable(),
   length: z.union([z.number(), z.string()]).optional().nullable(),
@@ -585,6 +587,8 @@ export interface CreateProductDto {
   sale_price?: number | null;
   original_vendor_price?: number | null;
   original_vendor_sale_price?: number | null;
+  original_price?: number | null;
+  original_sale_price?: number | null;
   weight?: number;
   weight_unit?: "g" | "kg";
   length?: number;
@@ -703,6 +707,8 @@ export interface UpdateProductDto {
   sale_price?: number | null;
   original_vendor_price?: number | null;
   original_vendor_sale_price?: number | null;
+  original_price?: number | null;
+  original_sale_price?: number | null;
   weight?: number;
   weight_unit?: "g" | "kg";
   length?: number;

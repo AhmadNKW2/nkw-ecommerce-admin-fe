@@ -3,7 +3,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Menu } from "lucide-react";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { AppSidebar } from "../sidebar/app-sidebar";
 import { sidebarConfig } from "../sidebar/sidebar.config";
@@ -17,35 +16,7 @@ import { AdminLogo } from "../common/AdminLogo";
 import { queryKeys } from "../../lib/query-keys";
 import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
-
-function MobileTopBar({
-  title,
-  logo,
-  onMenuClick,
-}: {
-  title: string;
-  logo: React.ReactNode;
-  onMenuClick: () => void;
-}) {
-  return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-b1 bg-white px-3 shadow-s1 lg:hidden">
-      <button
-        type="button"
-        onClick={onMenuClick}
-        aria-label="Open navigation menu"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        <div className="shrink-0 [&_img]:h-8 [&_img]:w-8 [&>div]:h-8 [&>div]:w-8">
-          {logo}
-        </div>
-        <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
-      </div>
-    </header>
-  );
-}
+import { AdminTopHeader } from "./AdminTopHeader";
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -119,15 +90,10 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
         />
       </SidebarPanel>
       <div className="flex min-w-0 flex-1 flex-col">
-        <MobileTopBar
-          title={siteName}
-          logo={
-            <AdminLogo
-              src={siteLogo}
-              pending={isBrandingPending}
-              alt={siteName}
-            />
-          }
+        <AdminTopHeader
+          siteName={siteName}
+          siteLogo={siteLogo}
+          isBrandingPending={isBrandingPending}
           onMenuClick={() => setMobileOpen(true)}
         />
         <main ref={mainRef} className="relative min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto">

@@ -12,6 +12,7 @@ import { useAdminAccess } from '../../hooks/use-admin-access';
 import type { AdminAccessKey } from '../../lib/admin-access';
 import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
 import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization';
+import { useAdminNotifications } from '../../hooks/use-admin-notifications';
 
 import {
   SidebarHeader,
@@ -69,6 +70,7 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   const { isVisibilityPending, isEnabled } = useResolvedFeatureToggles();
   const { canAccess } = useAdminAccess();
   const { applyLayoutToGroups, layoutVersion } = useSidebarCustomization();
+  const { navBadges } = useAdminNotifications();
 
   const customizedGroups = useMemo(
     () =>
@@ -148,16 +150,19 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
                 icon={group.icon}
                 defaultOpen={group.defaultOpen ?? true}
               >
-                {visibleLinks.map((link, linkIndex) => (
-                  <SidebarLink
-                    key={`link-${groupIndex}-${linkIndex}`}
-                    href={link.href}
-                    icon={link.icon}
-                    label={link.label}
-                    badge={link.badge}
-                    exact={link.exact}
-                  />
-                ))}
+                {visibleLinks.map((link, linkIndex) => {
+                  const liveBadge = navBadges[link.href];
+                  return (
+                    <SidebarLink
+                      key={`link-${groupIndex}-${linkIndex}`}
+                      href={link.href}
+                      icon={link.icon}
+                      label={link.label}
+                      badge={liveBadge > 0 ? liveBadge : link.badge}
+                      exact={link.exact}
+                    />
+                  );
+                })}
                 {pendingLinks.map((link) => (
                   <SidebarLinkSkeleton key={`pending-${link.href}`} />
                 ))}

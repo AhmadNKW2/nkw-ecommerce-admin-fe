@@ -33,16 +33,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const hasActions = Boolean(action || cancelAction || extraActions);
 
   return (
-    <div className="flex w-full max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-      <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-5">
-        <div className={`shrink-0 rounded-r1 ${iconBgColor} p-2.5 sm:p-3`}>
+    <div className="flex w-full max-w-full flex-col gap-4 rounded-r1 border border-b1 bg-white p-4 shadow-s1 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-5">
+      <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+        <div className={`shrink-0 rounded-r1 ${iconBgColor} p-2.5 shadow-sm sm:p-3`}>
           <span className="flex h-5 w-5 items-center justify-center text-white sm:h-6 sm:w-6 [&>svg]:h-5 [&>svg]:w-5 sm:[&>svg]:h-6 sm:[&>svg]:w-6">
             {icon}
           </span>
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl">{title}</h1>
-          <p className="mt-0.5 text-sm sm:mt-1 sm:text-base">{description}</p>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl lg:text-3xl">{title}</h1>
+          <p className="mt-0.5 text-sm text-gray-600 sm:mt-1 sm:text-base">{description}</p>
         </div>
       </div>
       {hasActions && (

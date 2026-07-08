@@ -152,6 +152,13 @@ export const queryKeys = {
   },
 
   // Tags
+  tags: {
+    all: ["tags"] as const,
+    generation: () => [...queryKeys.tags.all, "generation"] as const,
+    generationJob: (jobId: string) =>
+      [...queryKeys.tags.generation(), "job", jobId] as const,
+  },
+
   // Notes
   notes: {
     all: ["notes"] as const,

@@ -231,7 +231,7 @@ export default function TagsSettingsPage() {
               <p className="mt-1 text-xs text-gray-500">
                 Count: {selectedCategoryDetails.tags_ar?.length ?? 0}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2" dir="rtl">
                 {(selectedCategoryDetails.tags_ar ?? []).slice(0, 80).map((tag) => (
                   <span
                     key={`ar-${tag}`}

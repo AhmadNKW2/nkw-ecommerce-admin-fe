@@ -94,7 +94,7 @@ export const CategoryViewModal: React.FC<CategoryViewModalProps> = ({
 
           <div>
             <p className="text-sm text-gray-500">Tags (Arabic)</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2" dir="rtl">
               {category.tags_ar?.length ? (
                 category.tags_ar.map((tag, index) => (
                   <Badge key={`ar-${index}-${tag}`} variant="default2">

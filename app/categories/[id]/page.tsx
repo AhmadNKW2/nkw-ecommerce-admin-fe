@@ -47,6 +47,28 @@ const parseTagsInput = (value: string): string[] => {
   return [...new Set(value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
 };
 
+const normalizeTagsField = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .join(", ");
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item): item is string => typeof item === "string")
+          .join(", ");
+      }
+    } catch {
+      return value;
+    }
+    return value;
+  }
+  return "";
+};
+
 export default function EditCategoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -120,8 +142,8 @@ export default function EditCategoryPage() {
       setNameAr(category.name_ar);
       setDescriptionEn(category.description_en || "");
       setDescriptionAr(category.description_ar || "");
-      setTagsEn(Array.isArray(category.tags_en) ? category.tags_en.join(", ") : "");
-      setTagsAr(Array.isArray(category.tags_ar) ? category.tags_ar.join(", ") : "");
+      setTagsEn(normalizeTagsField((category as any).tags_en));
+      setTagsAr(normalizeTagsField((category as any).tags_ar));
       // Set existing image URL
       if (category.image) {
         setImage({

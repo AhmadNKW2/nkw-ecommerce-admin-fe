@@ -79,6 +79,14 @@ class CategoryService {
     if (data.description_ar) {
       formData.append("description_ar", data.description_ar);
     }
+
+    if (data.tags_en !== undefined) {
+      formData.append("tags_en", JSON.stringify(data.tags_en));
+    }
+
+    if (data.tags_ar !== undefined) {
+      formData.append("tags_ar", JSON.stringify(data.tags_ar));
+    }
     
     if (data.visible !== undefined) {
       formData.append("visible", String(data.visible));
@@ -136,6 +144,14 @@ class CategoryService {
     
     if (data.description_ar !== undefined) {
       formData.append("description_ar", data.description_ar);
+    }
+
+    if (data.tags_en !== undefined) {
+      formData.append("tags_en", JSON.stringify(data.tags_en));
+    }
+
+    if (data.tags_ar !== undefined) {
+      formData.append("tags_ar", JSON.stringify(data.tags_ar));
     }
     
     if (data.visible !== undefined) {

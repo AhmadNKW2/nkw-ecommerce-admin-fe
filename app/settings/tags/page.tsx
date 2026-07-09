@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
 import { Card } from "../../src/components/ui/card";
 import { Button } from "../../src/components/ui/button";
-import { Input } from "../../src/components/ui/input";
 import { CategoryTreeSelect } from "../../src/components/products/CategoryTreeSelect";
 import { useCategories } from "../../src/services/categories/hooks/use-categories";
 import {
@@ -17,24 +16,11 @@ import {
 export default function TagsSettingsPage() {
   const { data: categories = [], isLoading: isCategoriesLoading } = useCategories();
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [maxTagsPerCategory, setMaxTagsPerCategory] = useState("80");
-  const [maxProductNamesPerCategory, setMaxProductNamesPerCategory] = useState("120");
   const [jobId, setJobId] = useState<string | null>(null);
 
   const generateCategoryTags = useGenerateCategoryTags();
   const { data: jobStatus, isFetching: isPollingJobStatus } =
     useCategoryTagsJobStatus(jobId);
-
-  const canSubmit = useMemo(() => {
-    const maxTags = Number(maxTagsPerCategory);
-    const maxProductNames = Number(maxProductNamesPerCategory);
-    return (
-      Number.isInteger(maxTags) &&
-      maxTags > 0 &&
-      Number.isInteger(maxProductNames) &&
-      maxProductNames > 0
-    );
-  }, [maxProductNamesPerCategory, maxTagsPerCategory]);
 
   const handleGenerate = async () => {
     const categoryIds = selectedCategoryIds
@@ -43,8 +29,6 @@ export default function TagsSettingsPage() {
 
     const response = await generateCategoryTags.mutateAsync({
       category_ids: categoryIds.length > 0 ? categoryIds : undefined,
-      max_tags_per_category: Number(maxTagsPerCategory),
-      max_product_names_per_category: Number(maxProductNamesPerCategory),
     });
 
     setJobId(response.data.job_id);
@@ -59,6 +43,8 @@ export default function TagsSettingsPage() {
 
   return (
     <div className="admin-page">
+      <SettingsNav />
+
       <PageHeader
         icon={<Sparkles />}
         title="Category Tags"
@@ -66,11 +52,9 @@ export default function TagsSettingsPage() {
         action={{
           label: generateCategoryTags.isPending ? "Starting..." : "Create Tags",
           onClick: handleGenerate,
-          disabled: generateCategoryTags.isPending || !canSubmit,
+          disabled: generateCategoryTags.isPending,
         }}
       />
-
-      <SettingsNav />
 
       <Card>
         <h2 className="text-lg font-semibold">Generation Filters</h2>
@@ -78,34 +62,13 @@ export default function TagsSettingsPage() {
           Leave category selection empty to generate tags for all active leaf categories.
         </p>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4">
           <CategoryTreeSelect
             label="Categories (optional)"
             categories={categories}
             selectedIds={selectedCategoryIds}
             onChange={setSelectedCategoryIds}
             disabled={isCategoriesLoading || generateCategoryTags.isPending}
-            placeholder="All active leaf categories"
-          />
-          <Input
-            label="Max Tags Per Category"
-            type="number"
-            min={1}
-            max={300}
-            step={1}
-            value={maxTagsPerCategory}
-            onChange={(event) => setMaxTagsPerCategory(event.target.value)}
-            disabled={generateCategoryTags.isPending}
-          />
-          <Input
-            label="Max Product Names Per Category"
-            type="number"
-            min={1}
-            max={300}
-            step={1}
-            value={maxProductNamesPerCategory}
-            onChange={(event) => setMaxProductNamesPerCategory(event.target.value)}
-            disabled={generateCategoryTags.isPending}
           />
         </div>
       </Card>

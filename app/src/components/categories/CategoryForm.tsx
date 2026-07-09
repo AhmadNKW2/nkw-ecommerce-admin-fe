@@ -52,6 +52,8 @@ interface CategoryFormProps {
   nameAr: string;
   descriptionEn?: string;
   descriptionAr?: string;
+  tagsEn?: string;
+  tagsAr?: string;
   image: ImageUploadItem | null;
   visible: boolean;
   parentId: number | null;
@@ -63,6 +65,8 @@ interface CategoryFormProps {
   onNameArChange: (value: string) => void;
   onDescriptionEnChange?: (value: string) => void;
   onDescriptionArChange?: (value: string) => void;
+  onTagsEnChange?: (value: string) => void;
+  onTagsArChange?: (value: string) => void;
   onImageChange: (value: ImageUploadItem | null) => void;
   onVisibleChange: (value: boolean) => void;
   onParentIdChange: (value: number | null) => void;
@@ -94,6 +98,8 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   nameAr,
   descriptionEn = "",
   descriptionAr = "",
+  tagsEn = "",
+  tagsAr = "",
   image,
   visible,
   parentId,
@@ -105,6 +111,8 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   onNameArChange,
   onDescriptionEnChange,
   onDescriptionArChange,
+  onTagsEnChange,
+  onTagsArChange,
   onImageChange,
   onVisibleChange,
   onParentIdChange,
@@ -226,8 +234,29 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
             <p className="font-medium">Visibility Status</p>
             <Toggle checked={visible} onChange={onVisibleChange} />
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {onTagsEnChange && (
+            <Textarea
+              label="Tags (English)"
+              value={tagsEn}
+              onChange={(e) => onTagsEnChange(e.target.value)}
+              rows={3}
+              placeholder="Comma-separated tags, e.g. iphone, apple, mobile"
+            />
+          )}
 
+          {onTagsArChange && (
+            <Textarea
+              label="Tags (Arabic)"
+              value={tagsAr}
+              onChange={(e) => onTagsArChange(e.target.value)}
+              rows={3}
+              isRtl
+              placeholder="وسوم مفصولة بفواصل"
+            />
+          )}
         </div>
 
         {/* Image Upload */}

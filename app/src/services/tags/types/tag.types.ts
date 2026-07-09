@@ -1,7 +1,5 @@
 export interface GenerateCategoryTagsRequest {
   category_ids?: number[];
-  max_tags_per_category?: number;
-  max_product_names_per_category?: number;
   model?: string;
 }
 

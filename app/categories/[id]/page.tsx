@@ -42,6 +42,11 @@ const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
   return [...new Set([...normalizedIds, ...relationIds])];
 };
 
+const parseTagsInput = (value: string): string[] => {
+  if (!value.trim()) return [];
+  return [...new Set(value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
+};
+
 export default function EditCategoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -56,6 +61,8 @@ export default function EditCategoryPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [tagsEn, setTagsEn] = useState("");
+  const [tagsAr, setTagsAr] = useState("");
   const [image, setImage] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [parentId, setParentId] = useState<number | null>(null);
@@ -113,6 +120,8 @@ export default function EditCategoryPage() {
       setNameAr(category.name_ar);
       setDescriptionEn(category.description_en || "");
       setDescriptionAr(category.description_ar || "");
+      setTagsEn(Array.isArray(category.tags_en) ? category.tags_en.join(", ") : "");
+      setTagsAr(Array.isArray(category.tags_ar) ? category.tags_ar.join(", ") : "");
       // Set existing image URL
       if (category.image) {
         setImage({
@@ -188,6 +197,8 @@ export default function EditCategoryPage() {
           name_ar: nameAr,
           description_en: descriptionEn || undefined,
           description_ar: descriptionAr || undefined,
+          tags_en: parseTagsInput(tagsEn),
+          tags_ar: parseTagsInput(tagsAr),
           visible: visible,
           parent_id: parentId,
           ...(attributesEnabled ? { attribute_ids } : {}),
@@ -275,6 +286,8 @@ export default function EditCategoryPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      tagsEn={tagsEn}
+      tagsAr={tagsAr}
       image={image}
       visible={visible}
       parentId={parentId}
@@ -307,6 +320,8 @@ export default function EditCategoryPage() {
         }
       }}
       onImageChange={setImage}
+      onTagsEnChange={setTagsEn}
+      onTagsArChange={setTagsAr}
       onVisibleChange={setVisible}
       onParentIdChange={setParentId}
       onProductIdsChange={setProductIds}

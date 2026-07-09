@@ -76,6 +76,38 @@ export const CategoryViewModal: React.FC<CategoryViewModalProps> = ({
           </p>
         </Card>
 
+        <Card noFlex variant="nested" className="space-y-3">
+          <div>
+            <p className="text-sm text-gray-500">Tags (English)</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {category.tags_en?.length ? (
+                category.tags_en.map((tag, index) => (
+                  <Badge key={`en-${index}-${tag}`} variant="default">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400">No English tags</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-500">Tags (Arabic)</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {category.tags_ar?.length ? (
+                category.tags_ar.map((tag, index) => (
+                  <Badge key={`ar-${index}-${tag}`} variant="default2">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400">No Arabic tags</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* Timestamps */}
         <Card noFlex variant="nested" className="flex justify-between items-center">
           <Calendar className="w-4 h-4" />

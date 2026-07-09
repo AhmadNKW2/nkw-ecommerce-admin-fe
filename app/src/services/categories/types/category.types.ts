@@ -90,6 +90,8 @@ export interface CreateCategoryDto {
   name_ar: string;
   description_en?: string;
   description_ar?: string;
+  tags_en?: string[];
+  tags_ar?: string[];
   visible?: boolean;
   is_active?: boolean;
   parent_id?: number | null;
@@ -105,6 +107,8 @@ export interface UpdateCategoryDto {
   name_ar?: string;
   description_en?: string;
   description_ar?: string;
+  tags_en?: string[];
+  tags_ar?: string[];
   visible?: boolean;
   is_active?: boolean;
   parent_id?: number | null;

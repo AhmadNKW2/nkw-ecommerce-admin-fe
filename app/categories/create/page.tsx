@@ -37,6 +37,11 @@ const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
   return [...new Set([...normalizedIds, ...relationIds])];
 };
 
+const parseTagsInput = (value: string): string[] => {
+  if (!value.trim()) return [];
+  return [...new Set(value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
+};
+
 export default function CreateCategoryPage() {
   const router = useRouter();
   const { isEnabled } = useResolvedFeatureToggles();
@@ -48,6 +53,8 @@ export default function CreateCategoryPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [tagsEn, setTagsEn] = useState("");
+  const [tagsAr, setTagsAr] = useState("");
   const [image, setImage] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [parentId, setParentId] = useState<number | null>(null);
@@ -144,6 +151,8 @@ export default function CreateCategoryPage() {
         name_ar: nameAr,
         description_en: descriptionEn || undefined,
         description_ar: descriptionAr || undefined,
+        tags_en: parseTagsInput(tagsEn),
+        tags_ar: parseTagsInput(tagsAr),
         visible: visible,
         parent_id: parentId,
         image: image?.file || undefined,
@@ -165,6 +174,8 @@ export default function CreateCategoryPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      tagsEn={tagsEn}
+      tagsAr={tagsAr}
       image={image}
       visible={visible}
       parentId={parentId}
@@ -197,6 +208,8 @@ export default function CreateCategoryPage() {
         }
       }}
       onImageChange={setImage}
+      onTagsEnChange={setTagsEn}
+      onTagsArChange={setTagsAr}
       onVisibleChange={setVisible}
       onParentIdChange={setParentId}
       onProductIdsChange={setProductIds}

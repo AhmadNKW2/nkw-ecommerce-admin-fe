@@ -32,3 +32,12 @@ export const useCategoryTagsJobStatus = (
     },
   });
 };
+
+export const useCancelCategoryTagsJob = () => {
+  return useMutation({
+    mutationFn: (jobId: string) => tagService.cancelCategoryTagsJob(jobId),
+    onSuccess: () => {
+      showSuccessToast("Tag generation stop requested");
+    },
+  });
+};

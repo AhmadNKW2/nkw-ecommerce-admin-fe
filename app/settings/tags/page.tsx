@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
@@ -9,6 +9,7 @@ import { Button } from "../../src/components/ui/button";
 import { CategoryTreeSelect } from "../../src/components/products/CategoryTreeSelect";
 import { useCategories } from "../../src/services/categories/hooks/use-categories";
 import {
+  useCancelCategoryTagsJob,
   useCategoryTagsJobStatus,
   useGenerateCategoryTags,
 } from "../../src/services/tags/hooks/use-tags";
@@ -19,8 +20,24 @@ export default function TagsSettingsPage() {
   const [jobId, setJobId] = useState<string | null>(null);
 
   const generateCategoryTags = useGenerateCategoryTags();
+  const cancelCategoryTagsJob = useCancelCategoryTagsJob();
   const { data: jobStatus, isFetching: isPollingJobStatus } =
     useCategoryTagsJobStatus(jobId);
+
+  useEffect(() => {
+    const storedJobId = window.localStorage.getItem("category-tags-job-id");
+    if (storedJobId) {
+      setJobId(storedJobId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (jobId) {
+      window.localStorage.setItem("category-tags-job-id", jobId);
+    } else {
+      window.localStorage.removeItem("category-tags-job-id");
+    }
+  }, [jobId]);
 
   const handleGenerate = async () => {
     const categoryIds = selectedCategoryIds
@@ -39,7 +56,23 @@ export default function TagsSettingsPage() {
       ? "bg-success/15 text-success"
       : jobStatus?.status === "failed"
         ? "bg-danger/15 text-danger"
+        : jobStatus?.status === "cancelled"
+          ? "bg-warning/20 text-warning"
         : "bg-primary/15 text-primary";
+
+  const progressPercent = useMemo(() => {
+    if (!jobStatus || jobStatus.total <= 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round((jobStatus.progress / jobStatus.total) * 100));
+  }, [jobStatus]);
+
+  const handleStopJob = async () => {
+    if (!jobId) {
+      return;
+    }
+    await cancelCategoryTagsJob.mutateAsync(jobId);
+  };
 
   return (
     <div className="admin-page">
@@ -91,6 +124,13 @@ export default function TagsSettingsPage() {
             <p>
               Progress: {jobStatus.progress} / {jobStatus.total}
             </p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500">{progressPercent}% completed</p>
             {jobStatus.current_category_name_en ? (
               <p>Current category: {jobStatus.current_category_name_en}</p>
             ) : null}
@@ -108,7 +148,15 @@ export default function TagsSettingsPage() {
             </div>
           ) : null}
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={handleStopJob}
+              disabled={jobStatus.status !== "running" || cancelCategoryTagsJob.isPending}
+              color="#dc2626"
+            >
+              {cancelCategoryTagsJob.isPending ? "Stopping..." : "Stop Job"}
+            </Button>
             <Button
               variant="outline"
               onClick={() => setJobId(null)}

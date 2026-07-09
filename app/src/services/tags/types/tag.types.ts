@@ -26,7 +26,7 @@ export interface CategoryTagsJobResult {
 
 export interface CategoryTagsJobStatusResponse {
   job_id: string;
-  status: "running" | "done" | "failed";
+  status: "running" | "done" | "failed" | "cancelled";
   started_at: string;
   finished_at: string | null;
   progress: number;
@@ -36,4 +36,10 @@ export interface CategoryTagsJobStatusResponse {
   result: CategoryTagsJobResult | null;
   error: string | null;
   duration_seconds: number;
+}
+
+export interface CancelCategoryTagsJobResponse {
+  job_id: string;
+  status: "running" | "done" | "failed" | "cancelled";
+  message: string;
 }

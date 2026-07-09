@@ -27,7 +27,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   description,
   iconBgColor = "bg-primary",
   action,
-  cancelAction,
+  cancelAction, 
   extraActions,
 }) => {
   const hasActions = Boolean(action || cancelAction || extraActions);

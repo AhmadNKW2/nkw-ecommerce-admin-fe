@@ -79,9 +79,13 @@ const parsePriceInput = (value: string): number | null => {
   return num;
 };
 
-const validatePricingDraft = (draft: PricingDraft): PricingFieldErrors => {
+const validatePricingDraft = (
+  draft: PricingDraft,
+  options: { includeOriginalPrices?: boolean } = {},
+): PricingFieldErrors => {
   const errors: PricingFieldErrors = {};
   const price = parsePriceInput(draft.price);
+  const includeOriginalPrices = options.includeOriginalPrices !== false;
 
   if (price === null) {
     errors.price = "Enter a valid price.";
@@ -99,6 +103,10 @@ const validatePricingDraft = (draft: PricingDraft): PricingFieldErrors => {
     } else if (price !== null && salePrice > price) {
       errors.salePrice = "Sale price cannot be higher than price.";
     }
+  }
+
+  if (!includeOriginalPrices) {
+    return errors;
   }
 
   const originalPriceRaw = draft.originalPrice.replace(/,/g, "").trim();
@@ -354,7 +362,9 @@ export function ProductPricingWorkspace({
 
   const savePricing = async (product: Product) => {
     const draft = getDraft(product);
-    const validationErrors = validatePricingDraft(draft);
+    const validationErrors = validatePricingDraft(draft, {
+      includeOriginalPrices: vendorsEnabled,
+    });
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors((prev) => ({ ...prev, [product.id]: validationErrors }));
       return;
@@ -386,24 +396,26 @@ export function ProductPricingWorkspace({
       cost: cost !== null ? cost : null,
       price,
       sale_price: draft.isSaleEnabled ? salePrice ?? undefined : null,
-      linked_product_ids: Array.isArray(product.linked_product_ids)
+      linked_product_ids: vendorsEnabled && Array.isArray(product.linked_product_ids)
         ? product.linked_product_ids.map((id) => Number(id)).filter((id) => Number.isInteger(id))
         : [],
     };
 
-    const currentOriginalPrice = parsePriceInput(
-      toNumericString(product.original_vendor_price),
-    );
-    const currentOriginalSalePrice = parsePriceInput(
-      toNumericString(product.original_vendor_sale_price),
-    );
+    if (vendorsEnabled) {
+      const currentOriginalPrice = parsePriceInput(
+        toNumericString(product.original_vendor_price),
+      );
+      const currentOriginalSalePrice = parsePriceInput(
+        toNumericString(product.original_vendor_sale_price),
+      );
 
-    if (originalPrice !== currentOriginalPrice) {
-      payload.original_vendor_price = originalPrice;
-    }
+      if (originalPrice !== currentOriginalPrice) {
+        payload.original_vendor_price = originalPrice;
+      }
 
-    if (originalSalePrice !== currentOriginalSalePrice) {
-      payload.original_vendor_sale_price = originalSalePrice;
+      if (originalSalePrice !== currentOriginalSalePrice) {
+        payload.original_vendor_sale_price = originalSalePrice;
+      }
     }
 
     await updateProduct.mutateAsync({ id: product.id, data: payload });
@@ -524,8 +536,8 @@ export function ProductPricingWorkspace({
                 <TableHead width="11%">Brand</TableHead>
                 {vendorsEnabled ? <TableHead width="11%">Vendor</TableHead> : null}
                 <TableHead width="7%">Cost</TableHead>
-                <TableHead width="8%">Original Price</TableHead>
-                <TableHead width="8%">Original Sale</TableHead>
+                {vendorsEnabled ? <TableHead width="8%">Original Price</TableHead> : null}
+                {vendorsEnabled ? <TableHead width="8%">Original Sale</TableHead> : null}
                 <TableHead width="7%">Price</TableHead>
                 <TableHead width="7%">Sale Price</TableHead>
                 <TableHead width="8%">On Sale</TableHead>
@@ -639,38 +651,42 @@ export function ProductPricingWorkspace({
                         <span className="font-semibold">{formatDisplayPrice(product.cost)}</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <InlinePriceInput
-                          value={draft.originalPrice}
-                          onChange={(value) =>
-                            updateDraft(product.id, { originalPrice: value })
-                          }
-                          disabled={isSaving}
-                          error={rowErrors.originalPrice}
-                        />
-                      ) : (
-                        <span className="font-semibold">
-                          {formatDisplayPrice(product.original_vendor_price)}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <InlinePriceInput
-                          value={draft.originalSalePrice}
-                          onChange={(value) =>
-                            updateDraft(product.id, { originalSalePrice: value })
-                          }
-                          disabled={isSaving}
-                          error={rowErrors.originalSalePrice}
-                        />
-                      ) : (
-                        <span className="font-semibold">
-                          {formatDisplayPrice(product.original_vendor_sale_price)}
-                        </span>
-                      )}
-                    </TableCell>
+                    {vendorsEnabled ? (
+                      <TableCell>
+                        {isEditing ? (
+                          <InlinePriceInput
+                            value={draft.originalPrice}
+                            onChange={(value) =>
+                              updateDraft(product.id, { originalPrice: value })
+                            }
+                            disabled={isSaving}
+                            error={rowErrors.originalPrice}
+                          />
+                        ) : (
+                          <span className="font-semibold">
+                            {formatDisplayPrice(product.original_vendor_price)}
+                          </span>
+                        )}
+                      </TableCell>
+                    ) : null}
+                    {vendorsEnabled ? (
+                      <TableCell>
+                        {isEditing ? (
+                          <InlinePriceInput
+                            value={draft.originalSalePrice}
+                            onChange={(value) =>
+                              updateDraft(product.id, { originalSalePrice: value })
+                            }
+                            disabled={isSaving}
+                            error={rowErrors.originalSalePrice}
+                          />
+                        ) : (
+                          <span className="font-semibold">
+                            {formatDisplayPrice(product.original_vendor_sale_price)}
+                          </span>
+                        )}
+                      </TableCell>
+                    ) : null}
                     <TableCell>
                       {isEditing ? (
                         <InlinePriceInput

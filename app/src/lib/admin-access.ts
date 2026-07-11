@@ -24,6 +24,8 @@ export const ADMIN_ACCESS_KEYS = [
   "banners",
   "cashback_rules",
   "notes",
+  "concepts",
+  "archived",
   "settings",
   "admins",
 ] as const;
@@ -57,8 +59,30 @@ export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   banners: true,
   cashback_rules: true,
   notes: true,
+  concepts: true,
+  archived: true,
   settings: true,
   admins: true,
+};
+
+export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
+  products: true,
+  product_pricing: false,
+  categories: true,
+  vendors: true,
+  brands: true,
+  attributes: true,
+  specifications: true,
+  orders: false,
+  customers: false,
+  partners: false,
+  banners: false,
+  cashback_rules: false,
+  notes: false,
+  concepts: true,
+  archived: false,
+  settings: false,
+  admins: false,
 };
 
 export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
@@ -75,12 +99,65 @@ export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   banners: "Banners",
   cashback_rules: "Cashback rules",
   notes: "Notes",
+  concepts: "Concepts",
+  archived: "Archived",
   settings: "Settings",
   admins: "Admins",
 };
 
 export function createDefaultAdminAccess(): AdminAccess {
   return { ...DEFAULT_ADMIN_ACCESS };
+}
+
+type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";
+
+function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
+  if (role === "catalog_manager") {
+    return { ...DEFAULT_CATALOG_MANAGER_ACCESS };
+  }
+
+  if (role === "admin" || role === "constant_token_admin") {
+    return { ...DEFAULT_ADMIN_ACCESS };
+  }
+
+  return ADMIN_ACCESS_KEYS.reduce((acc, key) => {
+    acc[key] = false;
+    return acc;
+  }, {} as AdminAccess);
+}
+
+function normalizeExplicitAdminAccess(
+  value: unknown,
+  fallback: AdminAccess,
+): AdminAccess | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const normalized = { ...fallback };
+
+  for (const key of ADMIN_ACCESS_KEYS) {
+    if (typeof record[key] === "boolean") {
+      normalized[key] = record[key] === true;
+    }
+  }
+
+  return normalized;
+}
+
+/** Mirrors backend resolveAdminAccess — explicit JSON wins, else role defaults. */
+export function resolveAdminAccess(user: {
+  role?: UserRole;
+  adminAccess?: Partial<AdminAccess> | null;
+} | null | undefined): AdminAccess {
+  const fallback = getDefaultAccessForRole(user?.role);
+  const explicit = normalizeExplicitAdminAccess(user?.adminAccess, fallback);
+  if (explicit) {
+    return explicit;
+  }
+
+  return fallback;
 }
 
 export function normalizeAdminAccess(

@@ -5,9 +5,6 @@
 
 import { z } from "zod";
 
-// Regex patterns for language validation
-const ENGLISH_PATTERN = /^[a-zA-Z0-9\s\p{P}]+$/u;
-const ARABIC_PATTERN = /^[\u0600-\u06FF0-9\s\p{P}]+$/u;
 const isValidUrl = (value?: string) => {
   if (!value) {
     return true;
@@ -21,10 +18,7 @@ const isValidUrl = (value?: string) => {
 // ============================================
 export const basicInformationSchema = z.object({
   slug: z.string().optional(),
-  nameEn: z
-    .string()
-    .min(1, "Required")
-    .regex(ENGLISH_PATTERN, "Must be in English"),
+  nameEn: z.string().min(1, "Required"),
   nameAr: z
     .string()
     .min(1, "Required"),
@@ -34,17 +28,11 @@ export const basicInformationSchema = z.object({
   brandId: z.string().optional().default("").pipe(z.string().min(1, "Required")),
   referenceLink: z.string().optional().refine(isValidUrl, "Must be a valid URL"),
   linked_product_ids: z.array(z.string()).default([]),
-  shortDescriptionEn: z
-    .string()
-    .min(1, "Required")
-    .regex(ENGLISH_PATTERN, "Must be in English"),
+  shortDescriptionEn: z.string().min(1, "Required"),
   shortDescriptionAr: z
     .string()
     .min(1, "Required"),
-  longDescriptionEn: z
-    .string()
-    .min(1, "Required")
-    .regex(ENGLISH_PATTERN, "Must be in English"),
+  longDescriptionEn: z.string().min(1, "Required"),
   longDescriptionAr: z
     .string()
     .min(1, "Required"),

@@ -4,6 +4,7 @@ import { Input } from "../../ui/input";
 import { Pricing } from "../../../services/products/types/product-form.types";
 import { Checkbox } from "../../ui/checkbox";
 import { Card } from "@/components/ui";
+import type { NullableNumber } from "../../../lib/nullable-number";
 
 interface PricingSectionProps {
     pricing?: Pricing;
@@ -20,7 +21,7 @@ export function PricingSection({
     errors,
     vendorSourcePricesVisible = true,
 }: PricingSectionProps) {
-    const handleFieldChange = (field: keyof Pricing, value: any) => {
+    const handleFieldChange = (field: keyof Pricing, value: NullableNumber | boolean) => {
         onChange({
             cost: pricing?.cost,
             originalVendorPrice: pricing?.originalVendorPrice,
@@ -60,12 +61,9 @@ export function PricingSection({
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={pricing?.originalVendorPrice ?? ""}
-                                    onChange={(e) =>
-                                        handleFieldChange(
-                                            "originalVendorPrice",
-                                            parseFloat(e.target.value) || undefined,
-                                        )
+                                    value={pricing?.originalVendorPrice ?? null}
+                                    onNumberChange={(value) =>
+                                        handleFieldChange("originalVendorPrice", value)
                                     }
                                     placeholder="0.00"
                                     className={
@@ -89,12 +87,9 @@ export function PricingSection({
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={pricing?.originalVendorSalePrice ?? ""}
-                                    onChange={(e) =>
-                                        handleFieldChange(
-                                            "originalVendorSalePrice",
-                                            parseFloat(e.target.value) || undefined,
-                                        )
+                                    value={pricing?.originalVendorSalePrice ?? null}
+                                    onNumberChange={(value) =>
+                                        handleFieldChange("originalVendorSalePrice", value)
                                     }
                                     placeholder="0.00"
                                     className={
@@ -141,14 +136,8 @@ export function PricingSection({
                                 step="0.01"
                                 size="sm"
                                 className="w-full"
-                                value={pricing?.cost ?? ""}
-                                onChange={(e) => {
-                                    const raw = e.target.value;
-                                    handleFieldChange(
-                                        "cost",
-                                        raw === "" ? undefined : parseFloat(raw),
-                                    );
-                                }}
+                                value={pricing?.cost ?? null}
+                                onNumberChange={(value) => handleFieldChange("cost", value)}
                                 placeholder="0.00"
                             />
                         </div>
@@ -164,14 +153,8 @@ export function PricingSection({
                                 step="0.01"
                                 size="sm"
                                 className="w-full"
-                                value={pricing?.price ?? ""}
-                                onChange={(e) => {
-                                    const raw = e.target.value;
-                                    handleFieldChange(
-                                        "price",
-                                        raw === "" ? undefined : parseFloat(raw),
-                                    );
-                                }}
+                                value={pricing?.price ?? null}
+                                onNumberChange={(value) => handleFieldChange("price", value)}
                                 placeholder="0.00"
                                 error={errors?.["pricing.price"]}
                             />
@@ -194,14 +177,8 @@ export function PricingSection({
                                         step="0.01"
                                         size="sm"
                                         className="w-full"
-                                        value={pricing?.salePrice ?? ""}
-                                        onChange={(e) => {
-                                            const raw = e.target.value;
-                                            handleFieldChange(
-                                                "salePrice",
-                                                raw === "" ? undefined : parseFloat(raw),
-                                            );
-                                        }}
+                                        value={pricing?.salePrice ?? null}
+                                        onNumberChange={(value) => handleFieldChange("salePrice", value)}
                                         placeholder="0.00"
                                         error={errors?.["pricing.salePrice"]}
                                     />

@@ -3,9 +3,8 @@
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/auth.context";
 import {
-  ADMIN_ACCESS_KEYS,
   constrainAdminAccessByFeatureToggles,
-  DEFAULT_ADMIN_ACCESS,
+  resolveAdminAccess,
   type AdminAccess,
   type AdminAccessKey,
 } from "@/lib/admin-access";
@@ -16,19 +15,14 @@ export function useAdminAccess() {
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
 
   const access = useMemo<AdminAccess>(() => {
-    const base = !user?.adminAccess
-      ? { ...DEFAULT_ADMIN_ACCESS }
-      : ADMIN_ACCESS_KEYS.reduce((acc, key) => {
-          acc[key] = user.adminAccess?.[key] ?? DEFAULT_ADMIN_ACCESS[key];
-          return acc;
-        }, {} as AdminAccess);
+    const base = resolveAdminAccess(user);
 
     if (!isResolved) {
       return base;
     }
 
     return constrainAdminAccessByFeatureToggles(base, isEnabled);
-  }, [user?.adminAccess, isResolved, isEnabled]);
+  }, [user, isResolved, isEnabled]);
 
   const canAccess = (key: AdminAccessKey) => access[key];
 

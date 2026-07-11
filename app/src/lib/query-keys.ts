@@ -151,12 +151,18 @@ export const queryKeys = {
       [...queryKeys.customers.details(), id] as const,
   },
 
-  // Tags
-  tags: {
-    all: ["tags"] as const,
-    generation: () => [...queryKeys.tags.all, "generation"] as const,
+  // Terms
+  // Terms / concepts
+  terms: {
+    all: ["terms"] as const,
+    generation: () => [...queryKeys.terms.all, "generation"] as const,
     generationJob: (jobId: string) =>
-      [...queryKeys.tags.generation(), "job", jobId] as const,
+      [...queryKeys.terms.generation(), "job", jobId] as const,
+    lists: () => [...queryKeys.terms.all, "list"] as const,
+    list: (params?: Record<string, unknown>) =>
+      [...queryKeys.terms.lists(), params] as const,
+    coverage: () => [...queryKeys.terms.all, "coverage"] as const,
+    detail: (id: number) => [...queryKeys.terms.all, "detail", id] as const,
   },
 
   // Notes

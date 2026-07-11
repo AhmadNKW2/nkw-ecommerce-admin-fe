@@ -12,23 +12,24 @@ import {
   useUpdateSeoSettings,
 } from "../../src/services/settings/hooks/use-settings";
 import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
+import type { NullableNumber } from "../../src/lib/nullable-number";
 
 export default function InventorySettingsPage() {
   const { data, isLoading, isError, error, refetch } = useSeoSettings();
   const updateSeoSettings = useUpdateSeoSettings();
-  const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [lowStockThreshold, setLowStockThreshold] = useState<NullableNumber>(null);
 
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    setLowStockThreshold(data.low_stock_threshold ?? 10);
+    setLowStockThreshold(data.low_stock_threshold ?? null);
   }, [data]);
 
   const handleSave = async () => {
     const payload: UpdateSeoSettingsDto = {
-      low_stock_threshold: Number(lowStockThreshold) || 0,
+      low_stock_threshold: lowStockThreshold,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -92,13 +93,7 @@ export default function InventorySettingsPage() {
             min={0}
             step={1}
             value={lowStockThreshold}
-            onChange={(event) =>
-              setLowStockThreshold(
-                Number.isNaN(event.target.valueAsNumber)
-                  ? 0
-                  : event.target.valueAsNumber,
-              )
-            }
+            onNumberChange={setLowStockThreshold}
             disabled={isLoading || updateSeoSettings.isPending}
           />
         </div>

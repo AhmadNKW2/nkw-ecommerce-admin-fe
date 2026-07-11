@@ -32,6 +32,8 @@ import {
   useImportedPricingAudit,
   useSyncImportedPricing,
 } from "../../src/services/settings/hooks/use-settings";
+import { coalesceNumber } from "../../src/lib/nullable-number";
+import type { NullableNumber } from "../../src/lib/nullable-number";
 
 function formatMoney(value: number | null | undefined) {
   if (value === null || value === undefined) {
@@ -65,9 +67,14 @@ function parseProductIds(value: string): number[] {
 }
 
 export default function PricingAuditPage() {
-  const [filters, setFilters] = useState<ImportedPricingAuditFilters>({
+  const [filters, setFilters] = useState<{
+    page: number;
+    limit: NullableNumber;
+    mismatch_only: boolean;
+    product_ids: string;
+  }>({
     page: 1,
-    limit: 50,
+    limit: null,
     mismatch_only: true,
     product_ids: "",
   });
@@ -79,6 +86,7 @@ export default function PricingAuditPage() {
   const queryParams = useMemo(
     () => ({
       ...filters,
+      limit: coalesceNumber(filters.limit, 50),
       product_ids: filters.product_ids?.trim() || undefined,
     }),
     [filters],
@@ -193,13 +201,11 @@ export default function PricingAuditPage() {
               label="Limit"
               type="number"
               min={1}
-              value={filters.limit ?? 50}
-              onChange={(event) =>
+              value={filters.limit ?? null}
+              onNumberChange={(value) =>
                 setFilters((prev) => ({
                   ...prev,
-                  limit: Number.isNaN(event.target.valueAsNumber)
-                    ? 50
-                    : event.target.valueAsNumber,
+                  limit: value,
                 }))
               }
             />

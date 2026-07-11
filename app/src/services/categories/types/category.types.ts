@@ -20,8 +20,6 @@ const baseCategorySchema = z.object({
   level: z.number().optional(),
   sortOrder: z.number().optional(),
   status: z.enum(["active", "archived"]).optional(),
-  tags_en: z.array(z.string()).optional(),
-  tags_ar: z.array(z.string()).optional(),
   archived_at: z.string().or(z.date()).optional().nullable(),
   createdAt: z.string().or(z.date()).optional(),
   updatedAt: z.string().or(z.date()).optional(),
@@ -70,8 +68,6 @@ export type Category = z.infer<typeof baseCategorySchema> & {
   specification_ids?: number[];
   attributes?: CategoryAttributeSummary[];
   specifications?: CategorySpecificationSummary[];
-  tags_en?: string[];
-  tags_ar?: string[];
   // Included in archived category list response
   archivedProducts?: ArchivedCategoryProduct[];
   archivedSubcategories?: ArchivedSubcategory[];

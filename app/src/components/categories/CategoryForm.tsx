@@ -226,8 +226,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
             <p className="font-medium">Visibility Status</p>
             <Toggle checked={visible} onChange={onVisibleChange} />
           </div>
-
-
         </div>
 
         {/* Image Upload */}

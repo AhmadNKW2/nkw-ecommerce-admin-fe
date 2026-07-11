@@ -34,7 +34,7 @@ const catalogFields: Array<{
     key: "vendors_enabled",
     label: "Vendors",
     description:
-      "Show vendors in the admin panel and storefront, and accept vendor changes on product create/update.",
+      "Show vendors in the admin panel and storefront, accept vendor changes on product create/update, and enable linked products and original vendor prices.",
   },
   {
     key: "ratings_enabled",
@@ -64,7 +64,7 @@ const catalogFields: Array<{
     key: "linked_products_enabled",
     label: "Linked Products",
     description:
-      "Show linked products in the admin product form and the linked product chooser on the storefront detail page.",
+      "Show linked products in the admin product form and the linked product chooser on the storefront detail page. Requires Vendors to be enabled.",
   },
 ];
 
@@ -197,7 +197,13 @@ export default function FeatureSettingsPage() {
   }, [data]);
 
   const setField = (field: keyof UpdateFeatureTogglesDto, value: boolean) => {
-    setFormState((prev) => ({ ...prev, [field]: value }));
+    setFormState((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "vendors_enabled" && value === false) {
+        next.linked_products_enabled = false;
+      }
+      return next;
+    });
   };
 
   const handleSave = async () => {
@@ -235,6 +241,7 @@ export default function FeatureSettingsPage() {
 
   const saving = updateFeatureToggles.isPending;
   const togglesReady = !isVisibilityPending;
+  const vendorsOn = formState.vendors_enabled === true;
 
   const renderToggleGrid = (
     fields: Array<{
@@ -249,22 +256,27 @@ export default function FeatureSettingsPage() {
 
     return (
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {fields.map((field) => (
-          <div
-            key={field.key}
-            className="flex items-center justify-between bg-gray-50 rounded-lg p-4"
-          >
-            <div className="pr-4">
-              <p className="font-medium">{field.label}</p>
-              <p className="text-sm text-gray-500">{field.description}</p>
+        {fields.map((field) => {
+          const disabledByVendors =
+            field.key === "linked_products_enabled" && !vendorsOn;
+
+          return (
+            <div
+              key={field.key}
+              className="flex items-center justify-between bg-gray-50 rounded-lg p-4"
+            >
+              <div className="pr-4">
+                <p className="font-medium">{field.label}</p>
+                <p className="text-sm text-gray-500">{field.description}</p>
+              </div>
+              <Toggle
+                checked={formState[field.key] === true}
+                onChange={(value) => setField(field.key, value)}
+                disabled={saving || disabledByVendors}
+              />
             </div>
-            <Toggle
-              checked={formState[field.key] === true}
-              onChange={(value) => setField(field.key, value)}
-              disabled={saving}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };

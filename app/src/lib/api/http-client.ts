@@ -243,7 +243,11 @@ class HttpClient {
       const segment = token.split(".")[1];
       if (!segment) return null;
       const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
-      const json = atob(normalized);
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "="
+      );
+      const json = atob(padded);
       return JSON.parse(json) as { exp?: number };
     } catch {
       return null;
@@ -252,7 +256,10 @@ class HttpClient {
 
   private isBearerTokenExpired(token: string): boolean {
     const payload = this.decodeJwtPayload(token);
-    if (!payload?.exp) return false;
+    // If we can't decode the payload, treat the token as unusable.
+    // This avoids repeatedly sending a stale/invalid Authorization header.
+    if (!payload) return true;
+    if (!payload.exp) return false;
     return payload.exp <= Math.floor(Date.now() / 1000);
   }
 
@@ -332,6 +339,10 @@ class HttpClient {
       json.data?.access_token ?? json.access_token;
     if (typeof tokenFromBody === "string" && tokenFromBody.length > 0) {
       this.setAuthToken(tokenFromBody);
+    } else {
+      // Some deployments return only httpOnly cookies on refresh.
+      // In that case, ensure we don't keep an old bearer header around.
+      this.removeAuthToken();
     }
 
     const expiresIn = json.data?.expires_in ?? json.expires_in;

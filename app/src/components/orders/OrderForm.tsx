@@ -45,16 +45,18 @@ import type {
   UpdateOrderDto,
 } from "../../services/orders/types/order.types";
 import { showErrorToast } from "../../lib/toast";
+import { coalesceNumber, type NullableNumber } from "../../lib/nullable-number";
 
 export interface OrderFormItem {
   key: string;
+  itemId?: number;
   productId: number;
   name: string;
   sku?: string;
   image?: string | null;
   quantity: number;
-  price: number;
-  cost: number;
+  price: NullableNumber;
+  cost: NullableNumber;
   maxQuantity?: number;
 }
 
@@ -83,8 +85,9 @@ function getEffectivePrice(product: Product): number {
   return salePrice > 0 ? salePrice : price;
 }
 
-function formatMoney(value: number): string {
-  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+function formatMoney(value: NullableNumber): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return value.toFixed(2);
 }
 
 /** Mirrors the backend's `calculateOrderShippingAmount` so the create-order
@@ -188,14 +191,15 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           : undefined) ||
         null;
       return {
-        key: `${item.productId ?? product?.id ?? item.id}-${item.variantId ?? "base"}`,
+        key: String(item.id),
+        itemId: item.id,
         productId: item.productId ?? product?.id ?? 0,
         name: product?.name_en || product?.name_ar || `Product #${item.productId}`,
         sku: (product as any)?.sku,
         image,
         quantity: item.quantity,
-        price: Number(item.price),
-        cost: Number(item.cost ?? 0),
+        price: item.price != null ? Number(item.price) : null,
+        cost: item.cost != null ? Number(item.cost) : null,
       };
     });
   });
@@ -239,7 +243,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           image,
           quantity: 1,
           price: getEffectivePrice(product),
-          cost: Number(product.cost ?? 0),
+          cost: product.cost != null ? Number(product.cost) : null,
           maxQuantity: product.quantity ?? undefined,
         },
       ];
@@ -255,7 +259,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const subtotal = useMemo(
-    () => items.reduce((sum, it) => sum + it.price * it.quantity, 0),
+    () => items.reduce((sum, it) => sum + coalesceNumber(it.price) * it.quantity, 0),
     [items]
   );
 
@@ -294,8 +298,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     (initialOrder?.status as OrderStatus) || "pending"
   );
   const { data: seoSettings } = useSeoSettings();
-  const [shippingAmount, setShippingAmount] = useState<string>(
-    initialOrder?.shippingAmount != null ? String(initialOrder.shippingAmount) : "0"
+  const [shippingAmount, setShippingAmount] = useState<NullableNumber>(
+    initialOrder?.shippingAmount != null ? Number(initialOrder.shippingAmount) : null
   );
   const [shippingTouched, setShippingTouched] = useState(false);
 
@@ -303,14 +307,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   // when creating a new order, until the admin manually overrides it.
   useEffect(() => {
     if (isEditMode || shippingTouched || !seoSettings) return;
-    setShippingAmount(String(resolveDefaultShippingFee(subtotal, seoSettings)));
+    setShippingAmount(resolveDefaultShippingFee(subtotal, seoSettings));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, shippingTouched, seoSettings, subtotal]);
-  const [discountAmount, setDiscountAmount] = useState<string>(
-    initialOrder?.discountAmount != null ? String(initialOrder.discountAmount) : "0"
+  const [discountAmount, setDiscountAmount] = useState<NullableNumber>(
+    initialOrder?.discountAmount != null ? Number(initialOrder.discountAmount) : null
   );
   const [discountEnabled, setDiscountEnabled] = useState<boolean>(
-    Number(initialOrder?.discountAmount ?? 0) > 0
+    initialOrder?.discountAmount != null && Number(initialOrder.discountAmount) > 0
   );
 
   const toDateInputValue = (raw?: string | null): string => {
@@ -323,14 +327,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     toDateInputValue(initialOrder?.createdAt || initialOrder?.created_at)
   );
 
-  const shippingAmountNum = Number(shippingAmount) || 0;
-  const discountAmountNum = discountEnabled ? Number(discountAmount) || 0 : 0;
+  const shippingAmountNum = coalesceNumber(shippingAmount);
+  const discountAmountNum = discountEnabled ? coalesceNumber(discountAmount) : 0;
   const total = Math.max(0, subtotal + shippingAmountNum - discountAmountNum);
 
   const handleToggleDiscount = (enabled: boolean) => {
     setDiscountEnabled(enabled);
     if (!enabled) {
-      setDiscountAmount("0");
+      setDiscountAmount(null);
     }
   };
 
@@ -361,6 +365,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           paymentMethod,
           status,
           orderDate: orderDate || undefined,
+          shippingAmount: shippingAmountNum,
+          discountAmount: discountAmountNum,
+          items: items.map((it) => ({
+            itemId: it.itemId!,
+            price: it.price ?? undefined,
+            cost: it.cost ?? undefined,
+          })),
         };
         await onSubmit({ update: payload, create: {} as AdminCreateOrderDto });
       } else {
@@ -369,8 +380,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           items: items.map((it) => ({
             productId: it.productId,
             quantity: it.quantity,
-            price: it.price,
-            cost: it.cost,
+            price: it.price ?? undefined,
+            cost: it.cost ?? undefined,
           })),
           shippingAddress: address,
           billingAddress: address,
@@ -508,17 +519,23 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <ShoppingBag className="w-5 h-5 text-gray-500" />
             Order Items
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Search and add products to this order</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isEditMode
+              ? "Adjust unit price and cost for each line item"
+              : "Search and add products to this order"}
+          </p>
         </div>
 
-        <Select
-          label="Search products by name or SKU"
-          options={productOptions}
-          value=""
-          onChange={(val) => handleAddProduct(val as string)}
-          onSearchChange={setProductSearch}
-          placeholder={productsLoading ? "Loading..." : "Search products to add..."}
-        />
+        {!isEditMode && (
+          <Select
+            label="Search products by name or SKU"
+            options={productOptions}
+            value=""
+            onChange={(val) => handleAddProduct(val as string)}
+            onSearchChange={setProductSearch}
+            placeholder={productsLoading ? "Loading..." : "Search products to add..."}
+          />
+        )}
 
         {items.length === 0 ? (
           <EmptyState
@@ -551,51 +568,83 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
-                    }
-                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateItem(item.key, {
-                        quantity: Math.max(1, Number(e.target.value) || 1),
-                      })
-                    }
-                    className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
-                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  {isEditMode ? (
+                    <span className="w-14 text-center font-medium text-gray-900">
+                      x{item.quantity}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
+                        }
+                        className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(item.key, {
+                            quantity: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                        className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
+                        className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                <div className="w-28 shrink-0 text-right text-sm text-gray-700" title="Price is fixed at the product's current price">
-                  {formatMoney(item.price)} JOD
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.price}
+                    onNumberChange={(value) => updateItem(item.key, { price: value })}
+                    className="text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Cost"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.cost}
+                    onNumberChange={(value) => updateItem(item.key, { cost: value })}
+                    className="text-left"
+                    dir="ltr"
+                  />
                 </div>
 
                 <div className="w-24 text-right font-semibold text-gray-900 shrink-0">
-                  {formatMoney(item.price * item.quantity)} JOD
+                  {formatMoney(item.price != null ? item.price * item.quantity : null)} JOD
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.key)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0"
-                  title="Remove item"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.key)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -640,10 +689,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             min={0}
             step="0.01"
             value={shippingAmount}
-            onChange={(e) => {
+            onNumberChange={(value) => {
               setShippingTouched(true);
-              setShippingAmount(e.target.value);
+              setShippingAmount(value);
             }}
+            dir="ltr"
+            className="text-left"
           />
         </div>
 
@@ -669,7 +720,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
               min={0}
               step="0.01"
               value={discountAmount}
-              onChange={(e) => setDiscountAmount(e.target.value)}
+              onNumberChange={setDiscountAmount}
+              dir="ltr"
+              className="text-left"
               autoFocus
             />
           )}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { FieldWrapper, getFieldClassesBySize, FIELD_ICON_CLASSES, FIELD_RIGHT_ICON_COLOR, getRightIconPosition } from './field-wrapper';
+import { formatNullableNumber, parseNullableNumberFromInput, type NullableNumber } from '../../lib/nullable-number';
 
-interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'value' | 'onChange'> {
   label?: React.ReactNode;
   error?: string | boolean;
   variant?: 'default' | 'search';
@@ -13,12 +14,19 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   isRtl?: boolean;
   isSearch?: boolean;
   rightElement?: React.ReactNode;
+  value?: string | number | readonly string[] | null;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /** When set with type="number", empty input yields null instead of 0. */
+  onNumberChange?: (value: NullableNumber) => void;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className = '', value, onChange, onFocus, onBlur, variant = 'default', onClear, isClearButton = true, isNum = false, size = 'default', isRtl = false, isSearch = false, rightElement, ...props }, ref) => {
+  ({ label, error, className = '', value, onChange, onNumberChange, onFocus, onBlur, variant = 'default', onClear, isClearButton = true, isNum = false, size = 'default', isRtl = false, isSearch = false, rightElement, ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
-    const hasValue = Boolean(value && String(value).length > 0);
+    const displayValue = props.type === 'number'
+      ? formatNullableNumber(value as NullableNumber | string | undefined)
+      : (value ?? '');
+    const hasValue = Boolean(displayValue && String(displayValue).length > 0);
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
@@ -42,7 +50,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const isSm = size === 'sm';
 
     const handleNumChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Always pass through the value - validation is handled separately
+      if (props.type === 'number' && onNumberChange) {
+        onNumberChange(parseNullableNumberFromInput(e.target.value));
+      }
       onChange?.(e);
     };
 
@@ -71,7 +81,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             )}
             <input
               ref={ref}
-              value={value}
+              value={displayValue}
               onChange={handleNumChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
@@ -110,7 +120,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       >
         <input
           ref={ref}
-          value={value}
+          value={displayValue}
           onChange={handleNumChange}
           onFocus={handleFocus}
           onBlur={handleBlur}

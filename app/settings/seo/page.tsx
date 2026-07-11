@@ -17,6 +17,7 @@ import {
 } from "../../src/services/settings/hooks/use-settings";
 import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
 import { mediaService } from "../../src/services/media/api/media.service";
+import type { NullableNumber } from "../../src/lib/nullable-number";
 
 type FormState = {
   site_name_en: string;
@@ -28,13 +29,17 @@ type FormState = {
   default_meta_description_ar: string;
   default_og_image: string;
   twitter_handle: string;
+  support_email: string;
+  facebook_url: string;
+  twitter_url: string;
+  instagram_url: string;
   google_verification: string;
   robots_index: boolean;
   robots_follow: boolean;
   show_sale_pricing: boolean;
   free_delivery_enabled: boolean;
-  free_delivery_amount: number;
-  delivery_fee: number;
+  free_delivery_amount: NullableNumber;
+  delivery_fee: NullableNumber;
 };
 
 const emptyFormState: FormState = {
@@ -47,13 +52,17 @@ const emptyFormState: FormState = {
   default_meta_description_ar: "",
   default_og_image: "",
   twitter_handle: "",
+  support_email: "help@ordonsooq.com",
+  facebook_url: "",
+  twitter_url: "",
+  instagram_url: "",
   google_verification: "",
   robots_index: true,
   robots_follow: true,
   show_sale_pricing: true,
   free_delivery_enabled: true,
-  free_delivery_amount: 50,
-  delivery_fee: 2,
+  free_delivery_amount: null,
+  delivery_fee: null,
 };
 
 export default function SeoSettingsPage() {
@@ -84,13 +93,17 @@ export default function SeoSettingsPage() {
       default_meta_description_ar: data.default_meta_description_ar ?? "",
       default_og_image: data.default_og_image ?? "",
       twitter_handle: data.twitter_handle ?? "",
+      support_email: data.support_email ?? "help@ordonsooq.com",
+      facebook_url: data.facebook_url ?? "",
+      twitter_url: data.twitter_url ?? "",
+      instagram_url: data.instagram_url ?? "",
       google_verification: data.google_verification ?? "",
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
       show_sale_pricing: data.show_sale_pricing ?? true,
       free_delivery_enabled: data.free_delivery_enabled ?? true,
-      free_delivery_amount: data.free_delivery_amount ?? 50,
-      delivery_fee: data.delivery_fee ?? 2,
+      free_delivery_amount: data.free_delivery_amount ?? null,
+      delivery_fee: data.delivery_fee ?? null,
     });
   }, [data]);
 
@@ -120,13 +133,17 @@ export default function SeoSettingsPage() {
       default_meta_description_ar: formState.default_meta_description_ar,
       default_og_image: formState.default_og_image || null,
       twitter_handle: formState.twitter_handle || null,
+      support_email: formState.support_email,
+      facebook_url: formState.facebook_url || null,
+      twitter_url: formState.twitter_url || null,
+      instagram_url: formState.instagram_url || null,
       google_verification: formState.google_verification || null,
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
       show_sale_pricing: formState.show_sale_pricing,
       free_delivery_enabled: formState.free_delivery_enabled,
-      free_delivery_amount: Number(formState.free_delivery_amount) || 0,
-      delivery_fee: Number(formState.delivery_fee) || 0,
+      free_delivery_amount: formState.free_delivery_amount,
+      delivery_fee: formState.delivery_fee,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -257,7 +274,46 @@ export default function SeoSettingsPage() {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold">Search & Social</h2>
+        <h2 className="text-lg font-semibold">Social & Contact</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Storefront footer, contact page, and merchant onboarding use these values.
+        </p>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Input
+            label="Support Email"
+            type="email"
+            value={formState.support_email}
+            onChange={(event) => setField("support_email", event.target.value)}
+            maxLength={255}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Facebook URL"
+            value={formState.facebook_url}
+            onChange={(event) => setField("facebook_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Twitter / X URL"
+            value={formState.twitter_url}
+            onChange={(event) => setField("twitter_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Instagram URL"
+            value={formState.instagram_url}
+            onChange={(event) => setField("instagram_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Search & SEO Social</h2>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Input
@@ -345,14 +401,7 @@ export default function SeoSettingsPage() {
                 min={0}
                 step={0.01}
                 value={formState.delivery_fee}
-                onChange={(event) =>
-                  setField(
-                    "delivery_fee",
-                    Number.isNaN(event.target.valueAsNumber)
-                      ? 0
-                      : event.target.valueAsNumber,
-                  )
-                }
+                onNumberChange={(value) => setField("delivery_fee", value)}
                 disabled={isLoading || updateSeoSettings.isPending}
               />
             </div>
@@ -371,14 +420,7 @@ export default function SeoSettingsPage() {
                 min={0}
                 step={0.01}
                 value={formState.free_delivery_amount}
-                onChange={(event) =>
-                  setField(
-                    "free_delivery_amount",
-                    Number.isNaN(event.target.valueAsNumber)
-                      ? 0
-                      : event.target.valueAsNumber,
-                  )
-                }
+                onNumberChange={(value) => setField("free_delivery_amount", value)}
                 disabled={
                   isLoading ||
                   updateSeoSettings.isPending ||

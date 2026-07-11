@@ -15,17 +15,19 @@ import {
 import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 import { mediaService } from "../../src/services/media/api/media.service";
 import type { UpdateSitePopupSettingsDto } from "../../src/services/settings/types/settings.types";
+import type { NullableNumber } from "../../src/lib/nullable-number";
+import { coalesceNumber } from "../../src/lib/nullable-number";
 
 type FormState = {
   image: ImageUploadItem | null;
   link_url: string;
-  dismiss_after_seconds: number;
+  dismiss_after_seconds: NullableNumber;
 };
 
 const emptyFormState: FormState = {
   image: null,
   link_url: "",
-  dismiss_after_seconds: 8,
+  dismiss_after_seconds: null,
 };
 
 export default function SitePopupSettingsPage() {
@@ -58,7 +60,7 @@ function SitePopupSettingsPageContent() {
           }
         : null,
       link_url: data.link_url ?? "",
-      dismiss_after_seconds: data.dismiss_after_seconds ?? 8,
+      dismiss_after_seconds: data.dismiss_after_seconds ?? null,
     });
   }, [data]);
 
@@ -78,7 +80,7 @@ function SitePopupSettingsPageContent() {
       enabled: popupFeatureEnabled,
       image_url: imageUrl,
       link_url: formState.link_url.trim() || null,
-      dismiss_after_seconds: Number(formState.dismiss_after_seconds) || 0,
+      dismiss_after_seconds: coalesceNumber(formState.dismiss_after_seconds, 0),
     };
 
     await updateSitePopupSettings.mutateAsync(payload);
@@ -154,11 +156,11 @@ function SitePopupSettingsPageContent() {
             type="number"
             min={0}
             max={120}
-            value={String(formState.dismiss_after_seconds)}
-            onChange={(event) =>
+            value={formState.dismiss_after_seconds}
+            onNumberChange={(value) =>
               setFormState((prev) => ({
                 ...prev,
-                dismiss_after_seconds: Number(event.target.value) || 0,
+                dismiss_after_seconds: value,
               }))
             }
             disabled={saving}

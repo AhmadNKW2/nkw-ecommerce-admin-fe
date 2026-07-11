@@ -33,7 +33,6 @@ import { AttachmentsSection } from "./sections/AttachmentsSection";
 import { StockSection } from "./sections/StockSection";
 import { Card } from "../ui";
 import { useZodValidation, flattenZodErrors } from "../../hooks/use-zod-validation";
-import { createProductSchema, type ProductFormConfig } from "../../lib/validations/product.schema";
 import { Package } from "lucide-react";
 import type { Attribute as CatalogAttribute, AttributeValue as CatalogAttributeValue } from "../../services/attributes/types/attribute.types";
 import { Category } from "../../services/categories/types/category.types";
@@ -129,7 +128,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const metaTitleVisible = isEnabled("meta_title_visible_admin");
   const metaDescriptionVisible = isEnabled("meta_description_visible_admin");
   const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
-  const linkedProductsEnabled = isEnabled("linked_products_enabled");
+  const linkedProductsEnabled =
+    vendorsEnabled && isEnabled("linked_products_enabled");
   const productStatusEnabled = isEnabled("product_status_enabled");
   const statusVisible = productStatusEnabled;
   const { canEditProductPricing } = useAdminAccess();
@@ -761,7 +761,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
-        vendorSourcePricesVisible={referenceLinksEnabled}
+        vendorSourcePricesVisible={vendorsEnabled}
       />
       ) : null}
 

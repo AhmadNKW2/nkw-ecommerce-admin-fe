@@ -17,6 +17,10 @@ export interface SeoSettings {
   default_meta_description_ar: string;
   default_og_image: string | null;
   twitter_handle: string | null;
+  support_email: string;
+  facebook_url: string | null;
+  twitter_url: string | null;
+  instagram_url: string | null;
   google_verification: string | null;
   robots_index: boolean;
   robots_follow: boolean;

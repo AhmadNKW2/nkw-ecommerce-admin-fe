@@ -29,6 +29,10 @@ type FormState = {
   default_meta_description_ar: string;
   default_og_image: string;
   twitter_handle: string;
+  support_email: string;
+  facebook_url: string;
+  twitter_url: string;
+  instagram_url: string;
   google_verification: string;
   robots_index: boolean;
   robots_follow: boolean;
@@ -48,6 +52,10 @@ const emptyFormState: FormState = {
   default_meta_description_ar: "",
   default_og_image: "",
   twitter_handle: "",
+  support_email: "help@ordonsooq.com",
+  facebook_url: "",
+  twitter_url: "",
+  instagram_url: "",
   google_verification: "",
   robots_index: true,
   robots_follow: true,
@@ -85,6 +93,10 @@ export default function SeoSettingsPage() {
       default_meta_description_ar: data.default_meta_description_ar ?? "",
       default_og_image: data.default_og_image ?? "",
       twitter_handle: data.twitter_handle ?? "",
+      support_email: data.support_email ?? "help@ordonsooq.com",
+      facebook_url: data.facebook_url ?? "",
+      twitter_url: data.twitter_url ?? "",
+      instagram_url: data.instagram_url ?? "",
       google_verification: data.google_verification ?? "",
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
@@ -121,6 +133,10 @@ export default function SeoSettingsPage() {
       default_meta_description_ar: formState.default_meta_description_ar,
       default_og_image: formState.default_og_image || null,
       twitter_handle: formState.twitter_handle || null,
+      support_email: formState.support_email,
+      facebook_url: formState.facebook_url || null,
+      twitter_url: formState.twitter_url || null,
+      instagram_url: formState.instagram_url || null,
       google_verification: formState.google_verification || null,
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
@@ -258,7 +274,46 @@ export default function SeoSettingsPage() {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold">Search & Social</h2>
+        <h2 className="text-lg font-semibold">Social & Contact</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Storefront footer, contact page, and merchant onboarding use these values.
+        </p>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Input
+            label="Support Email"
+            type="email"
+            value={formState.support_email}
+            onChange={(event) => setField("support_email", event.target.value)}
+            maxLength={255}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Facebook URL"
+            value={formState.facebook_url}
+            onChange={(event) => setField("facebook_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Twitter / X URL"
+            value={formState.twitter_url}
+            onChange={(event) => setField("twitter_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+          <Input
+            label="Instagram URL"
+            value={formState.instagram_url}
+            onChange={(event) => setField("instagram_url", event.target.value)}
+            maxLength={2048}
+            disabled={isLoading || updateSeoSettings.isPending}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Search & SEO Social</h2>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Input

@@ -84,9 +84,9 @@ export default function SearchSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        icon={<Search />}
         title="Search"
         description="Clear cached search responses or rebuild the Typesense index from the database."
-        icon={Search}
       />
       <SettingsNav />
 
@@ -149,7 +149,7 @@ export default function SearchSettingsPage() {
 
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => void handleStartBackfill()}
             disabled={isStartingBackfill || backfillStatus?.in_progress}
           >

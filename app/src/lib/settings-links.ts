@@ -31,7 +31,7 @@ export const SETTINGS_LINK_DEFINITIONS: SettingsLinkDefinition[] = [
     label: "Search Concepts",
     navLabel: "Search Concepts",
     roles: ["admin", "catalog_manager"],
-    adminAccess: "settings",
+    adminAccess: "concepts",
     catalogManagerBypass: true,
   },
   {

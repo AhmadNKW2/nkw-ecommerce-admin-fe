@@ -24,6 +24,8 @@ export const ADMIN_ACCESS_KEYS = [
   "banners",
   "cashback_rules",
   "notes",
+  "concepts",
+  "archived",
   "settings",
   "admins",
 ] as const;
@@ -57,6 +59,8 @@ export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   banners: true,
   cashback_rules: true,
   notes: true,
+  concepts: true,
+  archived: true,
   settings: true,
   admins: true,
 };
@@ -75,6 +79,8 @@ export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
   banners: false,
   cashback_rules: false,
   notes: false,
+  concepts: true,
+  archived: false,
   settings: false,
   admins: false,
 };
@@ -93,6 +99,8 @@ export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   banners: "Banners",
   cashback_rules: "Cashback rules",
   notes: "Notes",
+  concepts: "Concepts",
+  archived: "Archived",
   settings: "Settings",
   admins: "Admins",
 };
@@ -118,16 +126,21 @@ function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
   }, {} as AdminAccess);
 }
 
-function normalizeExplicitAdminAccess(value: unknown): AdminAccess | null {
+function normalizeExplicitAdminAccess(
+  value: unknown,
+  fallback: AdminAccess,
+): AdminAccess | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const record = value as Record<string, unknown>;
-  const normalized = {} as AdminAccess;
+  const normalized = { ...fallback };
 
   for (const key of ADMIN_ACCESS_KEYS) {
-    normalized[key] = record[key] === true;
+    if (typeof record[key] === "boolean") {
+      normalized[key] = record[key] === true;
+    }
   }
 
   return normalized;
@@ -138,12 +151,13 @@ export function resolveAdminAccess(user: {
   role?: UserRole;
   adminAccess?: Partial<AdminAccess> | null;
 } | null | undefined): AdminAccess {
-  const explicit = normalizeExplicitAdminAccess(user?.adminAccess);
+  const fallback = getDefaultAccessForRole(user?.role);
+  const explicit = normalizeExplicitAdminAccess(user?.adminAccess, fallback);
   if (explicit) {
     return explicit;
   }
 
-  return getDefaultAccessForRole(user?.role);
+  return fallback;
 }
 
 export function normalizeAdminAccess(

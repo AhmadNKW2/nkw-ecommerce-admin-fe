@@ -111,6 +111,7 @@ export const sidebarConfig = {
           href: '/concepts',
           label: 'Concepts',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          adminAccess: 'concepts',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -474,7 +475,7 @@ export const sidebarConfig = {
           href: '/settings/terms',
           label: 'Search Concepts',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
-          adminAccess: 'settings',
+          adminAccess: 'concepts',
           catalogManagerBypass: true,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -523,7 +524,7 @@ export const sidebarConfig = {
           href: '/archived-categories',
           label: 'Archived Categories',
           roles: ['admin'] as SidebarRole[],
-          adminAccess: 'categories',
+          adminAccess: 'archived',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -539,7 +540,7 @@ export const sidebarConfig = {
           href: '/archived-vendors',
           label: 'Archived Vendors',
           roles: ['admin'] as SidebarRole[],
-          adminAccess: 'vendors',
+          adminAccess: 'archived',
           featureToggle: 'vendors_enabled' as const,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -556,7 +557,7 @@ export const sidebarConfig = {
           href: '/archived-brands',
           label: 'Archived Brands',
           roles: ['admin'] as SidebarRole[],
-          adminAccess: 'brands',
+          adminAccess: 'archived',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -578,7 +579,7 @@ export const sidebarConfig = {
           href: '/archived-products',
           label: 'Archived Products',
           roles: ['admin'] as SidebarRole[],
-          adminAccess: 'products',
+          adminAccess: 'archived',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

@@ -11,14 +11,15 @@ type RouteAccessRule = {
 };
 
 const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
-  { prefix: "/settings/terms", access: "settings", roles: ["admin", "constant_token_admin", "catalog_manager"], catalogManagerBypass: true },
+  { prefix: "/settings/terms", access: "concepts", roles: ["admin", "constant_token_admin", "catalog_manager"], catalogManagerBypass: true },
   { prefix: "/settings", access: "settings", roles: ["admin", "constant_token_admin"] },
   { prefix: "/products/pricing", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/pricing-products", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/archived-products", access: "products", roles: ["admin", "constant_token_admin"] },
-  { prefix: "/archived-categories", access: "categories", roles: ["admin", "constant_token_admin"] },
-  { prefix: "/archived-vendors", access: "vendors", roles: ["admin", "constant_token_admin"] },
-  { prefix: "/archived-brands", access: "brands", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/archived-products", access: "archived", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/archived-categories", access: "archived", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/archived-vendors", access: "archived", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/archived-brands", access: "archived", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/concepts", access: "concepts", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/products", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/categories", access: "categories", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/vendors", access: "vendors", roles: ["admin", "constant_token_admin", "catalog_manager"] },

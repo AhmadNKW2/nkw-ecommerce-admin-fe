@@ -40,11 +40,11 @@ function canAccessFactory(access: AdminAccess) {
 
 /** Representative routes for each permission key. */
 const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
-  products: ["/products", "/products/123", "/archived-products"],
+  products: ["/products", "/products/123"],
   product_pricing: ["/products/pricing", "/pricing-products"],
-  categories: ["/categories", "/categories/create", "/archived-categories"],
-  vendors: ["/vendors", "/vendors/1", "/archived-vendors"],
-  brands: ["/brands", "/archived-brands"],
+  categories: ["/categories", "/categories/create"],
+  vendors: ["/vendors", "/vendors/1"],
+  brands: ["/brands"],
   attributes: ["/attributes", "/attributes/create"],
   specifications: ["/specifications", "/specifications/1"],
   orders: ["/orders", "/orders/1/edit"],
@@ -53,12 +53,16 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
   banners: ["/banners", "/banners/create"],
   cashback_rules: ["/cashback-rules", "/cashback-rules/1"],
   notes: ["/notes"],
+  concepts: ["/concepts", "/settings/terms"],
+  archived: [
+    "/archived-products",
+    "/archived-categories",
+    "/archived-vendors",
+    "/archived-brands",
+  ],
   settings: ["/settings/seo", "/settings/features", "/settings/popup"],
   admins: ["/admins", "/admins/create"],
 };
-
-/** Sidebar links that intentionally have no adminAccess key. */
-const SIDEBAR_LINKS_WITHOUT_ACCESS = new Set(["/concepts"]);
 
 function collectSidebarLinks() {
   return sidebarConfig.groups.flatMap((group) =>
@@ -92,6 +96,17 @@ function testResolveAdminAccess() {
   assert("resolveAdminAccess: explicit settings=false", explicit.settings === false);
   assert("resolveAdminAccess: explicit orders=false", explicit.orders === false);
   assert("resolveAdminAccess: explicit products stays true", explicit.products === true);
+  assert(
+    "resolveAdminAccess: missing new keys inherit role defaults",
+    resolveAdminAccess({
+      role: "admin",
+      adminAccess: { settings: false, products: true } as AdminAccess,
+    }).concepts === true &&
+      resolveAdminAccess({
+        role: "admin",
+        adminAccess: { settings: false, products: true } as AdminAccess,
+      }).archived === true,
+  );
 }
 
 function testEachPermissionDeniesAccess() {
@@ -136,27 +151,32 @@ function testCatalogManagerDefaults() {
 }
 
 function testSettingsTermsBypass() {
-  const access = makeAccess({ settings: false });
+  const access = makeAccess({ concepts: false });
   const canAccess = canAccessFactory(access);
 
-  assert("admin settings=false blocked from /settings/seo", !canAccessRoute("/settings/seo", "admin", canAccess));
-  assert("admin settings=false blocked from /settings/terms", !canAccessRoute("/settings/terms", "admin", canAccess));
+  assert("admin concepts=false blocked from /concepts", !canAccessRoute("/concepts", "admin", canAccess));
+  assert("admin concepts=false blocked from /settings/terms", !canAccessRoute("/settings/terms", "admin", canAccess));
 
   assert(
-    "catalog_manager bypasses settings check on terms route",
+    "catalog_manager bypasses concepts check on terms route",
     canAccessRoute("/settings/terms", "catalog_manager", canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS)),
   );
+}
+
+function testArchivedPermission() {
+  const access = makeAccess({ archived: false, products: true, categories: true });
+  const canAccess = canAccessFactory(access);
+
+  assert("archived=false blocks archived products even with products=true", !canAccessRoute("/archived-products", "admin", canAccess));
+  assert("archived=false blocks archived categories even with categories=true", !canAccessRoute("/archived-categories", "admin", canAccess));
+  assert("archived=true allows archived routes", canAccessRoute("/archived-products", "admin", canAccessFactory(makeAccess({ archived: true }))));
+  assert("catalog_manager blocked from archived routes", !canAccessRoute("/archived-products", "catalog_manager", canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS)));
 }
 
 function testSidebarLinkCoverage() {
   const links = collectSidebarLinks();
 
   for (const link of links) {
-    if (SIDEBAR_LINKS_WITHOUT_ACCESS.has(link.href)) {
-      assert(`sidebar ${link.href} intentionally has no adminAccess`, !link.adminAccess);
-      continue;
-    }
-
     assert(`sidebar ${link.href} has adminAccess`, Boolean(link.adminAccess), `missing adminAccess`);
   }
 }
@@ -184,12 +204,22 @@ function testSidebarVisibilityPerPermission() {
 }
 
 function testSettingsNavFiltering() {
-  const access = makeAccess({ settings: false });
-  const filtered = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
+  const settingsOff = makeAccess({ settings: false, concepts: true });
+  const filteredSettingsOff = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
     role: "admin",
-    canAccess: canAccessFactory(access),
+    canAccess: canAccessFactory(settingsOff),
   });
-  assert("settings nav empty for admin with settings=false", filtered.length === 0);
+  assert(
+    "settings nav shows only concepts link when settings=false but concepts=true",
+    filteredSettingsOff.length === 1 && filteredSettingsOff[0]?.href === "/settings/terms",
+  );
+
+  const allOff = makeAccess({ settings: false, concepts: false });
+  const filteredAllOff = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
+    role: "admin",
+    canAccess: canAccessFactory(allOff),
+  });
+  assert("settings nav empty when settings=false and concepts=false", filteredAllOff.length === 0);
 
   const catalogFiltered = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
     role: "catalog_manager",
@@ -214,6 +244,10 @@ function testRouteRuleOrdering() {
   );
   assert(
     "/settings/terms matched before generic /settings",
+    getRouteAccessRule("/settings/terms")?.access === "concepts",
+  );
+  assert(
+    "/settings/terms has catalog manager bypass",
     getRouteAccessRule("/settings/terms")?.catalogManagerBypass === true,
   );
 }
@@ -238,6 +272,7 @@ function run() {
   testEachPermissionAllowsAccessWhenEnabled();
   testCatalogManagerDefaults();
   testSettingsTermsBypass();
+  testArchivedPermission();
   testSidebarLinkCoverage();
   testSidebarVisibilityPerPermission();
   testSettingsNavFiltering();

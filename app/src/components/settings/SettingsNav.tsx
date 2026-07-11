@@ -2,22 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/auth.context";
+import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { useSidebarCustomization } from "@/hooks/use-sidebar-customization";
 import {
   SETTINGS_LINK_DEFINITIONS,
+  filterSettingsLinksByAccess,
   filterSettingsLinksByFeatureToggle,
 } from "@/lib/settings-links";
 
 export function SettingsNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const { canAccess } = useAdminAccess();
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
   const { applyOrder } = useSidebarCustomization();
 
   const orderedLinks = applyOrder(SETTINGS_LINK_DEFINITIONS);
+  const accessFilteredLinks = filterSettingsLinksByAccess(orderedLinks, {
+    role: user?.role,
+    canAccess,
+  });
   const links = isResolved
-    ? filterSettingsLinksByFeatureToggle(orderedLinks, (key) => isEnabled(key))
-    : orderedLinks;
+    ? filterSettingsLinksByFeatureToggle(accessFilteredLinks, (key) => isEnabled(key))
+    : accessFilteredLinks;
 
   return (
     <div className="w-full rounded-r1 border border-primary/20 bg-white p-2 shadow-s1">

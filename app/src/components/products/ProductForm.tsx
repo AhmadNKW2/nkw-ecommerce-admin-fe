@@ -127,7 +127,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const metaTitleVisible = isEnabled("meta_title_visible_admin");
   const metaDescriptionVisible = isEnabled("meta_description_visible_admin");
   const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
-  const linkedProductsEnabled = isEnabled("linked_products_enabled");
+  const linkedProductsEnabled =
+    vendorsEnabled && isEnabled("linked_products_enabled");
   const productStatusEnabled = isEnabled("product_status_enabled");
   const statusVisible = productStatusEnabled;
   const { canEditProductPricing } = useAdminAccess();
@@ -757,7 +758,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
-        vendorSourcePricesVisible={referenceLinksEnabled}
+        vendorSourcePricesVisible={vendorsEnabled}
       />
       ) : null}
 

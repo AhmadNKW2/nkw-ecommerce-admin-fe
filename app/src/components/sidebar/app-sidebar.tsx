@@ -9,6 +9,7 @@ import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-togg
 import type { FeatureToggles } from '../../services/settings/types/settings.types';
 import { useAdminAccess } from '../../hooks/use-admin-access';
 import type { AdminAccessKey } from '../../lib/admin-access';
+import { passesAdminAccessCheck as checkAdminAccess } from '../../lib/admin-access-checks';
 import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
 import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization';
 import { useAdminNotifications } from '../../hooks/use-admin-notifications';
@@ -42,6 +43,7 @@ interface SidebarLinkItem {
     | 'popup_enabled'
   >;
   adminAccess?: AdminAccessKey;
+  catalogManagerBypass?: boolean;
 }
 
 type SidebarGroupItem = ResolvedSidebarGroup;
@@ -86,10 +88,12 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
     return isEnabled(link.featureToggle);
   };
 
-  const isAdminAccessEnabled = (link: SidebarLinkItem): boolean => {
-    if (!link.adminAccess) return true;
-    return canAccess(link.adminAccess);
-  };
+  const passesAdminAccessCheck = (link: SidebarLinkItem): boolean =>
+    checkAdminAccess(link.adminAccess, {
+      role: userRole,
+      canAccess,
+      catalogManagerBypass: link.catalogManagerBypass,
+    });
 
   const isFeatureTogglePending = (link: SidebarLinkItem): boolean =>
     Boolean(link.featureToggle) &&
@@ -97,7 +101,9 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
     passesRoleCheck(link);
 
   const canSeeLink = (link: SidebarLinkItem): boolean =>
-    passesRoleCheck(link) && isFeatureToggleEnabled(link) && isAdminAccessEnabled(link);
+    passesRoleCheck(link) &&
+    isFeatureToggleEnabled(link) &&
+    passesAdminAccessCheck(link);
 
   const userDisplayName = user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ")

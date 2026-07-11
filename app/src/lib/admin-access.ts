@@ -61,6 +61,24 @@ export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   admins: true,
 };
 
+export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
+  products: true,
+  product_pricing: false,
+  categories: true,
+  vendors: true,
+  brands: true,
+  attributes: true,
+  specifications: true,
+  orders: false,
+  customers: false,
+  partners: false,
+  banners: false,
+  cashback_rules: false,
+  notes: false,
+  settings: false,
+  admins: false,
+};
+
 export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   products: "Products",
   product_pricing: "Product pricing",
@@ -81,6 +99,51 @@ export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
 
 export function createDefaultAdminAccess(): AdminAccess {
   return { ...DEFAULT_ADMIN_ACCESS };
+}
+
+type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";
+
+function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
+  if (role === "catalog_manager") {
+    return { ...DEFAULT_CATALOG_MANAGER_ACCESS };
+  }
+
+  if (role === "admin" || role === "constant_token_admin") {
+    return { ...DEFAULT_ADMIN_ACCESS };
+  }
+
+  return ADMIN_ACCESS_KEYS.reduce((acc, key) => {
+    acc[key] = false;
+    return acc;
+  }, {} as AdminAccess);
+}
+
+function normalizeExplicitAdminAccess(value: unknown): AdminAccess | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const normalized = {} as AdminAccess;
+
+  for (const key of ADMIN_ACCESS_KEYS) {
+    normalized[key] = record[key] === true;
+  }
+
+  return normalized;
+}
+
+/** Mirrors backend resolveAdminAccess — explicit JSON wins, else role defaults. */
+export function resolveAdminAccess(user: {
+  role?: UserRole;
+  adminAccess?: Partial<AdminAccess> | null;
+} | null | undefined): AdminAccess {
+  const explicit = normalizeExplicitAdminAccess(user?.adminAccess);
+  if (explicit) {
+    return explicit;
+  }
+
+  return getDefaultAccessForRole(user?.role);
 }
 
 export function normalizeAdminAccess(

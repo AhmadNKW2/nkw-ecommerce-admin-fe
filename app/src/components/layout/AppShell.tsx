@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { RouteAdminAccessGuard } from "../auth/RouteAdminAccessGuard";
 import { AppSidebar } from "../sidebar/app-sidebar";
 import { sidebarConfig } from "../sidebar/sidebar.config";
 import { Sidebar, SidebarPanel, useSidebar } from "../sidebar/sidebar";
@@ -104,7 +105,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ProtectedRoute>
       <SidebarLayoutProvider>
         <Sidebar>
-          <AppShellContent>{children}</AppShellContent>
+          <AppShellContent>
+            <RouteAdminAccessGuard>{children}</RouteAdminAccessGuard>
+          </AppShellContent>
         </Sidebar>
       </SidebarLayoutProvider>
     </ProtectedRoute>

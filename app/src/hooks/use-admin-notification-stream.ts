@@ -56,6 +56,7 @@ export function useAdminNotificationStream() {
   const queryClient = useQueryClient();
   const lastSoundAtRef = useRef(0);
   const reconnectFallbackRef = useRef<number | null>(null);
+  const lastFallbackInvalidateAtRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -122,15 +123,23 @@ export function useAdminNotificationStream() {
       }
     };
     source.onerror = () => {
-      // If stream disconnects (auth/proxy/instance issue), keep badges fresh.
-      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
-      if (reconnectFallbackRef.current === null) {
-        reconnectFallbackRef.current = window.setInterval(() => {
-          void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
-          void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
-        }, 15000);
-      }
+      // EventSource can emit frequent error events while auto-reconnecting.
+      // Avoid request storms by switching to a throttled fallback poller only once.
+      if (reconnectFallbackRef.current !== null) return;
+
+      const invalidateBadgeQueries = () => {
+        const now = Date.now();
+        // Guard against accidental burst invalidations from rapid reconnect cycles.
+        if (now - lastFallbackInvalidateAtRef.current < 10_000) return;
+        lastFallbackInvalidateAtRef.current = now;
+        void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all, refetchType: "active" });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all, refetchType: "active" });
+      };
+
+      invalidateBadgeQueries();
+      reconnectFallbackRef.current = window.setInterval(() => {
+        invalidateBadgeQueries();
+      }, 30_000);
     };
 
     return () => {

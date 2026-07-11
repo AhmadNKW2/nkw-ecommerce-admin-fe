@@ -18,7 +18,7 @@ export const SETTINGS_LINK_DEFINITIONS: SettingsLinkDefinition[] = [
   { href: "/settings/appearance", label: "Appearance", navLabel: "Appearance" },
   { href: "/settings/features", label: "Feature Settings", navLabel: "Feature Settings" },
   { href: "/settings/popup", label: "Site Popup", navLabel: "Site Popup", featureToggle: "popup_enabled" },
-  { href: "/settings/tags", label: "Category Tags", navLabel: "Category Tags" },
+  { href: "/settings/terms", label: "Search Concepts", navLabel: "Search Concepts" },
   {
     href: "/settings/product-import",
     label: "Product Import",

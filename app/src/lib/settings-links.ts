@@ -35,6 +35,13 @@ export const SETTINGS_LINK_DEFINITIONS: SettingsLinkDefinition[] = [
     catalogManagerBypass: true,
   },
   {
+    href: "/settings/search",
+    label: "Search",
+    navLabel: "Search",
+    roles: ["admin"],
+    adminAccess: "settings",
+  },
+  {
     href: "/settings/product-import",
     label: "Product Import",
     navLabel: "Product Import",

@@ -32,7 +32,6 @@ import { MediaSection } from "./sections/MediaSection";
 import { StockSection } from "./sections/StockSection";
 import { Card } from "../ui";
 import { useZodValidation, flattenZodErrors } from "../../hooks/use-zod-validation";
-import { createProductSchema, type ProductFormConfig } from "../../lib/validations/product.schema";
 import { Package } from "lucide-react";
 import type { Attribute as CatalogAttribute, AttributeValue as CatalogAttributeValue } from "../../services/attributes/types/attribute.types";
 import { Category } from "../../services/categories/types/category.types";

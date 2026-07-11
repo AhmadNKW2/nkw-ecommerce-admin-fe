@@ -67,6 +67,16 @@ export interface MediaItem {
   isPrimary: boolean;
 }
 
+// Downloadable attachments
+export interface AttachmentItem {
+  id: string;
+  file: File | null;
+  name: string;
+  size?: number;
+  url?: string;
+  order: number;
+}
+
 // Product Form Data Schema
 const productFormObjectSchema = z.object({
   // Basic Information
@@ -160,6 +170,21 @@ const productFormObjectSchema = z.object({
       isPrimary: z.boolean(),
     })
   ).min(1, "At least one media item is required"),
+
+  // Optional downloadable files (max 3)
+  attachments: z
+    .array(
+      z.object({
+        id: z.string(),
+        file: z.instanceof(File).nullable(),
+        name: z.string(),
+        size: z.number().optional(),
+        url: z.string().optional(),
+        order: z.number(),
+      }),
+    )
+    .max(3, "You can upload up to 3 files")
+    .optional(),
 
 });
 

@@ -561,6 +561,11 @@ export interface MediaInputDto {
   sort_order?: number;     // Default: 0
 }
 
+export interface AttachmentInputDto {
+  media_id: number;
+  sort_order?: number;
+}
+
 export interface ProductSpecificationInputDto {
   specification_id: number;
   specification_value_ids: number[];
@@ -609,6 +614,7 @@ export interface CreateProductDto {
   // Attributes
   attributes?: ProductAttributeInput[];
   media?: MediaInputDto[];
+  attachments?: AttachmentInputDto[];
 }
 
 // ==================== UPDATE PRODUCT DTOs ====================
@@ -729,6 +735,7 @@ export interface UpdateProductDto {
   // Attributes
   attributes?: ProductAttributeInput[];
   media?: MediaInputDto[];
+  attachments?: AttachmentInputDto[];
 }
 
 // Restore Product DTO

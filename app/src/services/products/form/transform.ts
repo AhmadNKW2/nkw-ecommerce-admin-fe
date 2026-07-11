@@ -2,10 +2,11 @@
  * Helper functions to transform product form data to backend DTOs
  */
 
-import { ProductFormData, MediaItem } from "../types/product-form.types";
+import { ProductFormData, MediaItem, AttachmentItem } from "../types/product-form.types";
 import {
   CreateProductDto,
   MediaInputDto,
+  AttachmentInputDto,
   ProductAttributeInput,
   ProductSpecificationInputDto,
 } from "../types/product.types";
@@ -16,6 +17,15 @@ import {
 export interface MediaUploadData {
   multipleMedia?: MediaItem[];
   singleMedia?: MediaItem[];
+  attachments?: AttachmentItem[];
+}
+
+/**
+ * Uploaded attachment reference - after upload, contains media IDs
+ */
+export interface UploadedAttachmentReference {
+  mediaId: number;
+  sortOrder: number;
 }
 
 /**
@@ -282,6 +292,9 @@ export function transformFormDataToDto(
   if (data.media && data.media.length > 0) {
     mediaFiles.singleMedia = data.media;
   }
+  if (data.attachments && data.attachments.length > 0) {
+    mediaFiles.attachments = data.attachments;
+  }
 
   return { dto, mediaFiles };
 }
@@ -307,4 +320,18 @@ export function buildMediaArray(
     is_primary: hasExplicitPrimary ? media.isPrimary : index === 0,
     sort_order: index,
   }));
+}
+
+/**
+ * Build attachments array for the DTO from uploaded attachment references
+ */
+export function buildAttachmentsArray(
+  uploadedAttachments: UploadedAttachmentReference[],
+): AttachmentInputDto[] {
+  return [...uploadedAttachments]
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .map((attachment, index) => ({
+      media_id: attachment.mediaId,
+      sort_order: index,
+    }));
 }

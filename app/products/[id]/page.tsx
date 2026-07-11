@@ -26,8 +26,10 @@ import { productService } from "../../src/services/products/api/product.service"
 import { mediaService } from "../../src/services/media/api/media.service";
 import {
   buildMediaArray,
+  buildAttachmentsArray,
   transformFormDataToDto,
   UploadedMediaReference,
+  UploadedAttachmentReference,
 } from "../../src/services/products/form/transform";
 import { Card } from "../../src/components/ui/card";
 import { AlertCircle, RefreshCw, Loader2 } from "lucide-react";
@@ -1294,6 +1296,28 @@ export default function EditProductPage() {
     );
   };
 
+  const transformAttachments = (): NonNullable<ProductFormData["attachments"]> => {
+    const attachments = (product as any)?.attachments;
+    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
+      return [];
+    }
+
+    return [...attachments]
+      .sort((left: any, right: any) => {
+        const leftOrder = left.sort_order ?? 0;
+        const rightOrder = right.sort_order ?? 0;
+        return leftOrder - rightOrder;
+      })
+      .map((attachment: any, index: number) => ({
+        id: attachment.id.toString(),
+        file: null,
+        name: attachment.original_name || `File ${index + 1}`,
+        size: attachment.size ? Number(attachment.size) : undefined,
+        url: attachment.url,
+        order: attachment.sort_order ?? index,
+      }));
+  };
+
   // Transform variant media from media array with media_group
   const transformVariantMedia = (stockVariants: any[], attrs: any[]) => {
     if (!attrs) return undefined;
@@ -1644,6 +1668,9 @@ export default function EditProductPage() {
 
         // Media
         media: transformSingleMedia(),
+
+        // Downloads
+        attachments: transformAttachments(),
       };
     }, [product, attributesData, specificationsData]);
 
@@ -1656,7 +1683,10 @@ export default function EditProductPage() {
         availableSpecifications: specifications,
       });
       const productMedia = mediaFiles.singleMedia || [];
-      const totalUploads = productMedia.filter((media) => !!media.file).length;
+      const productAttachments = mediaFiles.attachments || [];
+      const totalUploads =
+        productMedia.filter((media) => !!media.file).length +
+        productAttachments.filter((attachment) => !!attachment.file).length;
 
       let completedUploads = 0;
 
@@ -1674,6 +1704,7 @@ export default function EditProductPage() {
         });
       }
       const uploadedMedia: UploadedMediaReference[] = [];
+      const uploadedAttachments: UploadedAttachmentReference[] = [];
 
       for (const media of productMedia) {
         if (media.file) {
@@ -1707,12 +1738,43 @@ export default function EditProductPage() {
         }
       }
 
+      for (const attachment of productAttachments) {
+        if (attachment.file) {
+          updateLoadingToast(toastId, {
+            title: "Uploading files",
+            subtitle: `${completedUploads + 1}/${totalUploads} files`,
+            progress: totalUploads > 0 ? completedUploads / totalUploads : 0,
+          });
+          const uploadResult = await mediaService.uploadAttachment(attachment.file);
+          completedUploads += 1;
+          updateLoadingToast(toastId, {
+            title: "Uploading files",
+            subtitle: `${completedUploads}/${totalUploads} files`,
+            progress: totalUploads > 0 ? completedUploads / totalUploads : 0,
+          });
+          uploadedAttachments.push({
+            mediaId: uploadResult.data.id,
+            sortOrder: attachment.order,
+          });
+          continue;
+        }
+
+        const existingAttachmentId = parseInt(attachment.id, 10);
+        if (!Number.isNaN(existingAttachmentId)) {
+          uploadedAttachments.push({
+            mediaId: existingAttachmentId,
+            sortOrder: attachment.order,
+          });
+        }
+      }
+
       const productPayload: UpdateProductDto = {
         ...dto,
         linked_product_ids: dto.linked_product_ids.filter(
           (linkedProductId) => linkedProductId !== product_id,
         ),
         media: productMedia.length > 0 ? buildMediaArray(uploadedMedia) : [],
+        attachments: buildAttachmentsArray(uploadedAttachments),
       };
 
       updateLoadingToast(toastId, {

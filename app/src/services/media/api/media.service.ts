@@ -10,7 +10,7 @@ import { ApiResponse } from "../../../types/common.types";
 export interface UploadedMedia {
   id: number;
   url: string;
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'document';
   original_name: string;
   mime_type: string;
   size: number;
@@ -42,6 +42,19 @@ class MediaService {
     const uploadPromises = files.map(file => this.uploadMedia(file));
     const responses = await Promise.all(uploadPromises);
     return responses.map(r => r.data);
+  }
+
+  /**
+   * Upload a product document attachment (max 5MB)
+   */
+  async uploadAttachment(file: File): Promise<ApiResponse<UploadedMedia>> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return httpClient.postFormData<ApiResponse<UploadedMedia>>(
+      `${this.endpoint}/upload-attachment`,
+      formData
+    );
   }
 }
 

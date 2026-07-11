@@ -29,6 +29,7 @@ import { SpecificationsSection } from "./sections/SpecificationsSection";
 import { PricingSection } from "./sections/PricingSection";
 import { WeightDimensionsSection } from "./sections/WeightDimensionsSection";
 import { MediaSection } from "./sections/MediaSection";
+import { AttachmentsSection } from "./sections/AttachmentsSection";
 import { StockSection } from "./sections/StockSection";
 import { Card } from "../ui";
 import { useZodValidation, flattenZodErrors } from "../../hooks/use-zod-validation";
@@ -164,6 +165,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     attributes: [],
     specifications: [],
     media: [],
+    attachments: [],
     ...initialData,
     // Overlay any previously saved draft (create mode only; ignored when
     // restoredDraft is null or when initialData already provides values).
@@ -239,6 +241,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         attributes: [],
         specifications: [],
         media: [],
+        attachments: [],
         ...initialData,
       });
     }
@@ -775,6 +778,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       <MediaSection
         media={formData.media || []}
         onChange={(media) => handleFieldChange("media", media)}
+        errors={errors}
+      />
+
+      <AttachmentsSection
+        attachments={formData.attachments || []}
+        onChange={(attachments) => handleFieldChange("attachments", attachments)}
         errors={errors}
       />
     </div>

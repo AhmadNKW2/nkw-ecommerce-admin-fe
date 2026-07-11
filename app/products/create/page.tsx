@@ -17,7 +17,7 @@ import { useAttributes } from "../../src/services/attributes/hooks/use-attribute
 import { useSpecifications } from "../../src/services/specifications/hooks/use-specifications";
 import { productService } from "../../src/services/products/api/product.service";
 import { mediaService } from "../../src/services/media/api/media.service";
-import { buildMediaArray, transformFormDataToDto, UploadedMediaReference } from "../../src/services/products/form/transform";
+import { buildMediaArray, buildAttachmentsArray, transformFormDataToDto, UploadedMediaReference, UploadedAttachmentReference } from "../../src/services/products/form/transform";
 import { queryKeys } from "../../src/lib/query-keys";
 import { Attribute, AttributeValue } from "../../src/services/attributes/types/attribute.types";
 import { Specification, SpecificationValue } from "../../src/services/specifications/types/specification.types";
@@ -85,7 +85,10 @@ export default function CreateProductPage() {
         availableSpecifications: specifications,
       });
       const productMedia = mediaFiles.singleMedia || [];
-      const totalUploads = productMedia.filter((media) => !!media.file).length;
+      const productAttachments = mediaFiles.attachments || [];
+      const totalUploads =
+        productMedia.filter((media) => !!media.file).length +
+        productAttachments.filter((attachment) => !!attachment.file).length;
 
       let completedUploads = 0;
 
@@ -104,6 +107,7 @@ export default function CreateProductPage() {
       }
       
       const uploadedMedia: UploadedMediaReference[] = [];
+      const uploadedAttachments: UploadedAttachmentReference[] = [];
 
       if (productMedia.length > 0) {
         for (const media of productMedia) {
@@ -139,8 +143,43 @@ export default function CreateProductPage() {
         }
       }
 
+      if (productAttachments.length > 0) {
+        for (const attachment of productAttachments) {
+          if (attachment.file) {
+            updateLoadingToast(toastId, {
+              title: "Uploading files",
+              subtitle: `${completedUploads + 1}/${totalUploads} files`,
+              progress: totalUploads > 0 ? completedUploads / totalUploads : 0,
+            });
+            const uploadResult = await mediaService.uploadAttachment(attachment.file);
+            completedUploads += 1;
+            updateLoadingToast(toastId, {
+              title: "Uploading files",
+              subtitle: `${completedUploads}/${totalUploads} files`,
+              progress: totalUploads > 0 ? completedUploads / totalUploads : 0,
+            });
+            uploadedAttachments.push({
+              mediaId: uploadResult.data.id,
+              sortOrder: attachment.order,
+            });
+            continue;
+          }
+
+          const existingAttachmentId = parseInt(attachment.id, 10);
+          if (!Number.isNaN(existingAttachmentId)) {
+            uploadedAttachments.push({
+              mediaId: existingAttachmentId,
+              sortOrder: attachment.order,
+            });
+          }
+        }
+      }
+
       if (productMedia.length > 0) {
         dto.media = buildMediaArray(uploadedMedia);
+      }
+      if (productAttachments.length > 0) {
+        dto.attachments = buildAttachmentsArray(uploadedAttachments);
       }
 
       updateLoadingToast(toastId, {

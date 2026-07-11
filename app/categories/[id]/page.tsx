@@ -42,33 +42,6 @@ const extractLinkedIds = (directIds: unknown, relations: unknown): number[] => {
   return [...new Set([...normalizedIds, ...relationIds])];
 };
 
-const parseTagsInput = (value: string): string[] => {
-  if (!value.trim()) return [];
-  return [...new Set(value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
-};
-
-const normalizeTagsField = (value: unknown): string => {
-  if (Array.isArray(value)) {
-    return value
-      .filter((item): item is string => typeof item === "string")
-      .join(", ");
-  }
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((item): item is string => typeof item === "string")
-          .join(", ");
-      }
-    } catch {
-      return value;
-    }
-    return value;
-  }
-  return "";
-};
-
 export default function EditCategoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -83,8 +56,6 @@ export default function EditCategoryPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
-  const [tagsEn, setTagsEn] = useState("");
-  const [tagsAr, setTagsAr] = useState("");
   const [image, setImage] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [parentId, setParentId] = useState<number | null>(null);
@@ -142,8 +113,6 @@ export default function EditCategoryPage() {
       setNameAr(category.name_ar);
       setDescriptionEn(category.description_en || "");
       setDescriptionAr(category.description_ar || "");
-      setTagsEn(normalizeTagsField((category as any).tags_en));
-      setTagsAr(normalizeTagsField((category as any).tags_ar));
       // Set existing image URL
       if (category.image) {
         setImage({
@@ -219,8 +188,6 @@ export default function EditCategoryPage() {
           name_ar: nameAr,
           description_en: descriptionEn || undefined,
           description_ar: descriptionAr || undefined,
-          tags_en: parseTagsInput(tagsEn),
-          tags_ar: parseTagsInput(tagsAr),
           visible: visible,
           parent_id: parentId,
           ...(attributesEnabled ? { attribute_ids } : {}),
@@ -308,8 +275,6 @@ export default function EditCategoryPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
-      tagsEn={tagsEn}
-      tagsAr={tagsAr}
       image={image}
       visible={visible}
       parentId={parentId}
@@ -342,8 +307,6 @@ export default function EditCategoryPage() {
         }
       }}
       onImageChange={setImage}
-      onTagsEnChange={setTagsEn}
-      onTagsArChange={setTagsAr}
       onVisibleChange={setVisible}
       onParentIdChange={setParentId}
       onProductIdsChange={setProductIds}

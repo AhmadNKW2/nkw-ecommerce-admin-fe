@@ -1430,6 +1430,7 @@ export function ProductReviewWorkspace({
         linked_products_enabled: false,
         reference_links_enabled: false,
         product_status_enabled: false,
+        product_files_enabled: false,
         pricing_view_enabled: false,
         easy_purchase_enabled: false,
         cart_sidebar_button_enabled: false,

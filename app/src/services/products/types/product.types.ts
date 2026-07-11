@@ -348,6 +348,15 @@ export interface ProductDetail extends Omit<Product, 'vendor' | 'category' | 'st
     email?: string | null;
   } | null;
   media?: ProductMedia[];
+  attachments?: Array<{
+    id: number;
+    url: string;
+    type: string;
+    original_name: string;
+    mime_type?: string | null;
+    size?: number | string | null;
+    sort_order?: number;
+  }>;
   pricing?: ProductPricing[];
   weight?: ProductWeight[];
   stock?: ProductStock[];

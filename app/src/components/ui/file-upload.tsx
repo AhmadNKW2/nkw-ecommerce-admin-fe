@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Eye, FileText, Upload } from "lucide-react";
+import { showErrorToast } from "@/lib/toast";
 import { Button } from "./button";
 
 export interface FileUploadItem {
@@ -188,7 +189,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     });
 
     if (errors.length > 0) {
-      window.alert(errors.join("\n"));
+      showErrorToast(errors.join("\n"));
     }
 
     if (nextItems.length !== currentValue.length) {
@@ -245,7 +246,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const canAddMore = currentValue.length < maxFiles;
 
   return (
-    <div id={id} className={`flex flex-col gap-2 ${className}`}>
+    <div id={id} className={`flex flex-col gap-5 ${className}`}>
       {label ? <label className="text-sm font-medium">{label}</label> : null}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 

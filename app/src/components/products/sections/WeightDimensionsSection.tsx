@@ -42,76 +42,64 @@ export function WeightDimensionsSection({
 
     return (
         <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">
+            <h2 className="text-xl font-semibold">
                 Weight & Dimensions (Optional)
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Weight</label>
-                    <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={weightDimensions?.weight ?? null}
-                        onNumberChange={(value) => handleFieldChange("weight", value)}
-                        placeholder="0.00"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Select
-                        id="weightUnit"
-                        label="Weight Unit"
-                        value={weightDimensions?.weightUnit || "kg"}
-                        onChange={(value) => handleFieldChange("weightUnit", value as string)}
-                        options={weightUnitOptions}
-                    />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                    id="weight"
+                    label="Weight"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={weightDimensions?.weight ?? null}
+                    onNumberChange={(value) => handleFieldChange("weight", value)}
+                />
+                <Select
+                    id="weightUnit"
+                    label="Weight Unit"
+                    value={weightDimensions?.weightUnit || "kg"}
+                    onChange={(value) => handleFieldChange("weightUnit", value as string)}
+                    options={weightUnitOptions}
+                />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Length</label>
-                    <Input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={weightDimensions?.length ?? null}
-                        onNumberChange={(value) => handleFieldChange("length", value)}
-                        placeholder="0.0"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Width</label>
-                    <Input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={weightDimensions?.width ?? null}
-                        onNumberChange={(value) => handleFieldChange("width", value)}
-                        placeholder="0.0"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Height</label>
-                    <Input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={weightDimensions?.height ?? null}
-                        onNumberChange={(value) => handleFieldChange("height", value)}
-                        placeholder="0.0"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Select
-                        id="dimensionUnit"
-                        label="Dimension Unit"
-                        value={weightDimensions?.dimensionUnit || "cm"}
-                        onChange={(value) => handleFieldChange("dimensionUnit", value as string)}
-                        options={dimensionUnitOptions}
-                    />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Input
+                    id="length"
+                    label="Length"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={weightDimensions?.length ?? null}
+                    onNumberChange={(value) => handleFieldChange("length", value)}
+                />
+                <Input
+                    id="width"
+                    label="Width"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={weightDimensions?.width ?? null}
+                    onNumberChange={(value) => handleFieldChange("width", value)}
+                />
+                <Input
+                    id="height"
+                    label="Height"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={weightDimensions?.height ?? null}
+                    onNumberChange={(value) => handleFieldChange("height", value)}
+                />
+                <Select
+                    id="dimensionUnit"
+                    label="Dimension Unit"
+                    value={weightDimensions?.dimensionUnit || "cm"}
+                    onChange={(value) => handleFieldChange("dimensionUnit", value as string)}
+                    options={dimensionUnitOptions}
+                />
             </div>
         </Card>
     );

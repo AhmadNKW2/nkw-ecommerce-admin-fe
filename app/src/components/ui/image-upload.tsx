@@ -350,7 +350,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   return (
-    <div id={id} className={`flex flex-col gap-2 ${className}`}>
+    <div id={id} className={`flex flex-col gap-5 ${className}`}>
       {label && <label className="text-sm font-medium">{label}</label>}
       {error && <p className="text-sm text-danger">{error}</p>}
 

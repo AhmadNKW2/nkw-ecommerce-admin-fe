@@ -61,6 +61,12 @@ const catalogFields: Array<{
       "Show weight, length, width, height, and their units in the admin panel and storefront cart/checkout.",
   },
   {
+    key: "product_files_enabled",
+    label: "Product Files",
+    description:
+      "Show downloadable product property files in the admin product form and on the storefront product detail page.",
+  },
+  {
     key: "linked_products_enabled",
     label: "Linked Products",
     description:

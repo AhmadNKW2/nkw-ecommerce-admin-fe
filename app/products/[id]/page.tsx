@@ -48,6 +48,7 @@ import {
   showLoadingToast,
   updateLoadingToast,
 } from "../../src/lib/toast";
+import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 
 type NormalizedProductSpecification = {
   specification_value_id: number;
@@ -235,6 +236,8 @@ export default function EditProductPage() {
   const params = useParams();
   const product_id = Number(params?.id);
   const isValidProductId = Number.isFinite(product_id);
+  const { isEnabled } = useResolvedFeatureToggles();
+  const productFilesEnabled = isEnabled("product_files_enabled");
 
   if (!isValidProductId) {
     return null;
@@ -1297,18 +1300,18 @@ export default function EditProductPage() {
   };
 
   const transformAttachments = (): NonNullable<ProductFormData["attachments"]> => {
-    const attachments = (product as any)?.attachments;
+    const attachments = product?.attachments;
     if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
       return [];
     }
 
     return [...attachments]
-      .sort((left: any, right: any) => {
+      .sort((left, right) => {
         const leftOrder = left.sort_order ?? 0;
         const rightOrder = right.sort_order ?? 0;
         return leftOrder - rightOrder;
       })
-      .map((attachment: any, index: number) => ({
+      .map((attachment, index) => ({
         id: attachment.id.toString(),
         file: null,
         name: attachment.original_name || `File ${index + 1}`,
@@ -1670,9 +1673,9 @@ export default function EditProductPage() {
         media: transformSingleMedia(),
 
         // Downloads
-        attachments: transformAttachments(),
+        attachments: productFilesEnabled ? transformAttachments() : [],
       };
-    }, [product, attributesData, specificationsData]);
+    }, [product, attributesData, specificationsData, productFilesEnabled]);
 
   const handleSubmit = async (data: ProductFormData) => {
     const toastId = showLoadingToast("Updating product...");
@@ -1774,7 +1777,9 @@ export default function EditProductPage() {
           (linkedProductId) => linkedProductId !== product_id,
         ),
         media: productMedia.length > 0 ? buildMediaArray(uploadedMedia) : [],
-        attachments: buildAttachmentsArray(uploadedAttachments),
+        ...(productFilesEnabled
+          ? { attachments: buildAttachmentsArray(uploadedAttachments) }
+          : {}),
       };
 
       updateLoadingToast(toastId, {

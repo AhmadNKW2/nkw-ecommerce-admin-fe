@@ -131,6 +131,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const linkedProductsEnabled =
     vendorsEnabled && isEnabled("linked_products_enabled");
   const productStatusEnabled = isEnabled("product_status_enabled");
+  const productFilesEnabled = isEnabled("product_files_enabled");
   const statusVisible = productStatusEnabled;
   const { canEditProductPricing } = useAdminAccess();
 
@@ -290,6 +291,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       pricing: formData.pricing,
       weightDimensions: formData.weightDimensions,
       media: formData.media || [],
+      attachments: productFilesEnabled ? (formData.attachments || []) : [],
     };
 
     // -----------------------------------------------------
@@ -781,11 +783,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         errors={errors}
       />
 
+      {productFilesEnabled ? (
       <AttachmentsSection
         attachments={formData.attachments || []}
         onChange={(attachments) => handleFieldChange("attachments", attachments)}
         errors={errors}
       />
+      ) : null}
     </div>
   );
 };

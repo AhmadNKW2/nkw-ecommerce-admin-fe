@@ -8,6 +8,7 @@ import { useOrder, useUpdateOrderStatus, useDeleteOrder } from "../../src/servic
 import { Card } from "../../src/components/ui/card";
 import { Button } from "../../src/components/ui/button";
 import { EmptyState } from "../../src/components/common/EmptyState";
+import { PageHeader } from "../../src/components/common/PageHeader";
 import {
     Table,
     TableBody,
@@ -20,10 +21,8 @@ import { Badge } from "../../src/components/ui/badge";
 import { OrderStatusPills } from "../../src/components/orders/OrderStatusPills";
 import {
     Receipt,
-    ArrowLeft,
     User,
     MapPin,
-    Calendar,
     CreditCard,
     Mail,
     Phone,
@@ -31,7 +30,6 @@ import {
     Clock,
     AlertCircle,
     ShoppingBag,
-    Pencil,
     ImageOff,
     Trash2,
     Eye,
@@ -177,36 +175,57 @@ export default function OrderDetailsPage() {
 
     if (isError) {
         return (
-            <div className="flex h-[80vh] items-center justify-center p-5">
-                <div className="w-full max-w-md">
+            <div className="admin-page">
+                <PageHeader
+                    icon={<Receipt />}
+                    title="Order Details"
+                    description="View order information"
+                    cancelAction={{
+                        label: "Back",
+                        onClick: () => router.push("/orders"),
+                    }}
+                />
+                <Card>
                     <EmptyState
                         icon={<AlertCircle className="text-red-500 w-12 h-12" />}
                         title="Failed to load order"
                         description={(error as any)?.message || "Please try again."}
                     />
-                    <div className="flex justify-center mt-6">
-                        <Button onClick={() => refetch()} variant="outline">
-                            Try Again
+                    <div className="flex justify-center gap-3">
+                        <Button variant="outline" onClick={() => router.push("/orders")}>
+                            Back to Orders
                         </Button>
+                        <Button onClick={() => refetch()}>Try Again</Button>
                     </div>
-                </div>
+                </Card>
             </div>
         );
     }
 
     if (!order && !isLoading) {
         return (
-            <div className="flex h-[80vh] items-center justify-center p-5">
-                <div className="w-full max-w-md bg-white rounded-lg shadow-sm border p-8 text-center">
-                    <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <Receipt className="w-6 h-6 text-gray-400" />
+            <div className="admin-page">
+                <PageHeader
+                    icon={<Receipt />}
+                    title="Order Details"
+                    description="View order information"
+                    cancelAction={{
+                        label: "Back",
+                        onClick: () => router.push("/orders"),
+                    }}
+                />
+                <Card>
+                    <EmptyState
+                        icon={<Receipt />}
+                        title="Order Not Found"
+                        description="The order you are looking for does not exist or has been removed."
+                    />
+                    <div className="flex justify-center">
+                        <Button onClick={() => router.push("/orders")}>
+                            Back to Orders
+                        </Button>
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Order Not Found</h2>
-                    <p className="text-gray-500 mb-6">The order you are looking for does not exist or has been removed.</p>
-                    <Button onClick={() => router.push("/orders")}>
-                        Back to Orders
-                    </Button>
-                </div>
+                </Card>
             </div>
         );
     }
@@ -250,59 +269,42 @@ export default function OrderDetailsPage() {
         shipping.apartment && `Apt ${shipping.apartment}`,
     ].filter(Boolean).join(" · ");
 
+    const orderHeaderDescription = orderTimeLabel
+        ? `${orderDateLabel} · ${orderTimeLabel}`
+        : orderDateLabel;
+
     return (
-        <div>
-            {/* Top Navigation Bar */}
-            <div className="sticky top-0 z-20 flex flex-col gap-3 bg-white px-3 py-3 shadow-s2 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-                <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-5">
-                    <Button
-                        variant="outline"
-                        onClick={() => router.push("/orders")}
-                        className="shrink-0"
-                    >
-                        Back
-                    </Button>
-                    <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
-                    <div className="flex min-w-0 flex-col gap-1">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Order #{order.id}</h1>
-                            <StatusBadge status={order.status} />
-                        </div>
-                        <div className="inline-flex items-center gap-2 text-sm text-gray-500">
-                            <Calendar className="w-4 h-4 text-primary/60 shrink-0" />
-                            <span className="font-medium text-gray-700">{orderDateLabel}</span>
-                            {orderTimeLabel && (
-                                <>
-                                    <span className="text-gray-300">·</span>
-                                    <span>{orderTimeLabel}</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="admin-page">
+            <PageHeader
+                icon={<Receipt />}
+                title={
+                    <span className="flex items-center gap-2">
+                        Order #{order.id}
+                        <StatusBadge status={order.status} />
+                    </span>
+                }
+                description={orderHeaderDescription}
+                cancelAction={{
+                    label: "Back",
+                    onClick: () => router.push("/orders"),
+                }}
+                extraActions={
                     <Button
                         variant="outline"
                         color="var(--color-danger)"
                         onClick={() => setShowDeleteModal(true)}
-                        className="flex-1 sm:flex-none"
                     >
-                        <span className="flex items-center justify-center gap-2">
+                        <span className="flex items-center gap-2">
                             <Trash2 className="w-4 h-4" />
                             Delete
                         </span>
                     </Button>
-                    <Button
-                        onClick={() => router.push(`/orders/${order.id}/edit`)}
-                        className="flex-1 sm:flex-none"
-                    >
-                        <span className="flex items-center justify-center gap-2">
-                            <Pencil className="w-4 h-4" />
-                            Edit Order
-                        </span>
-                    </Button>
-                </div>
-            </div>
+                }
+                action={{
+                    label: "Edit Order",
+                    onClick: () => router.push(`/orders/${order.id}/edit`),
+                }}
+            />
 
             <DeleteConfirmationModal
                 isOpen={showDeleteModal}
@@ -313,8 +315,6 @@ export default function OrderDetailsPage() {
                 message="This will permanently delete the order and restore any reserved stock. This action cannot be undone."
                 itemName={`Order #${order.id}`}
             />
-
-            <div className="admin-page">
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 w-full">
                     {/* Left Column (Main) */}
@@ -634,7 +634,6 @@ export default function OrderDetailsPage() {
 
                     </div>
                 </div>
-            </div>
         </div>
     );
 }

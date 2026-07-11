@@ -26,6 +26,7 @@ const DEFAULT_TOGGLES: StoredFeatureToggles = {
   linked_products_enabled: true,
   reference_links_enabled: true,
   product_status_enabled: true,
+  product_files_enabled: true,
   pricing_view_enabled: true,
   easy_purchase_enabled: false,
   cart_sidebar_button_enabled: true,

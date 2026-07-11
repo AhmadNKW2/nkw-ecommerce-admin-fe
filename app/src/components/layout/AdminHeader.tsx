@@ -1,43 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu } from "lucide-react";
+import { Bell, ChevronLeft, Menu } from "lucide-react";
 import { AdminLogo } from "../common/AdminLogo";
+import { useSidebar } from "../sidebar/sidebar";
 import { useAdminNotifications } from "@/hooks/use-admin-notifications";
 import { useAdminNotificationStream } from "@/hooks/use-admin-notification-stream";
+import { cn } from "@/lib/utils";
 
-type AdminTopHeaderProps = {
+export const ADMIN_PAGE_HEADER_SLOT_ID = "admin-page-header-slot";
+
+type AdminHeaderProps = {
   siteName: string;
   siteLogo?: string | null;
   isBrandingPending?: boolean;
   onMenuClick: () => void;
 };
 
-function formatPageTitle(pathname: string): string {
-  if (pathname === "/") return "Dashboard";
-  const normalized = pathname.split("?")[0];
-  const section = normalized.split("/").filter(Boolean)[0] ?? "Dashboard";
-  return section
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-export function AdminTopHeader({
+export function AdminHeader({
   siteName,
   siteLogo,
   isBrandingPending,
   onMenuClick,
-}: AdminTopHeaderProps) {
+}: AdminHeaderProps) {
   const pathname = usePathname();
+  const { isCollapsed, toggleCollapsed, isMobile } = useSidebar();
+  const showCollapsed = isCollapsed && !isMobile;
+
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, isLoading } = useAdminNotifications();
   useAdminNotificationStream();
-
-  const pageTitle = useMemo(() => formatPageTitle(pathname), [pathname]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,26 +52,75 @@ export function AdminTopHeader({
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-b1 bg-white/95 px-3 py-2 backdrop-blur-sm sm:px-4 lg:px-6">
-      <div className="flex min-h-12 items-center justify-between gap-2 sm:gap-3">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={onMenuClick}
-            aria-label="Open navigation menu"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10 lg:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="shrink-0 [&_img]:h-8 [&_img]:w-8 [&>div]:h-8 [&>div]:w-8 sm:[&_img]:h-9 sm:[&_img]:w-9 sm:[&>div]:h-9 sm:[&>div]:w-9">
-            <AdminLogo src={siteLogo} pending={isBrandingPending} alt={siteName} />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900 sm:text-base">{pageTitle}</p>
-            <p className="truncate text-xs text-gray-500">{siteName} Admin Panel</p>
-          </div>
+    <header className="sticky top-0 z-30 flex min-h-18 shrink-0 items-stretch border-b border-b1 bg-[#ffffff]">
+      {/* Branding — width tracks the sidebar */}
+      <div
+        className={cn(
+          "relative flex shrink-0 items-center gap-3 border-r border-b1 px-3 transition-[width] duration-300 ease-in-out sm:px-4",
+          showCollapsed ? "lg:w-18 lg:justify-center lg:px-2" : "lg:w-70",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        <div
+          className={cn(
+            "shrink-0 [&>div]:h-11 [&>div]:w-11 [&_img]:h-11 [&_img]:w-11",
+            showCollapsed && "lg:mx-auto",
+          )}
+        >
+          <AdminLogo src={siteLogo} pending={isBrandingPending} alt={siteName} />
         </div>
 
+        <div className={cn("min-w-0", showCollapsed && "lg:hidden")}>
+          <h1 className="truncate text-sm font-bold leading-snug text-gray-900 sm:text-base">
+            {siteName}
+          </h1>
+          <p className="truncate text-xs leading-snug text-gray-500">Admin Dashboard</p>
+        </div>
+
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="
+              absolute -right-3.5 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2
+              items-center justify-center rounded-full shrink-0
+              bg-white text-primary
+              shadow-[0_2px_8px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]
+              hover:shadow-[0_4px_12px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.08)]
+              hover:scale-110 transition-all duration-200 ease-out
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+            "
+          >
+            <ChevronLeft
+              size={15}
+              strokeWidth={2.5}
+              className={cn(
+                "transition-transform duration-300 ease-in-out",
+                isCollapsed ? "rotate-180" : "rotate-0",
+              )}
+            />
+          </button>
+        )}
+      </div>
+
+      {/* Page header slot — PageHeader renders into this via a portal */}
+      <div
+        id={ADMIN_PAGE_HEADER_SLOT_ID}
+        className="flex min-w-0 flex-1 items-center px-3 sm:px-4 lg:px-6"
+      />
+
+      {/* Actions */}
+      <div className="flex items-center justify-end pr-3 sm:pr-4 lg:pr-6">
         <div className="relative" ref={panelRef}>
           <button
             type="button"

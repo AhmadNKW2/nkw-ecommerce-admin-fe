@@ -99,11 +99,11 @@ export function SidebarPanel({ children }: SidebarPanelProps) {
         )}
       <aside
         className={`
-          z-50 flex h-dvh w-70 flex-col bg-white shadow-s1
+          z-50 flex h-full w-70 flex-col bg-white shadow-s1
           transition-[width,transform] duration-300 ease-in-out
-          fixed inset-y-0 left-0
+          fixed top-[4.5rem] bottom-0 left-0
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:inset-auto lg:translate-x-0 lg:shrink-0
+          lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:translate-x-0 lg:shrink-0
           ${isCollapsed ? 'lg:w-18' : 'lg:w-70'}
         `}
       >
@@ -126,7 +126,7 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
   return (
     <div
       className={`
-        border-b border-b1 flex items-center py-2
+        border-b border-b1 flex items-center min-h-[4.5rem] py-3
         transition-all duration-300 ease-in-out
         ${isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-between px-4'}
       `}
@@ -141,7 +141,9 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
           <div
             className={`
               shrink-0 transition-all duration-300 ease-in-out
-              ${isCollapsed && !isMobile ? 'h-10 w-10 [&_img]:h-10 [&_img]:w-10 [&>div]:h-10 [&>div]:w-10' : ''}
+              ${isCollapsed && !isMobile
+                ? 'h-10 w-10 [&_img]:h-10 [&_img]:w-10 [&>div]:h-10 [&>div]:w-10'
+                : 'h-11 w-11 [&_img]:h-11 [&_img]:w-11 [&>div]:h-11 [&>div]:w-11'}
             `}
           >
             {logo}

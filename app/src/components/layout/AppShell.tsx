@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
@@ -9,14 +9,11 @@ import { sidebarConfig } from "../sidebar/sidebar.config";
 import { Sidebar, SidebarPanel, useSidebar } from "../sidebar/sidebar";
 import { ScrollToTop } from "../common/ScrollToTop";
 import { useLoading } from "../../providers/loading-provider";
-import {
-  fetchFeatureToggles,
-} from "../../services/settings/hooks/use-settings";
-import { AdminLogo } from "../common/AdminLogo";
+import { fetchFeatureToggles } from "../../services/settings/hooks/use-settings";
 import { queryKeys } from "../../lib/query-keys";
 import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
-import { AdminTopHeader } from "./AdminTopHeader";
+import { AdminHeader } from "./AdminHeader";
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,37 +29,21 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
     isBrandingPending,
   } = useResolvedSiteBranding();
 
-  const sidebarHeader = useMemo(
-    () => ({
-      ...sidebarConfig.header,
-      title: siteName,
-      subtitle: "Admin Dashboard",
-      logo: (
-        <AdminLogo
-          src={siteLogo}
-          pending={isBrandingPending}
-          alt={siteName}
-        />
-      ),
-    }),
-    [siteName, siteLogo, isBrandingPending],
-  );
-
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, setMobileOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== "Escape") return;
       const tag = (document.activeElement as HTMLElement | null)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
       if ((document.activeElement as HTMLElement | null)?.isContentEditable) return;
       if (document.querySelector('[role="dialog"]')) return;
       router.back();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [router]);
 
   useEffect(() => {
@@ -81,27 +62,30 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   return (
-    <div className="flex h-dvh bg-primary/10">
-      <SidebarPanel>
-        <AppSidebar
-          groups={sidebarConfig.groups}
-          header={sidebarHeader}
-          footer={sidebarConfig.footer}
-        />
-      </SidebarPanel>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopHeader
-          siteName={siteName}
-          siteLogo={siteLogo}
-          isBrandingPending={isBrandingPending}
-          onMenuClick={() => setMobileOpen(true)}
-        />
-        <main ref={mainRef} className="relative min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+    <div className="flex h-dvh flex-col bg-primary/10">
+      <AdminHeader
+        siteName={siteName}
+        siteLogo={siteLogo}
+        isBrandingPending={isBrandingPending}
+        onMenuClick={() => setMobileOpen(true)}
+      />
+
+      <div className="flex min-h-0 flex-1">
+        <SidebarPanel>
+          <AppSidebar
+            groups={sidebarConfig.groups}
+            footer={sidebarConfig.footer}
+          />
+        </SidebarPanel>
+
+        <main
+          ref={mainRef}
+          className="relative min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+        >
           {children}
-          {showOverlay && (
-            <div className="absolute inset-0 z-9998" />
-          )}
+          {showOverlay && <div className="absolute inset-0 z-9998" />}
         </main>
+
         <ScrollToTop scrollContainerRef={mainRef} />
       </div>
     </div>

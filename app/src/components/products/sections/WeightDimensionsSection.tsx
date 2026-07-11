@@ -6,6 +6,7 @@ import {
     WeightDimensions,
 } from "../../../services/products/types/product-form.types";
 import { Card, Select } from "@/components/ui";
+import type { NullableNumber } from "../../../lib/nullable-number";
 
 interface WeightDimensionsProps {
     weightDimensions?: WeightDimensions;
@@ -27,7 +28,7 @@ export function WeightDimensionsSection({
         label: unit.toUpperCase(),
     }));
 
-    const handleFieldChange = (field: keyof WeightDimensions, value: number | undefined | string) => {
+    const handleFieldChange = (field: keyof WeightDimensions, value: NullableNumber | string) => {
         onChange({
             weight: weightDimensions?.weight,
             length: weightDimensions?.length,
@@ -52,8 +53,8 @@ export function WeightDimensionsSection({
                         type="number"
                         min="0"
                         step="0.01"
-                        value={weightDimensions?.weight ?? ""}
-                        onChange={(e) => handleFieldChange("weight", parseFloat(e.target.value) || undefined)}
+                        value={weightDimensions?.weight ?? null}
+                        onNumberChange={(value) => handleFieldChange("weight", value)}
                         placeholder="0.00"
                     />
                 </div>
@@ -75,8 +76,8 @@ export function WeightDimensionsSection({
                         type="number"
                         min="0"
                         step="0.1"
-                        value={weightDimensions?.length ?? ""}
-                        onChange={(e) => handleFieldChange("length", parseFloat(e.target.value) || undefined)}
+                        value={weightDimensions?.length ?? null}
+                        onNumberChange={(value) => handleFieldChange("length", value)}
                         placeholder="0.0"
                     />
                 </div>
@@ -86,8 +87,8 @@ export function WeightDimensionsSection({
                         type="number"
                         min="0"
                         step="0.1"
-                        value={weightDimensions?.width ?? ""}
-                        onChange={(e) => handleFieldChange("width", parseFloat(e.target.value) || undefined)}
+                        value={weightDimensions?.width ?? null}
+                        onNumberChange={(value) => handleFieldChange("width", value)}
                         placeholder="0.0"
                     />
                 </div>
@@ -97,8 +98,8 @@ export function WeightDimensionsSection({
                         type="number"
                         min="0"
                         step="0.1"
-                        value={weightDimensions?.height ?? ""}
-                        onChange={(e) => handleFieldChange("height", parseFloat(e.target.value) || undefined)}
+                        value={weightDimensions?.height ?? null}
+                        onNumberChange={(value) => handleFieldChange("height", value)}
                         placeholder="0.0"
                     />
                 </div>

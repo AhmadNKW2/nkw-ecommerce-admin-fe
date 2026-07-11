@@ -17,6 +17,7 @@ import {
 } from "../../src/services/settings/hooks/use-settings";
 import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
 import { mediaService } from "../../src/services/media/api/media.service";
+import type { NullableNumber } from "../../src/lib/nullable-number";
 
 type FormState = {
   site_name_en: string;
@@ -33,8 +34,8 @@ type FormState = {
   robots_follow: boolean;
   show_sale_pricing: boolean;
   free_delivery_enabled: boolean;
-  free_delivery_amount: number;
-  delivery_fee: number;
+  free_delivery_amount: NullableNumber;
+  delivery_fee: NullableNumber;
 };
 
 const emptyFormState: FormState = {
@@ -52,8 +53,8 @@ const emptyFormState: FormState = {
   robots_follow: true,
   show_sale_pricing: true,
   free_delivery_enabled: true,
-  free_delivery_amount: 50,
-  delivery_fee: 2,
+  free_delivery_amount: null,
+  delivery_fee: null,
 };
 
 export default function SeoSettingsPage() {
@@ -89,8 +90,8 @@ export default function SeoSettingsPage() {
       robots_follow: data.robots_follow ?? true,
       show_sale_pricing: data.show_sale_pricing ?? true,
       free_delivery_enabled: data.free_delivery_enabled ?? true,
-      free_delivery_amount: data.free_delivery_amount ?? 50,
-      delivery_fee: data.delivery_fee ?? 2,
+      free_delivery_amount: data.free_delivery_amount ?? null,
+      delivery_fee: data.delivery_fee ?? null,
     });
   }, [data]);
 
@@ -125,8 +126,8 @@ export default function SeoSettingsPage() {
       robots_follow: formState.robots_follow,
       show_sale_pricing: formState.show_sale_pricing,
       free_delivery_enabled: formState.free_delivery_enabled,
-      free_delivery_amount: Number(formState.free_delivery_amount) || 0,
-      delivery_fee: Number(formState.delivery_fee) || 0,
+      free_delivery_amount: formState.free_delivery_amount,
+      delivery_fee: formState.delivery_fee,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -345,14 +346,7 @@ export default function SeoSettingsPage() {
                 min={0}
                 step={0.01}
                 value={formState.delivery_fee}
-                onChange={(event) =>
-                  setField(
-                    "delivery_fee",
-                    Number.isNaN(event.target.valueAsNumber)
-                      ? 0
-                      : event.target.valueAsNumber,
-                  )
-                }
+                onNumberChange={(value) => setField("delivery_fee", value)}
                 disabled={isLoading || updateSeoSettings.isPending}
               />
             </div>
@@ -371,14 +365,7 @@ export default function SeoSettingsPage() {
                 min={0}
                 step={0.01}
                 value={formState.free_delivery_amount}
-                onChange={(event) =>
-                  setField(
-                    "free_delivery_amount",
-                    Number.isNaN(event.target.valueAsNumber)
-                      ? 0
-                      : event.target.valueAsNumber,
-                  )
-                }
+                onNumberChange={(value) => setField("free_delivery_amount", value)}
                 disabled={
                   isLoading ||
                   updateSeoSettings.isPending ||

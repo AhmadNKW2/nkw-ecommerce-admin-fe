@@ -2,11 +2,12 @@ import React from "react";
 import { Input } from "../../ui/input";
 import { Checkbox } from "../../ui/checkbox";
 import { Card } from "@/components/ui";
+import type { NullableNumber } from "../../../lib/nullable-number";
 
 interface StockSectionProps {
-    quantity?: number;
+    quantity?: NullableNumber;
     isOutOfStock: boolean;
-    onChangeQuantity: (value: number | undefined) => void;
+    onChangeQuantity: (value: NullableNumber) => void;
     onChangeIsOutOfStock: (value: boolean) => void;
     errors?: Record<string, string | boolean>;
 }
@@ -36,11 +37,8 @@ export const StockSection: React.FC<StockSectionProps> = ({
                         type="number"
                         min="0"
                         step="1"
-                        value={quantity === undefined || quantity === null ? "" : quantity.toString()}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            const raw = e.target.value;
-                            onChangeQuantity(raw === "" ? undefined : parseInt(raw, 10));
-                        }}
+                        value={quantity ?? null}
+                        onNumberChange={onChangeQuantity}
                         error={errors["quantity"]}
                     />
 

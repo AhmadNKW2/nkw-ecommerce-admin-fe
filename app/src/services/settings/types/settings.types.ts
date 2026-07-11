@@ -30,8 +30,20 @@ export interface SeoSettings {
 }
 
 export type UpdateSeoSettingsDto = Partial<
-  Omit<SeoSettings, 'id' | 'created_at' | 'updated_at'>
->;
+  Omit<
+    SeoSettings,
+    | 'id'
+    | 'created_at'
+    | 'updated_at'
+    | 'free_delivery_amount'
+    | 'delivery_fee'
+    | 'low_stock_threshold'
+  >
+> & {
+  free_delivery_amount?: number | null;
+  delivery_fee?: number | null;
+  low_stock_threshold?: number | null;
+};
 
 export interface FeatureToggles {
   id: number;

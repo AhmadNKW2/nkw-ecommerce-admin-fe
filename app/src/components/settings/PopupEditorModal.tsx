@@ -14,19 +14,21 @@ import {
 } from "@/services/settings/hooks/use-settings";
 import { mediaService } from "@/services/media/api/media.service";
 import type { UpdateSitePopupSettingsDto } from "@/services/settings/types/settings.types";
+import type { NullableNumber } from "@/lib/nullable-number";
+import { coalesceNumber } from "@/lib/nullable-number";
 
 type FormState = {
   enabled: boolean;
   image: ImageUploadItem | null;
   link_url: string;
-  dismiss_after_seconds: number;
+  dismiss_after_seconds: NullableNumber;
 };
 
 const emptyFormState: FormState = {
   enabled: false,
   image: null,
   link_url: "",
-  dismiss_after_seconds: 8,
+  dismiss_after_seconds: null,
 };
 
 export function PopupEditorModal({
@@ -56,7 +58,7 @@ export function PopupEditorModal({
           }
         : null,
       link_url: data.link_url ?? "",
-      dismiss_after_seconds: data.dismiss_after_seconds ?? 8,
+      dismiss_after_seconds: data.dismiss_after_seconds ?? null,
     });
   }, [data]);
 
@@ -76,7 +78,7 @@ export function PopupEditorModal({
       enabled: formState.enabled,
       image_url: imageUrl,
       link_url: formState.link_url.trim() || null,
-      dismiss_after_seconds: Number(formState.dismiss_after_seconds) || 0,
+      dismiss_after_seconds: coalesceNumber(formState.dismiss_after_seconds, 0),
     };
 
     await updateSitePopupSettings.mutateAsync(payload);
@@ -160,11 +162,11 @@ export function PopupEditorModal({
                   type="number"
                   min={0}
                   max={120}
-                  value={String(formState.dismiss_after_seconds)}
-                  onChange={(event) =>
+                  value={formState.dismiss_after_seconds}
+                  onNumberChange={(value) =>
                     setFormState((prev) => ({
                       ...prev,
-                      dismiss_after_seconds: Number(event.target.value) || 0,
+                      dismiss_after_seconds: value,
                     }))
                   }
                   disabled={saving || isLoading}

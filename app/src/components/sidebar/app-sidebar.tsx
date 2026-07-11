@@ -7,7 +7,6 @@ import type { SidebarRole } from './sidebar.config';
 import { sidebarConfig } from './sidebar.config';
 import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-toggles';
 import type { FeatureToggles } from '../../services/settings/types/settings.types';
-import { AdminLogo } from '../common/AdminLogo';
 import { useAdminAccess } from '../../hooks/use-admin-access';
 import type { AdminAccessKey } from '../../lib/admin-access';
 import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
@@ -15,7 +14,6 @@ import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization
 import { useAdminNotifications } from '../../hooks/use-admin-notifications';
 
 import {
-  SidebarHeader,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -50,11 +48,6 @@ type SidebarGroupItem = ResolvedSidebarGroup;
 
 interface AppSidebarProps {
   groups?: SidebarGroupItem[];
-  header?: {
-    title: string;
-    subtitle?: string;
-    logo?: ReactNode;
-  };
   footer?: {
     userName: string;
     userEmail: string;
@@ -62,7 +55,7 @@ interface AppSidebarProps {
   };
 }
 
-function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
+function AppSidebarInner({ groups, footer }: AppSidebarProps) {
   const { logout, user } = useAuth();
   const { isCollapsed, isMobile } = useSidebar();
   const showCollapsed = isCollapsed && !isMobile;
@@ -120,17 +113,6 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
 
   return (
     <>
-      {header && (
-        <SidebarHeader logo={header.logo ?? <AdminLogo />}>
-          <div className="min-w-0">
-            <h1 className="text-base font-bold leading-tight">{header.title}</h1>
-            {header.subtitle ? (
-              <p className="text-xs leading-tight text-gray-500">{header.subtitle}</p>
-            ) : null}
-          </div>
-        </SidebarHeader>
-      )}
-
       <SidebarContent key={layoutVersion}>
         {customizedGroups.map((group, groupIndex) => {
           const groupLinks = group.links as SidebarLinkItem[];
@@ -223,6 +205,6 @@ function AppSidebarInner({ groups, header, footer }: AppSidebarProps) {
   );
 }
 
-export function AppSidebar({ groups, header, footer }: AppSidebarProps) {
-  return <AppSidebarInner groups={groups} header={header} footer={footer} />;
+export function AppSidebar({ groups, footer }: AppSidebarProps) {
+  return <AppSidebarInner groups={groups} footer={footer} />;
 }

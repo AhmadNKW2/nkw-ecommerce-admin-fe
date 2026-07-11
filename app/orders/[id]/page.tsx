@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useLoading } from "../../src/providers/loading-provider";
-import { useOrder, useUpdateOrderStatus, useUpdateOrderItemCosts, useDeleteOrder } from "../../src/services/orders/hooks/use-orders";
+import { useOrder, useUpdateOrderStatus, useDeleteOrder } from "../../src/services/orders/hooks/use-orders";
 import { Card } from "../../src/components/ui/card";
 import { Button } from "../../src/components/ui/button";
 import { EmptyState } from "../../src/components/common/EmptyState";
@@ -16,7 +16,6 @@ import {
     TableHeader,
     TableRow,
 } from "../../src/components/ui/table";
-import { Input } from "../../src/components/ui/input";
 import { Badge } from "../../src/components/ui/badge";
 import { OrderStatusPills } from "../../src/components/orders/OrderStatusPills";
 import {
@@ -25,7 +24,6 @@ import {
     User,
     MapPin,
     Calendar,
-    Save,
     CreditCard,
     Mail,
     Phone,
@@ -130,8 +128,6 @@ export default function OrderDetailsPage() {
     const updateStatus = useUpdateOrderStatus();
 
     const [targetStatus, setTargetStatus] = useState<OrderStatus | "">("");
-    const [itemCosts, setItemCosts] = useState<Record<number, string>>({});
-    const updateItemCosts = useUpdateOrderItemCosts();
     const deleteOrder = useDeleteOrder();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -150,24 +146,14 @@ export default function OrderDetailsPage() {
     } = useOrder(id, { enabled: id > 0 });
 
     useEffect(() => {
-        setShowOverlay(isLoading || updateStatus.isPending || updateItemCosts.isPending || deleteOrder.isPending);
-    }, [isLoading, updateStatus.isPending, updateItemCosts.isPending, deleteOrder.isPending, setShowOverlay]);
+        setShowOverlay(isLoading || updateStatus.isPending || deleteOrder.isPending);
+    }, [isLoading, updateStatus.isPending, deleteOrder.isPending, setShowOverlay]);
 
     useEffect(() => {
         if (order?.status) {
             setTargetStatus(order.status as OrderStatus);
         }
     }, [order]);
-
-    useEffect(() => {
-        if (order?.items) {
-            const initial: Record<number, string> = {};
-            order.items.forEach((item: any) => {
-                initial[item.id] = item.cost != null ? String(item.cost) : "";
-            });
-            setItemCosts(initial);
-        }
-    }, [order?.items]);
 
     const handleStatusUpdate = async () => {
         if (!targetStatus || !order) return;
@@ -184,19 +170,6 @@ export default function OrderDetailsPage() {
             await deleteOrder.mutateAsync(order.id);
             setShowDeleteModal(false);
             router.push("/orders");
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleSaveCosts = async () => {
-        if (!order) return;
-        const items = Object.entries(itemCosts)
-            .filter(([, val]) => val !== "" && !isNaN(Number(val)))
-            .map(([itemId, cost]) => ({ itemId: Number(itemId), cost: Number(cost) }));
-        if (items.length === 0) return;
-        try {
-            await updateItemCosts.mutateAsync({ id: order.id, payload: { items } });
         } catch (e) {
             console.error(e);
         }
@@ -375,6 +348,7 @@ export default function OrderDetailsPage() {
                                             const productName = item.product?.name_en || item.product?.name_ar || "Unknown Product";
                                             const productImage = item.product?.image || (item.product?.media_groups && Object.values(item.product.media_groups)[0]?.media?.[0]?.url) || null;
                                             const itemPrice = parseFloat(String(item.price));
+                                            const itemCost = parseFloat(String(item.cost ?? 0));
                                             const itemTotal = itemPrice * item.quantity;
                                             const variantParams = item.variant?.attribute_values || {};
 
@@ -455,18 +429,8 @@ export default function OrderDetailsPage() {
                                                     <TableCell className="text-right align-top py-4 font-mono text-gray-600">
                                                         {formatCurrency(itemPrice)}
                                                     </TableCell>
-                                                    <TableCell className="text-right align-top py-4">
-                                                        <Input
-                                                            type="number"
-                                                            min={0}
-                                                            step="0.01"
-                                                            value={itemCosts[item.id] ?? ""}
-                                                            onChange={(e) =>
-                                                                setItemCosts((prev) => ({ ...prev, [item.id]: e.target.value }))
-                                                            }
-                                                            className="w-16 text-right ml-auto px-2"
-                                                            placeholder="0.00"
-                                                        />
+                                                    <TableCell className="text-right align-top py-4 font-mono text-gray-600">
+                                                        {formatCurrency(itemCost)}
                                                     </TableCell>
                                                     <TableCell className="text-right align-top py-4 font-mono text-gray-900 font-medium">
                                                         x{item.quantity}
@@ -479,16 +443,6 @@ export default function OrderDetailsPage() {
                                         })}
                                     </TableBody>
                                 </Table>
-                            </div>
-                            {/* Totals Section */}
-                            <div className="flex items-center justify-between gap-4 px-5">
-                                <Button
-                                    onClick={handleSaveCosts}
-                                    disabled={updateItemCosts.isPending}
-                                    variant="solid"
-                                >
-                                    Save Costs
-                                </Button>
                             </div>
                             <div className="bg-primary/5 p-5 flex flex-col items-end gap-2">
                                 <div className="w-full max-w-xs space-y-2">

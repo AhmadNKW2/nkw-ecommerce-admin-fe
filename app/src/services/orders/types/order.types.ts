@@ -53,6 +53,13 @@ export interface AdminCreateOrderDto {
   orderDate?: string;
 }
 
+/** A single line item update when editing an existing order. */
+export interface UpdateOrderItemEntry {
+  itemId: number;
+  price?: number;
+  cost?: number;
+}
+
 /** Payload for PATCH /orders/:id — general admin edits to an existing order. */
 export interface UpdateOrderDto {
   shippingAddress?: ShippingAddress;
@@ -62,6 +69,9 @@ export interface UpdateOrderDto {
   notes?: string;
   trackingNumber?: string;
   orderDate?: string;
+  items?: UpdateOrderItemEntry[];
+  shippingAmount?: number;
+  discountAmount?: number;
 }
 
 export interface OrderFilters {

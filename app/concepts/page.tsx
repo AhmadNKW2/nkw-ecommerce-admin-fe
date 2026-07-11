@@ -175,7 +175,7 @@ export default function ConceptsPage() {
             description={
               search.trim()
                 ? "No concepts match your search."
-                : "Generate concepts from Settings or add one manually."
+                : "Generate concepts from Settings → Search Concepts, or add one manually."
             }
           />
         </Card>

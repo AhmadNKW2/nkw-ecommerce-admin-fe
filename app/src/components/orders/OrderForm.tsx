@@ -48,6 +48,7 @@ import { showErrorToast } from "../../lib/toast";
 
 export interface OrderFormItem {
   key: string;
+  itemId?: number;
   productId: number;
   name: string;
   sku?: string;
@@ -188,7 +189,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           : undefined) ||
         null;
       return {
-        key: `${item.productId ?? product?.id ?? item.id}-${item.variantId ?? "base"}`,
+        key: String(item.id),
+        itemId: item.id,
         productId: item.productId ?? product?.id ?? 0,
         name: product?.name_en || product?.name_ar || `Product #${item.productId}`,
         sku: (product as any)?.sku,
@@ -361,6 +363,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           paymentMethod,
           status,
           orderDate: orderDate || undefined,
+          shippingAmount: shippingAmountNum,
+          discountAmount: discountAmountNum,
+          items: items.map((it) => ({
+            itemId: it.itemId!,
+            price: it.price,
+            cost: it.cost,
+          })),
         };
         await onSubmit({ update: payload, create: {} as AdminCreateOrderDto });
       } else {
@@ -508,17 +517,23 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <ShoppingBag className="w-5 h-5 text-gray-500" />
             Order Items
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Search and add products to this order</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isEditMode
+              ? "Adjust unit price and cost for each line item"
+              : "Search and add products to this order"}
+          </p>
         </div>
 
-        <Select
-          label="Search products by name or SKU"
-          options={productOptions}
-          value=""
-          onChange={(val) => handleAddProduct(val as string)}
-          onSearchChange={setProductSearch}
-          placeholder={productsLoading ? "Loading..." : "Search products to add..."}
-        />
+        {!isEditMode && (
+          <Select
+            label="Search products by name or SKU"
+            options={productOptions}
+            value=""
+            onChange={(val) => handleAddProduct(val as string)}
+            onSearchChange={setProductSearch}
+            placeholder={productsLoading ? "Loading..." : "Search products to add..."}
+          />
+        )}
 
         {items.length === 0 ? (
           <EmptyState
@@ -551,51 +566,89 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
-                    }
-                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateItem(item.key, {
-                        quantity: Math.max(1, Number(e.target.value) || 1),
-                      })
-                    }
-                    className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
-                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  {isEditMode ? (
+                    <span className="w-14 text-center font-medium text-gray-900">
+                      x{item.quantity}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
+                        }
+                        className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(item.key, {
+                            quantity: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                        className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
+                        className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                <div className="w-28 shrink-0 text-right text-sm text-gray-700" title="Price is fixed at the product's current price">
-                  {formatMoney(item.price)} JOD
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.price}
+                    onChange={(e) =>
+                      updateItem(item.key, {
+                        price: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
+                    className="text-right"
+                  />
+                </div>
+
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Cost"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.cost}
+                    onChange={(e) =>
+                      updateItem(item.key, {
+                        cost: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
+                    className="text-right"
+                  />
                 </div>
 
                 <div className="w-24 text-right font-semibold text-gray-900 shrink-0">
                   {formatMoney(item.price * item.quantity)} JOD
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.key)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0"
-                  title="Remove item"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.key)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>

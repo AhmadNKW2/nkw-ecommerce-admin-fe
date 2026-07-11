@@ -475,7 +475,7 @@ export const sidebarConfig = {
           href: '/settings/terms',
           label: 'Search Concepts',
           roles: ['admin', 'catalog_manager'] as SidebarRole[],
-          adminAccess: 'concepts',
+          adminAccess: 'settings',
           catalogManagerBypass: true,
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

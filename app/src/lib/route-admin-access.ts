@@ -11,7 +11,7 @@ type RouteAccessRule = {
 };
 
 const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
-  { prefix: "/settings/terms", access: "concepts", roles: ["admin", "constant_token_admin", "catalog_manager"], catalogManagerBypass: true },
+  { prefix: "/settings/terms", access: "settings", roles: ["admin", "constant_token_admin", "catalog_manager"], catalogManagerBypass: true },
   { prefix: "/settings", access: "settings", roles: ["admin", "constant_token_admin"] },
   { prefix: "/products/pricing", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/pricing-products", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },

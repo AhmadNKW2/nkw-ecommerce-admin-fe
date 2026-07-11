@@ -53,14 +53,14 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
   banners: ["/banners", "/banners/create"],
   cashback_rules: ["/cashback-rules", "/cashback-rules/1"],
   notes: ["/notes"],
-  concepts: ["/concepts", "/settings/terms"],
+  concepts: ["/concepts"],
   archived: [
     "/archived-products",
     "/archived-categories",
     "/archived-vendors",
     "/archived-brands",
   ],
-  settings: ["/settings/seo", "/settings/features", "/settings/popup"],
+  settings: ["/settings/seo", "/settings/features", "/settings/popup", "/settings/terms"],
   admins: ["/admins", "/admins/create"],
 };
 
@@ -151,14 +151,27 @@ function testCatalogManagerDefaults() {
 }
 
 function testSettingsTermsBypass() {
-  const access = makeAccess({ concepts: false });
-  const canAccess = canAccessFactory(access);
+  const conceptsOnly = makeAccess({ concepts: true, settings: false });
+  const canAccessConceptsOnly = canAccessFactory(conceptsOnly);
 
-  assert("admin concepts=false blocked from /concepts", !canAccessRoute("/concepts", "admin", canAccess));
-  assert("admin concepts=false blocked from /settings/terms", !canAccessRoute("/settings/terms", "admin", canAccess));
+  assert("admin concepts=true settings=false can access /concepts", canAccessRoute("/concepts", "admin", canAccessConceptsOnly));
+  assert(
+    "admin concepts=true settings=false blocked from /settings/terms",
+    !canAccessRoute("/settings/terms", "admin", canAccessConceptsOnly),
+  );
+
+  const settingsOnly = makeAccess({ concepts: false, settings: true });
+  assert(
+    "admin settings=true concepts=false blocked from /concepts",
+    !canAccessRoute("/concepts", "admin", canAccessFactory(settingsOnly)),
+  );
+  assert(
+    "admin settings=true concepts=false can access /settings/terms",
+    canAccessRoute("/settings/terms", "admin", canAccessFactory(settingsOnly)),
+  );
 
   assert(
-    "catalog_manager bypasses concepts check on terms route",
+    "catalog_manager bypasses settings check on terms route",
     canAccessRoute("/settings/terms", "catalog_manager", canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS)),
   );
 }
@@ -204,14 +217,14 @@ function testSidebarVisibilityPerPermission() {
 }
 
 function testSettingsNavFiltering() {
-  const settingsOff = makeAccess({ settings: false, concepts: true });
-  const filteredSettingsOff = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
+  const conceptsOnly = makeAccess({ settings: false, concepts: true });
+  const filteredConceptsOnly = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
     role: "admin",
-    canAccess: canAccessFactory(settingsOff),
+    canAccess: canAccessFactory(conceptsOnly),
   });
   assert(
-    "settings nav shows only concepts link when settings=false but concepts=true",
-    filteredSettingsOff.length === 1 && filteredSettingsOff[0]?.href === "/settings/terms",
+    "settings nav empty when concepts=true but settings=false",
+    filteredConceptsOnly.length === 0,
   );
 
   const allOff = makeAccess({ settings: false, concepts: false });
@@ -244,7 +257,7 @@ function testRouteRuleOrdering() {
   );
   assert(
     "/settings/terms matched before generic /settings",
-    getRouteAccessRule("/settings/terms")?.access === "concepts",
+    getRouteAccessRule("/settings/terms")?.access === "settings",
   );
   assert(
     "/settings/terms has catalog manager bypass",

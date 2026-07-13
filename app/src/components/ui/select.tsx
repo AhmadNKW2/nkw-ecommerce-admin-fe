@@ -168,7 +168,6 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
       } else if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
         setIsFocused(false);
-        setSearchQuery('');
       } else if (e.key === 'ArrowDown' && isOpen && !search) {
         e.preventDefault();
         // Focus first option
@@ -204,7 +203,6 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
       } else if (e.key === 'Escape') {
         setIsOpen(false);
         setIsFocused(false);
-        setSearchQuery('');
         (containerRef.current?.querySelector('[role="combobox"]') as HTMLElement)?.focus();
       }
     };
@@ -219,7 +217,6 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
       } else if (e.key === 'Escape') {
         setIsOpen(false);
         setIsFocused(false);
-        setSearchQuery('');
         (containerRef.current?.querySelector('[role="combobox"]') as HTMLElement)?.focus();
       }
     };

@@ -103,13 +103,13 @@ export type UpdateProductFieldTogglesDto = UpdateFeatureTogglesDto;
 
 export interface ProductPriceRule {
   id: number;
-  vendor_id: number | null;
-  brand_id: number | null;
+  vendor_ids: number[] | null;
+  brand_ids: number[] | null;
   category_ids: number[] | null;
   price_condition: 'any' | 'more_than' | 'less_than' | 'between';
   adjustment_type: 'increase' | 'decrease';
-  min_vendor_price: number;
-  max_vendor_price: number | null;
+  min_product_price: number | null;
+  max_product_price: number | null;
   percentage: number;
   is_active: boolean;
   created_at?: string;
@@ -117,13 +117,13 @@ export interface ProductPriceRule {
 }
 
 export interface CreateProductPriceRuleDto {
-  vendor_id?: number | null;
-  brand_id?: number | null;
+  vendor_ids?: number[] | null;
+  brand_ids?: number[] | null;
   category_ids?: number[] | null;
   price_condition?: 'any' | 'more_than' | 'less_than' | 'between';
   adjustment_type?: 'increase' | 'decrease';
-  min_vendor_price: number;
-  max_vendor_price?: number | null;
+  min_product_price?: number | null;
+  max_product_price?: number | null;
   percentage: number;
   is_active?: boolean;
 }

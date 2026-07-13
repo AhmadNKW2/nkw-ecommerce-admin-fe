@@ -23,57 +23,75 @@ import {
 } from "../../src/services/settings/types/settings.types";
 import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
 import { useBrands } from "../../src/services/brands/hooks/use-brands";
-import { useCategories } from "../../src/services/categories/hooks/use-categories";
+import { CategoryTreeSelect } from "../../src/components/products/CategoryTreeSelect";
 import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
+import { useCategories } from "../../src/services/categories/hooks/use-categories";
+
 import { useEffect, useState } from "react";
 
 type ProductPriceRuleDraft = {
   id: number | null;
-  vendor_id: string;
-  brand_id: string;
+  vendor_ids: string[];
+  brand_ids: string[];
   category_ids: string[];
   price_condition: "any" | "more_than" | "less_than" | "between";
   adjustment_type: "increase" | "decrease";
-  min_vendor_price: string;
-  max_vendor_price: string;
+  min_product_price: string;
+  max_product_price: string;
   percentage: string;
   is_active: boolean;
 };
 
 const createEmptyRuleDraft = (): ProductPriceRuleDraft => ({
   id: null,
-  vendor_id: "",
-  brand_id: "",
+  vendor_ids: [],
+  brand_ids: [],
   category_ids: [],
   price_condition: "between",
   adjustment_type: "decrease",
-  min_vendor_price: "",
-  max_vendor_price: "",
+  min_product_price: "",
+  max_product_price: "",
   percentage: "1",
   is_active: true,
 });
 
-const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => ({
-  id: rule.id,
-  vendor_id:
-    rule.vendor_id === null || rule.vendor_id === undefined
-      ? ""
-      : String(rule.vendor_id),
-  brand_id:
-    rule.brand_id === null || rule.brand_id === undefined
-      ? ""
-      : String(rule.brand_id),
-  category_ids: (rule.category_ids ?? []).map((categoryId) => String(categoryId)),
-  price_condition: rule.price_condition ?? "between",
-  adjustment_type: rule.adjustment_type ?? "decrease",
-  min_vendor_price: String(rule.min_vendor_price ?? ""),
-  max_vendor_price:
-    rule.max_vendor_price === null || rule.max_vendor_price === undefined
-      ? ""
-      : String(rule.max_vendor_price),
-  percentage: String(rule.percentage ?? "1"),
-  is_active: rule.is_active ?? true,
-});
+const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => {
+  const legacyRule = rule as ProductPriceRule & {
+    vendor_id?: number | null;
+    brand_id?: number | null;
+    min_vendor_price?: number | null;
+    max_vendor_price?: number | null;
+  };
+
+  const vendorIds =
+    rule.vendor_ids ??
+    (legacyRule.vendor_id != null ? [legacyRule.vendor_id] : []);
+  const brandIds =
+    rule.brand_ids ?? (legacyRule.brand_id != null ? [legacyRule.brand_id] : []);
+  const minProductPrice =
+    rule.min_product_price ?? legacyRule.min_vendor_price ?? null;
+  const maxProductPrice =
+    rule.max_product_price ?? legacyRule.max_vendor_price ?? null;
+
+  return {
+    id: rule.id,
+    vendor_ids: vendorIds.map((vendorId) => String(vendorId)),
+    brand_ids: brandIds.map((brandId) => String(brandId)),
+    category_ids: (rule.category_ids ?? []).map((categoryId) => String(categoryId)),
+    price_condition: rule.price_condition ?? "between",
+    adjustment_type: rule.adjustment_type ?? "decrease",
+    min_product_price:
+      minProductPrice === null || minProductPrice === undefined
+        ? ""
+        : String(minProductPrice),
+    max_product_price:
+      maxProductPrice === null || maxProductPrice === undefined
+        ? ""
+        : String(maxProductPrice),
+    percentage: String(rule.percentage ?? "1"),
+    is_active: rule.is_active ?? true,
+  };
+};
 
 type BulkPricingFormState = {
   action: BulkUpdateProductPricingDto["action"];
@@ -132,27 +150,42 @@ export default function PricingSettingsPage() {
   const buildRulePayload = (
     draft: ProductPriceRuleDraft,
   ): CreateProductPriceRuleDto | null => {
-    const vendorId = draft.vendor_id ? Number(draft.vendor_id) : null;
-    const brandId = draft.brand_id ? Number(draft.brand_id) : null;
+    const vendorIds = draft.vendor_ids.map((value) => Number(value));
+    const brandIds = draft.brand_ids.map((value) => Number(value));
     const categoryIds = draft.category_ids.map((value) => Number(value));
-    const minVendorPrice = Number(draft.min_vendor_price);
-    const maxVendorPrice =
-      draft.max_vendor_price.trim() === ""
+    const minProductPrice =
+      draft.min_product_price.trim() === ""
         ? null
-        : Number(draft.max_vendor_price);
+        : Number(draft.min_product_price);
+    const maxProductPrice =
+      draft.max_product_price.trim() === ""
+        ? null
+        : Number(draft.max_product_price);
     const percentage = Number(draft.percentage);
 
-    if (!Number.isFinite(minVendorPrice) || minVendorPrice < 0) {
-      showErrorToast("Minimum vendor price must be 0 or more");
+    if (
+      minProductPrice !== null &&
+      (!Number.isFinite(minProductPrice) || minProductPrice < 0)
+    ) {
+      showErrorToast("Minimum product price must be 0 or more");
       return null;
     }
 
     if (
-      maxVendorPrice !== null &&
-      (!Number.isFinite(maxVendorPrice) || maxVendorPrice < minVendorPrice)
+      maxProductPrice !== null &&
+      (!Number.isFinite(maxProductPrice) || maxProductPrice < 0)
+    ) {
+      showErrorToast("Maximum product price must be 0 or more");
+      return null;
+    }
+
+    if (
+      minProductPrice !== null &&
+      maxProductPrice !== null &&
+      maxProductPrice < minProductPrice
     ) {
       showErrorToast(
-        "Maximum vendor price must be greater than or equal to the minimum value",
+        "Maximum product price must be greater than or equal to the minimum value",
       );
       return null;
     }
@@ -164,15 +197,16 @@ export default function PricingSettingsPage() {
 
     if (
       draft.price_condition === "less_than" &&
-      (maxVendorPrice === null || !Number.isFinite(maxVendorPrice))
+      maxProductPrice === null &&
+      minProductPrice === null
     ) {
-      showErrorToast("Less than condition needs a maximum original price");
+      showErrorToast("Less than condition needs a maximum product price");
       return null;
     }
 
     if (
-      (vendorId !== null && (!Number.isInteger(vendorId) || vendorId < 1)) ||
-      (brandId !== null && (!Number.isInteger(brandId) || brandId < 1)) ||
+      vendorIds.some((vendorId) => !Number.isInteger(vendorId) || vendorId < 1) ||
+      brandIds.some((brandId) => !Number.isInteger(brandId) || brandId < 1) ||
       categoryIds.some((categoryId) => !Number.isInteger(categoryId) || categoryId < 1)
     ) {
       showErrorToast("Vendor, brand, and category selections are invalid");
@@ -180,13 +214,13 @@ export default function PricingSettingsPage() {
     }
 
     return {
-      vendor_id: vendorId,
-      brand_id: brandId,
+      vendor_ids: vendorIds.length > 0 ? vendorIds : null,
+      brand_ids: brandIds.length > 0 ? brandIds : null,
       category_ids: categoryIds.length > 0 ? categoryIds : null,
       price_condition: draft.price_condition,
       adjustment_type: draft.adjustment_type,
-      min_vendor_price: minVendorPrice,
-      max_vendor_price: maxVendorPrice,
+      min_product_price: minProductPrice,
+      max_product_price: maxProductPrice,
       percentage,
       is_active: draft.is_active,
     };
@@ -277,27 +311,6 @@ export default function PricingSettingsPage() {
     value: String(brand.id),
     label: brand.name_en || brand.name_ar || String(brand.id),
   }));
-  const flattenCategoryOptions = (
-    nodes: any[],
-    parentPath = "",
-  ): Array<{ value: string; label: string }> => {
-    const options: Array<{ value: string; label: string }> = [];
-
-    for (const node of nodes) {
-      const nodeName = node?.name_en || node?.name_ar || `#${node?.id ?? "?"}`;
-      const label = parentPath ? `${parentPath} / ${nodeName}` : nodeName;
-      if (node?.id) {
-        options.push({ value: String(node.id), label });
-      }
-
-      if (Array.isArray(node?.children) && node.children.length > 0) {
-        options.push(...flattenCategoryOptions(node.children, label));
-      }
-    }
-
-    return options;
-  };
-  const categoryOptions = flattenCategoryOptions(categoriesData ?? []);
 
   return (
     <div className="admin-page">
@@ -447,10 +460,10 @@ export default function PricingSettingsPage() {
                           ? `New Rule ${index + 1}`
                           : `Rule #${rule.id}`}
                       </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Define rule scope, original-price condition, and
-                        percentage adjustment.
-                      </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Define rule scope, product-price condition, and percentage
+                    adjustment.
+                  </p>
                     </div>
 
                     <Toggle
@@ -465,53 +478,46 @@ export default function PricingSettingsPage() {
 
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     <Select
-                      label="Vendor"
-                      value={rule.vendor_id}
+                      label="Vendors"
+                      value={rule.vendor_ids}
                       onChange={(value) =>
                         setRuleField(
                           index,
-                          "vendor_id",
-                          (Array.isArray(value) ? value[0] : value) ?? "",
+                          "vendor_ids",
+                          Array.isArray(value) ? value : value ? [value] : [],
                         )
                       }
-                      options={[
-                        { value: "", label: "Any vendor" },
-                        ...vendorOptions,
-                      ]}
+                      options={vendorOptions}
+                      multiple={true}
+                      placeholder="Any vendor"
                       search={vendorOptions.length > 6}
                       disabled={isRuleMutationPending}
                     />
                     <Select
-                      label="Brand"
-                      value={rule.brand_id}
+                      label="Brands"
+                      value={rule.brand_ids}
                       onChange={(value) =>
                         setRuleField(
                           index,
-                          "brand_id",
-                          (Array.isArray(value) ? value[0] : value) ?? "",
-                        )
-                      }
-                      options={[
-                        { value: "", label: "Any brand" },
-                        ...brandOptions,
-                      ]}
-                      search={brandOptions.length > 6}
-                      disabled={isRuleMutationPending}
-                    />
-                    <Select
-                      label="Categories"
-                      value={rule.category_ids}
-                      onChange={(value) =>
-                        setRuleField(
-                          index,
-                          "category_ids",
+                          "brand_ids",
                           Array.isArray(value) ? value : value ? [value] : [],
                         )
                       }
-                      options={categoryOptions}
+                      options={brandOptions}
                       multiple={true}
+                      placeholder="Any brand"
+                      search={brandOptions.length > 6}
+                      disabled={isRuleMutationPending}
+                    />
+                    <CategoryTreeSelect
+                      categories={categoriesData ?? []}
+                      selectedIds={rule.category_ids}
+                      onChange={(ids) =>
+                        setRuleField(index, "category_ids", ids)
+                      }
+                      singleSelect={false}
+                      label="Categories"
                       placeholder="Any category"
-                      search={categoryOptions.length > 6}
                       disabled={isRuleMutationPending}
                     />
                     <Select
@@ -526,7 +532,7 @@ export default function PricingSettingsPage() {
                         )
                       }
                       options={[
-                        { value: "any", label: "Any original price" },
+                        { value: "any", label: "Any product price" },
                         { value: "more_than", label: "More than min" },
                         { value: "less_than", label: "Less than max" },
                         { value: "between", label: "Between min and max" },
@@ -553,30 +559,30 @@ export default function PricingSettingsPage() {
                       disabled={isRuleMutationPending}
                     />
                     <Input
-                      label="Minimum Vendor Price"
+                      label="Minimum Product Price"
                       type="number"
                       min="0"
                       step="0.1"
-                      value={rule.min_vendor_price}
+                      value={rule.min_product_price}
                       onChange={(event) =>
                         setRuleField(
                           index,
-                          "min_vendor_price",
+                          "min_product_price",
                           event.target.value,
                         )
                       }
                       disabled={isRuleMutationPending}
                     />
                     <Input
-                      label="Maximum Vendor Price"
+                      label="Maximum Product Price"
                       type="number"
                       min="0"
                       step="0.1"
-                      value={rule.max_vendor_price}
+                      value={rule.max_product_price}
                       onChange={(event) =>
                         setRuleField(
                           index,
-                          "max_vendor_price",
+                          "max_product_price",
                           event.target.value,
                         )
                       }
@@ -594,6 +600,11 @@ export default function PricingSettingsPage() {
                       disabled={isRuleMutationPending}
                     />
                   </div>
+
+                  <p className="text-sm text-gray-500">
+                    Leave vendors, brands, categories, and min/max product prices
+                    empty to apply the rule to all products.
+                  </p>
 
                   <div className="flex flex-wrap gap-3">
                     <Button

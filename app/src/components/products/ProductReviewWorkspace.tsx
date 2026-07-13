@@ -1347,6 +1347,7 @@ export function ProductReviewWorkspace({
   storageKey = "products_review",
   showViewToggle = false,
   showPricingViewToggle = false,
+  showReferenceLinksViewToggle = false,
   viewMode = "review",
   onViewModeChange,
   showStatusFilter = false,
@@ -1360,6 +1361,7 @@ export function ProductReviewWorkspace({
   storageKey?: string;
   showViewToggle?: boolean;
   showPricingViewToggle?: boolean;
+  showReferenceLinksViewToggle?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
@@ -1779,6 +1781,7 @@ export function ProductReviewWorkspace({
                 onCreate={handleCreateNew}
                 showViewToggle={showViewToggle}
                 showPricingViewToggle={showPricingViewToggle}
+                showReferenceLinksViewToggle={showReferenceLinksViewToggle}
                 viewMode={viewMode}
                 onViewModeChange={onViewModeChange}
                 showStatusFilter={showStatusFilter}

@@ -28,6 +28,8 @@ import {
   ProductNameSummary,
   ProductStatus,
   RestoreProductDto,
+  MergeDuplicateReferenceSlugsDto,
+  MergeDuplicateReferenceSlugsResult,
 } from "../types/product.types";
 import {
   ApiResponse,
@@ -371,6 +373,37 @@ export function useBulkUpdateProductStatus(
     onError: (...args) => {
       const [error] = args;
       showErrorToast(error.message || "Failed to update product statuses");
+      options?.onError?.(...args);
+    },
+  });
+}
+
+export function useMergeDuplicateReferenceSlugs(
+  options?: UseMutationOptions<
+    ApiResponse<MergeDuplicateReferenceSlugsResult>,
+    ApiError,
+    MergeDuplicateReferenceSlugsDto
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (data: MergeDuplicateReferenceSlugsDto) =>
+      productService.mergeDuplicateReferenceSlugs(data),
+    onSuccess: (...args) => {
+      const [response, variables] = args;
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.lists() });
+      if (!variables.dry_run) {
+        showSuccessToast(
+          `Merged ${response.data?.groups_merged ?? 0} groups and removed ${response.data?.products_deleted ?? 0} duplicate products`,
+        );
+      }
+      options?.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      const [error] = args;
+      showErrorToast(error.message || "Reference slug merge failed");
       options?.onError?.(...args);
     },
   });

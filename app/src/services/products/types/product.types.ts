@@ -150,6 +150,8 @@ export const productSchema = z.object({
   brand: z.any().optional().nullable(),
   slug: z.string().optional().nullable(),
   reference_link: z.string().optional().nullable(),
+  reference_links: z.array(z.string()).optional(),
+  reference_slug: z.string().optional().nullable(),
   record: z.string().optional().nullable(),
   sku: z.string(),
   is_active: z.boolean().optional(),
@@ -602,6 +604,8 @@ export interface CreateProductDto {
   vendor_id?: number;
   brand_id?: number;
   reference_link?: string | null;
+  reference_links?: string[];
+  reference_slug?: string | null;
   cost?: number | null;
   price?: number;
   sale_price?: number | null;
@@ -723,6 +727,8 @@ export interface UpdateProductDto {
   vendor_id?: number;
   brand_id?: number;
   reference_link?: string | null;
+  reference_links?: string[];
+  reference_slug?: string | null;
   cost?: number | null;
   price?: number;
   sale_price?: number | null;
@@ -751,6 +757,34 @@ export interface UpdateProductDto {
   attributes?: ProductAttributeInput[];
   media?: MediaInputDto[];
   attachments?: AttachmentInputDto[];
+}
+
+export interface MergeDuplicateReferenceSlugsDto {
+  dry_run?: boolean;
+  vendor_id?: number;
+}
+
+export interface MergeDuplicateReferenceSlugGroup {
+  vendor_id: number;
+  reference_slug: string;
+  keeper_product_id: number;
+  deleted_product_ids: number[];
+  merged_reference_links: string[];
+  merged_original_vendor_categories: OriginalVendorCategory[];
+}
+
+export interface MergeDuplicateReferenceSlugsResult {
+  dry_run: boolean;
+  groups_found: number;
+  groups_merged: number;
+  products_deleted: number;
+  groups: MergeDuplicateReferenceSlugGroup[];
+  skipped_groups: Array<{
+    vendor_id: number | null;
+    reference_slug: string;
+    reason: string;
+    product_ids: number[];
+  }>;
 }
 
 // Restore Product DTO

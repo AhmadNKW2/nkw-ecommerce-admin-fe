@@ -136,20 +136,6 @@ export interface RepriceExistingProductsResult {
   message: string;
 }
 
-export interface BulkUpdateProductPricingDto {
-  action: 'increase' | 'decrease' | 'reset';
-  percentage?: number;
-  vendor_ids?: number[];
-}
-
-export interface BulkUpdateProductPricingResult {
-  action: 'increase' | 'decrease' | 'reset';
-  percentage: number | null;
-  vendor_ids: number[];
-  updated_count: number;
-  message: string;
-}
-
 export interface ImportedPricingAuditFilters {
   page?: number;
   limit?: number;

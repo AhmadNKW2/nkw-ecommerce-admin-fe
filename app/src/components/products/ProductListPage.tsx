@@ -46,6 +46,7 @@ interface ProductListPageProps {
   fixedStatus?: ProductStatus;
   showViewToggle?: boolean;
   showPricingViewToggle?: boolean;
+  showReferenceLinksViewToggle?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
@@ -196,6 +197,7 @@ export function ProductListPage({
   fixedStatus,
   showViewToggle = false,
   showPricingViewToggle = false,
+  showReferenceLinksViewToggle = false,
   viewMode = "list",
   onViewModeChange,
   showStatusFilter = false,
@@ -439,6 +441,7 @@ export function ProductListPage({
         onCreate={handleCreateNew}
         showViewToggle={showViewToggle}
         showPricingViewToggle={showPricingViewToggle}
+        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showStatusFilter={showStatusFilter}

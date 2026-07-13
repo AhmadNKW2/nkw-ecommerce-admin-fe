@@ -1,8 +1,6 @@
 import { httpClient } from '../../../lib/api/http-client';
 import { ApiResponse } from '../../../types/common.types';
 import {
-  BulkUpdateProductPricingDto,
-  BulkUpdateProductPricingResult,
   CreateProductPriceRuleDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
@@ -127,18 +125,6 @@ class SettingsService {
     return httpClient.post<ApiResponse<RepriceExistingProductsResult>>(
       `${this.pricingRulesEndpoint}/reprice-existing`,
       undefined,
-      {
-        headers: { 'x-skip-request-toast': '1' },
-      },
-    );
-  }
-
-  async bulkUpdateProductPricing(
-    data: BulkUpdateProductPricingDto,
-  ): Promise<ApiResponse<BulkUpdateProductPricingResult>> {
-    return httpClient.post<ApiResponse<BulkUpdateProductPricingResult>>(
-      `${this.pricingRulesEndpoint}/bulk-update`,
-      data,
       {
         headers: { 'x-skip-request-toast': '1' },
       },

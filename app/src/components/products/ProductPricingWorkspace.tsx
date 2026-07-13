@@ -50,6 +50,7 @@ interface ProductPricingWorkspaceProps {
   storageKey?: string;
   showViewToggle?: boolean;
   showPricingViewToggle?: boolean;
+  showReferenceLinksViewToggle?: boolean;
   showStatusFilter?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
@@ -234,6 +235,7 @@ export function ProductPricingWorkspace({
   storageKey = "pricing_products",
   showViewToggle = false,
   showPricingViewToggle = false,
+  showReferenceLinksViewToggle = false,
   showStatusFilter = false,
   viewMode = "pricing",
   onViewModeChange,
@@ -458,6 +460,7 @@ export function ProductPricingWorkspace({
         onCreate={() => router.push("/products/create")}
         showViewToggle={showViewToggle}
         showPricingViewToggle={showPricingViewToggle}
+        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showStatusFilter={showStatusFilter}

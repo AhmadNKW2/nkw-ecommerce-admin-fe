@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRightLeft, Coins, LayoutGrid, List, Package } from "lucide-react";
+import { ArrowRightLeft, Coins, LayoutGrid, Link2, List, Package } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 
-export type ProductsViewMode = "list" | "review" | "pricing";
+export type ProductsViewMode = "list" | "review" | "pricing" | "reference-links";
 
 interface ProductsPageHeaderProps {
   title: string;
@@ -12,6 +12,7 @@ interface ProductsPageHeaderProps {
   onCreate: () => void;
   showViewToggle?: boolean;
   showPricingViewToggle?: boolean;
+  showReferenceLinksViewToggle?: boolean;
   showCreate?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
@@ -25,6 +26,7 @@ export function ProductsPageHeader({
   onCreate,
   showViewToggle = false,
   showPricingViewToggle = false,
+  showReferenceLinksViewToggle = false,
   showCreate = true,
   viewMode = "list",
   onViewModeChange,
@@ -68,6 +70,17 @@ export function ProductsPageHeader({
                 >
                   <Coins className="mr-1.5 inline h-4 w-4" />
                   Pricing view
+                </Button>
+              ) : null}
+              {showReferenceLinksViewToggle ? (
+                <Button
+                  variant={viewMode === "reference-links" ? "solid" : "outline"}
+                  color="var(--color-primary2)"
+                  onClick={() => onViewModeChange("reference-links")}
+                  className="rounded-full px-3 py-1.5 text-sm"
+                >
+                  <Link2 className="mr-1.5 inline h-4 w-4" />
+                  Reference links
                 </Button>
               ) : null}
             </div>

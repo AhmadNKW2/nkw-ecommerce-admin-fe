@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ProductListPage } from "../src/components/products/ProductListPage";
 import { ProductReviewWorkspace } from "../src/components/products/ProductReviewWorkspace";
 import { ProductPricingWorkspace } from "../src/components/products/ProductPricingWorkspace";
+import { ProductReferenceLinksWorkspace } from "../src/components/products/ProductReferenceLinksWorkspace";
 import { useAdminAccess } from "../src/hooks/use-admin-access";
 import { useResolvedFeatureToggles } from "../src/hooks/use-resolved-feature-toggles";
 import type { ProductStatus } from "../src/services/products/types/product.types";
@@ -19,7 +20,9 @@ export default function ProductsPageClient() {
 
   const productStatusEnabled = isEnabled("product_status_enabled");
   const pricingViewEnabled = isEnabled("pricing_view_enabled");
+  const referenceLinksViewEnabled = isEnabled("reference_links_enabled");
   const showPricingViewToggle = canEditProductPricing && pricingViewEnabled;
+  const showReferenceLinksViewToggle = referenceLinksViewEnabled;
 
   const viewParam = searchParams.get("view");
   const viewMode: ProductsViewMode =
@@ -27,9 +30,19 @@ export default function ProductsPageClient() {
       ? "review"
       : viewParam === "pricing"
         ? "pricing"
-        : "list";
+        : viewParam === "reference-links"
+          ? "reference-links"
+          : "list";
 
   if (viewMode === "pricing" && !showPricingViewToggle) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("view");
+    const query = params.toString();
+    router.replace(query ? `/products?${query}` : "/products");
+    return null;
+  }
+
+  if (viewMode === "reference-links" && !showReferenceLinksViewToggle) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("view");
     const query = params.toString();
@@ -91,9 +104,24 @@ export default function ProductsPageClient() {
         storageKey="products"
         showViewToggle
         showPricingViewToggle={showPricingViewToggle}
+        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         showStatusFilter={productStatusEnabled}
+      />
+    );
+  }
+
+  if (viewMode === "reference-links") {
+    return (
+      <ProductReferenceLinksWorkspace
+        title="Products"
+        description="Clean up duplicate supplier references and inspect products by link or slug."
+        showViewToggle
+        showPricingViewToggle={showPricingViewToggle}
+        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
       />
     );
   }
@@ -107,6 +135,7 @@ export default function ProductsPageClient() {
         storageKey="products"
         showViewToggle
         showPricingViewToggle={showPricingViewToggle}
+        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode="review"
         onViewModeChange={handleViewModeChange}
         showStatusFilter={productStatusEnabled}
@@ -124,6 +153,7 @@ export default function ProductsPageClient() {
       storageKey="products"
       showViewToggle
       showPricingViewToggle={showPricingViewToggle}
+      showReferenceLinksViewToggle={showReferenceLinksViewToggle}
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
       showStatusFilter={productStatusEnabled}

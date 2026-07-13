@@ -38,6 +38,8 @@ import {
   DeleteMediaDto,
   ReorderMediaDto,
   RestoreProductDto,
+  MergeDuplicateReferenceSlugsDto,
+  MergeDuplicateReferenceSlugsResult,
 } from "../types/product.types";
 import {
   ApiResponse,
@@ -630,6 +632,32 @@ class ProductService extends BaseService<Product> {
    */
   async removeFromVendor(vendorId: number, product_ids: number[]): Promise<ApiResponse<void>> {
     return httpClient.delete<ApiResponse<void>>(`${this.endpoint}/assign/vendor/${vendorId}`, { product_ids });
+  }
+
+  async getProductByReference(params: {
+    reference_link?: string;
+    reference_slug?: string;
+  }): Promise<ApiResponse<ProductDetail>> {
+    const searchParams = new URLSearchParams();
+    if (params.reference_link?.trim()) {
+      searchParams.set("reference_link", params.reference_link.trim());
+    }
+    if (params.reference_slug?.trim()) {
+      searchParams.set("reference_slug", params.reference_slug.trim());
+    }
+    const query = searchParams.toString();
+    return httpClient.get<ApiResponse<ProductDetail>>(
+      `${this.endpoint}/reference-link${query ? `?${query}` : ""}`,
+    );
+  }
+
+  async mergeDuplicateReferenceSlugs(
+    data: MergeDuplicateReferenceSlugsDto,
+  ): Promise<ApiResponse<MergeDuplicateReferenceSlugsResult>> {
+    return httpClient.post<ApiResponse<MergeDuplicateReferenceSlugsResult>>(
+      `${this.endpoint}/merge-duplicate-reference-slugs`,
+      data,
+    );
   }
 }
 

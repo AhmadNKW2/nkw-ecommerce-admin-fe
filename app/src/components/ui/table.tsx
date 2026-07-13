@@ -189,11 +189,16 @@ interface TableCellProps {
   children: React.ReactNode;
   className?: string;
   width?: string;
+  colSpan?: number;
 }
 
-export const TableCell: React.FC<TableCellProps> = ({ children, className = '', width }) => {
+export const TableCell: React.FC<TableCellProps> = ({ children, className = '', width, colSpan }) => {
   return (
-    <td className={`px-3 py-2 text-sm text-start align-middle lg:px-4 ${className}`} style={{ width }}>
+    <td
+      colSpan={colSpan}
+      className={`px-3 py-2 text-sm text-start align-middle lg:px-4 ${className}`}
+      style={{ width }}
+    >
       {children}
     </td>
   );

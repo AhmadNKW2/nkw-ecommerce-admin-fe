@@ -10,14 +10,12 @@ import { Button } from "../../src/components/ui/button";
 import { Select } from "../../src/components/ui/select";
 import { showErrorToast } from "../../src/lib/toast";
 import {
-  useBulkUpdateProductPricing,
   useCreateProductPriceRule,
   useDeleteProductPriceRule,
   useProductPriceRules,
   useUpdateProductPriceRule,
 } from "../../src/services/settings/hooks/use-settings";
 import {
-  BulkUpdateProductPricingDto,
   CreateProductPriceRuleDto,
   ProductPriceRule,
 } from "../../src/services/settings/types/settings.types";
@@ -93,18 +91,6 @@ const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => {
   };
 };
 
-type BulkPricingFormState = {
-  action: BulkUpdateProductPricingDto["action"];
-  percentage: string;
-  vendorIds: string[];
-};
-
-const defaultBulkPricingFormState: BulkPricingFormState = {
-  action: "increase",
-  percentage: "0",
-  vendorIds: [],
-};
-
 export default function PricingSettingsPage() {
   const { isEnabled } = useResolvedFeatureToggles();
   const importAiProductsEnabled = isEnabled("import_ai_products_enabled");
@@ -121,11 +107,7 @@ export default function PricingSettingsPage() {
   const createProductPriceRule = useCreateProductPriceRule();
   const updateProductPriceRule = useUpdateProductPriceRule();
   const deleteProductPriceRule = useDeleteProductPriceRule();
-  const bulkUpdateProductPricing = useBulkUpdateProductPricing();
   const [ruleDrafts, setRuleDrafts] = useState<ProductPriceRuleDraft[]>([]);
-  const [bulkPricingForm, setBulkPricingForm] = useState<BulkPricingFormState>(
-    defaultBulkPricingFormState,
-  );
 
   useEffect(() => {
     if (!pricingRules) {
@@ -276,38 +258,10 @@ export default function PricingSettingsPage() {
     setRuleDrafts((prev) => [...prev, createEmptyRuleDraft()]);
   };
 
-  const handleBulkPricingChange = <K extends keyof BulkPricingFormState>(
-    field: K,
-    value: BulkPricingFormState[K],
-  ) => {
-    setBulkPricingForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmitBulkPricing = async () => {
-    const percentage = Number(bulkPricingForm.percentage);
-
-    if (
-      bulkPricingForm.action !== "reset" &&
-      (!Number.isFinite(percentage) || percentage < 0 || percentage > 100)
-    ) {
-      showErrorToast("Percentage must be between 0 and 100.");
-      return;
-    }
-
-    const payload: BulkUpdateProductPricingDto = {
-      action: bulkPricingForm.action,
-      vendor_ids: bulkPricingForm.vendorIds.map((value) => Number(value)),
-      ...(bulkPricingForm.action === "reset" ? {} : { percentage }),
-    };
-
-    await bulkUpdateProductPricing.mutateAsync(payload);
-  };
-
   const isRuleMutationPending =
     createProductPriceRule.isPending ||
     updateProductPriceRule.isPending ||
-    deleteProductPriceRule.isPending ||
-    bulkUpdateProductPricing.isPending;
+    deleteProductPriceRule.isPending;
 
   const vendorOptions = (vendorsData?.data ?? []).map((vendor: any) => ({
     value: String(vendor.id),
@@ -323,81 +277,10 @@ export default function PricingSettingsPage() {
       <PageHeader
         icon={<Percent />}
         title="Pricing Rules"
-        description="Manage vendor-price rules and apply bulk pricing changes by vendor when needed."
+        description="Define pricing rules that automatically manage product prices from their original prices."
       />
 
       <SettingsNav />
-
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Bulk Product Pricing</h2>
-            <p className="mt-1 max-w-3xl text-sm text-gray-500">
-              Apply a percentage increase or decrease to current product prices, or
-              reset products back to their stored original vendor prices.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Select
-            label="Vendors"
-            value={bulkPricingForm.vendorIds}
-            onChange={(value) =>
-              handleBulkPricingChange(
-                "vendorIds",
-                Array.isArray(value) ? value : value ? [value] : [],
-              )
-            }
-            options={vendorOptions}
-            multiple={true}
-            placeholder="All vendors"
-            search={vendorOptions.length > 6}
-            disabled={bulkUpdateProductPricing.isPending || vendorOptions.length === 0}
-          />
-          <Select
-            label="Action"
-            value={bulkPricingForm.action}
-            onChange={(value) =>
-              handleBulkPricingChange(
-                "action",
-                (Array.isArray(value) ? value[0] : value || "increase") as BulkPricingFormState["action"],
-              )
-            }
-            options={[
-              { value: "increase", label: "Add Percentage" },
-              { value: "decrease", label: "Minus Percentage" },
-              { value: "reset", label: "Reset To Original Vendor Prices" },
-            ]}
-            search={false}
-            disabled={bulkUpdateProductPricing.isPending}
-          />
-          <Input
-            label="Percentage"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            value={bulkPricingForm.percentage}
-            onChange={(event) =>
-              handleBulkPricingChange("percentage", event.target.value)
-            }
-            disabled={
-              bulkUpdateProductPricing.isPending ||
-              bulkPricingForm.action === "reset"
-            }
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-r1 border border-primary/10 bg-primary/5 p-4">
-          <p className="text-sm text-gray-600">
-            Leave vendors empty to apply the action to all products.
-          </p>
-          <Button onClick={handleSubmitBulkPricing} disabled={isLoading || isRuleMutationPending}>
-            {bulkUpdateProductPricing.isPending ? "Applying..." : "Apply Pricing Action"}
-          </Button>
-        </div>
-      </Card>
 
       {importAiProductsEnabled ? (
         <Card>

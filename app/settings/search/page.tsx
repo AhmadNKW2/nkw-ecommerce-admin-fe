@@ -196,7 +196,7 @@ export default function SearchSettingsPage() {
           <div className="flex flex-wrap gap-3">
             <Button
               type="button"
-              variant="destructive"
+              color="var(--color-danger)"
               onClick={() => void handleClearTypesense()}
               disabled={isBusy}
             >

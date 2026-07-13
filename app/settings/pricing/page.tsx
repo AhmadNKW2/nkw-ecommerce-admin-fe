@@ -34,8 +34,8 @@ type ProductPriceRuleDraft = {
   vendor_ids: string[];
   brand_ids: string[];
   category_ids: string[];
-  price_condition: "any" | "more_than" | "less_than" | "between";
-  adjustment_type: "increase" | "decrease";
+  price_condition: "" | "any" | "more_than" | "less_than" | "between";
+  adjustment_type: "" | "increase" | "decrease";
   min_product_price: string;
   max_product_price: string;
   percentage: string;
@@ -47,8 +47,8 @@ const createEmptyRuleDraft = (): ProductPriceRuleDraft => ({
   vendor_ids: [],
   brand_ids: [],
   category_ids: [],
-  price_condition: "between",
-  adjustment_type: "decrease",
+  price_condition: "",
+  adjustment_type: "",
   min_product_price: "",
   max_product_price: "",
   percentage: "1",
@@ -195,6 +195,11 @@ export default function PricingSettingsPage() {
       return null;
     }
 
+    if (!draft.adjustment_type) {
+      showErrorToast("Select whether the rule increases or decreases prices");
+      return null;
+    }
+
     if (
       draft.price_condition === "less_than" &&
       maxProductPrice === null &&
@@ -217,7 +222,8 @@ export default function PricingSettingsPage() {
       vendor_ids: vendorIds.length > 0 ? vendorIds : null,
       brand_ids: brandIds.length > 0 ? brandIds : null,
       category_ids: categoryIds.length > 0 ? categoryIds : null,
-      price_condition: draft.price_condition,
+      // Empty condition means no price filter: between with empty bounds matches all.
+      price_condition: draft.price_condition === "" ? "between" : draft.price_condition,
       adjustment_type: draft.adjustment_type,
       min_product_price: minProductPrice,
       max_product_price: maxProductPrice,
@@ -458,7 +464,7 @@ export default function PricingSettingsPage() {
                       <h3 className="text-base font-semibold">
                         {rule.id === null
                           ? `New Rule ${index + 1}`
-                          : `Rule #${rule.id}`}
+                          : `Rule ${index + 1}`}
                       </h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Define rule scope, product-price condition, and percentage
@@ -528,7 +534,7 @@ export default function PricingSettingsPage() {
                           index,
                           "price_condition",
                           ((Array.isArray(value) ? value[0] : value) ??
-                            "between") as ProductPriceRuleDraft["price_condition"],
+                            "") as ProductPriceRuleDraft["price_condition"],
                         )
                       }
                       options={[
@@ -537,6 +543,7 @@ export default function PricingSettingsPage() {
                         { value: "less_than", label: "Less than max" },
                         { value: "between", label: "Between min and max" },
                       ]}
+                      placeholder="No price filter"
                       search={false}
                       disabled={isRuleMutationPending}
                     />
@@ -548,13 +555,14 @@ export default function PricingSettingsPage() {
                           index,
                           "adjustment_type",
                           ((Array.isArray(value) ? value[0] : value) ??
-                            "decrease") as ProductPriceRuleDraft["adjustment_type"],
+                            "") as ProductPriceRuleDraft["adjustment_type"],
                         )
                       }
                       options={[
                         { value: "decrease", label: "Decrease by percentage" },
                         { value: "increase", label: "Increase by percentage" },
                       ]}
+                      placeholder="Select adjustment"
                       search={false}
                       disabled={isRuleMutationPending}
                     />

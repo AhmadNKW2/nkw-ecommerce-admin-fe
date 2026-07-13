@@ -33,6 +33,8 @@ export default function EditVendorPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [logo, setLogo] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [product_ids, setProductIds] = useState<number[]>([]);
@@ -41,6 +43,8 @@ export default function EditVendorPage() {
     name_ar?: string;
     description_en?: string;
     description_ar?: string;
+    email?: string;
+    password?: string;
     logo?: string;
   }>({});
 
@@ -73,6 +77,8 @@ export default function EditVendorPage() {
       setNameAr(vendor.name_ar);
       setDescriptionEn(vendor.description_en || "");
       setDescriptionAr(vendor.description_ar || "");
+      setEmail((vendor as { email?: string }).email || "");
+      setPassword("");
       // Set existing logo URL
       if (vendor.logo) {
         setLogo({
@@ -102,6 +108,8 @@ export default function EditVendorPage() {
       name_ar: nameAr,
       description_en: descriptionEn,
       description_ar: descriptionAr,
+      email,
+      password,
     });
 
     if (!result.isValid) {
@@ -126,6 +134,8 @@ export default function EditVendorPage() {
           name_ar: nameAr,
           description_en: descriptionEn || undefined,
           description_ar: descriptionAr || undefined,
+          email: email || undefined,
+          password: password || undefined,
           visible: visible,
           // Only send new file if one was uploaded
           logo: logo?.file || undefined,
@@ -206,6 +216,8 @@ export default function EditVendorPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      email={email}
+      password={password}
       logo={logo}
       visible={visible}
       product_ids={product_ids}
@@ -231,6 +243,18 @@ export default function EditVendorPage() {
         setDescriptionAr(value);
         if (formErrors.description_ar) {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
+        }
+      }}
+      onEmailChange={(value) => {
+        setEmail(value);
+        if (formErrors.email) {
+          setFormErrors((prev) => ({ ...prev, email: undefined }));
+        }
+      }}
+      onPasswordChange={(value) => {
+        setPassword(value);
+        if (formErrors.password) {
+          setFormErrors((prev) => ({ ...prev, password: undefined }));
         }
       }}
       onLogoChange={setLogo}

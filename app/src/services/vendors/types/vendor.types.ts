@@ -83,6 +83,8 @@ export interface CreateVendorDto {
   name_ar: string;
   description_en?: string;
   description_ar?: string;
+  email?: string;
+  password?: string;
   visible?: boolean;
   logo?: File | null;
   product_changes?: ProductChangesPayload;
@@ -94,6 +96,8 @@ export interface UpdateVendorDto {
   name_ar?: string;
   description_en?: string;
   description_ar?: string;
+  email?: string;
+  password?: string;
   visible?: boolean;
   logo?: File | null;
   product_changes?: ProductChangesPayload;

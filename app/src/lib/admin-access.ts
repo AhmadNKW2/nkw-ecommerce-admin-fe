@@ -85,6 +85,26 @@ export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
   admins: false,
 };
 
+export const DEFAULT_VENDOR_PORTAL_ACCESS: AdminAccess = {
+  products: true,
+  product_pricing: true,
+  categories: false,
+  vendors: false,
+  brands: false,
+  attributes: false,
+  specifications: false,
+  orders: false,
+  customers: false,
+  partners: false,
+  banners: false,
+  cashback_rules: false,
+  notes: false,
+  concepts: false,
+  archived: false,
+  settings: false,
+  admins: false,
+};
+
 export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   products: "Products",
   product_pricing: "Product pricing",
@@ -109,11 +129,21 @@ export function createDefaultAdminAccess(): AdminAccess {
   return { ...DEFAULT_ADMIN_ACCESS };
 }
 
-type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";
+type UserRole =
+  | "user"
+  | "admin"
+  | "constant_token_admin"
+  | "catalog_manager"
+  | "vendor_admin"
+  | "store_admin";
 
 function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
   if (role === "catalog_manager") {
     return { ...DEFAULT_CATALOG_MANAGER_ACCESS };
+  }
+
+  if (role === "vendor_admin" || role === "store_admin") {
+    return { ...DEFAULT_VENDOR_PORTAL_ACCESS };
   }
 
   if (role === "admin" || role === "constant_token_admin") {

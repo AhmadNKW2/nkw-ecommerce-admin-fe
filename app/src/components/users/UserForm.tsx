@@ -55,6 +55,7 @@ interface UserFormProps {
   phone?: string;
   password: string;
   role: UserRole;
+  vendorId?: string;
   isActive: boolean;
   productIds?: number[];
   assignedProducts?: ProductItem[];
@@ -64,6 +65,8 @@ interface UserFormProps {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onRoleChange: (value: UserRole) => void;
+  onVendorIdChange?: (value: string) => void;
+  vendorOptions?: Array<{ value: string; label: string }>;
   onIsActiveChange: (value: boolean) => void;
   adminAccess?: AdminAccess;
   onAdminAccessChange?: (value: AdminAccess) => void;
@@ -82,6 +85,7 @@ interface UserFormProps {
     phone?: string;
     password?: string;
     role?: string;
+    vendorId?: string;
   };
   onPhoneChange?: (value: string) => void;
   onSubmit: () => void;
@@ -94,6 +98,13 @@ const roleOptions = [
   { value: "admin", label: "Admin" },
 ];
 
+const adminRoleOptions = [
+  { value: "admin", label: "Admin" },
+  { value: "catalog_manager", label: "Catalog Manager" },
+  { value: "vendor_admin", label: "Vendor Admin" },
+  { value: "store_admin", label: "Store Admin" },
+];
+
 export const UserForm: React.FC<UserFormProps> = ({
   mode,
   userType,
@@ -104,6 +115,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   phone = "",
   password,
   role,
+  vendorId = "",
   isActive,
   productIds = [],
   assignedProducts = [],
@@ -113,6 +125,8 @@ export const UserForm: React.FC<UserFormProps> = ({
   onEmailChange,
   onPasswordChange,
   onRoleChange,
+  onVendorIdChange,
+  vendorOptions = [],
   onIsActiveChange,
   adminAccess,
   onAdminAccessChange,
@@ -263,7 +277,7 @@ export const UserForm: React.FC<UserFormProps> = ({
           )}
 
           {/* Role - hidden input for admin type, shows select for customer type */}
-          {!isAdmin && (
+          {!isAdmin ? (
             <Select
               label="Role"
               value={role}
@@ -271,7 +285,26 @@ export const UserForm: React.FC<UserFormProps> = ({
               options={roleOptions}
               disabled={userType === 'customer'}
             />
+          ) : (
+            <Select
+              label="Admin Type"
+              value={role}
+              onChange={(value) => onRoleChange(value as UserRole)}
+              options={adminRoleOptions}
+            />
           )}
+
+          {isAdmin && (role === "vendor_admin" || role === "store_admin") ? (
+            <Select
+              label="Linked Vendor"
+              value={vendorId}
+              onChange={(value) =>
+                onVendorIdChange?.(Array.isArray(value) ? value[0] ?? "" : value)
+              }
+              options={vendorOptions}
+              error={formErrors.vendorId}
+            />
+          ) : null}
 
           {/* Active Status */}
           <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
@@ -286,7 +319,7 @@ export const UserForm: React.FC<UserFormProps> = ({
         </div>
       </Card>
 
-      {isAdmin && adminAccess && onAdminAccessChange ? (
+      {isAdmin && adminAccess && onAdminAccessChange && role !== "vendor_admin" && role !== "store_admin" ? (
         <Card>
           <h2 className="text-lg font-semibold">Admin Access</h2>
           <p className="mt-1 text-sm text-gray-500">

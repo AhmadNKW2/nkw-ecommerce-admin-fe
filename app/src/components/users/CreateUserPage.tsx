@@ -5,13 +5,14 @@
  * Shared component for creating users (customers and admins)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useCreateCustomer } from "../../services/customers/hooks/use-customers";
+import { useVendors } from "../../services/vendors/hooks/use-vendors";
 import { UserForm } from "./UserForm";
 import { validateCustomerForm } from "../../lib/validations/customer.schema";
 import { UserRole } from "../../services/customers/types/customer.types";
-import { createDefaultAdminAccess, constrainAdminAccessByFeatureToggles } from "../../lib/admin-access";
+import { createDefaultAdminAccess, constrainAdminAccessByFeatureToggles, DEFAULT_VENDOR_PORTAL_ACCESS } from "../../lib/admin-access";
 import type { AdminAccess } from "../../lib/admin-access";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
@@ -23,7 +24,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
   const router = useRouter();
 
   const isAdmin = userType === "admin";
-  const role: UserRole = isAdmin ? "admin" : "user";
+  const [role, setRole] = useState<UserRole>(isAdmin ? "admin" : "user");
   const basePath = isAdmin ? "/admins" : "/customers";
   const label = isAdmin ? "Admin" : "Customer";
 
@@ -32,6 +33,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [vendorId, setVendorId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [adminAccess, setAdminAccess] = useState<AdminAccess>(createDefaultAdminAccess());
   const [productIds, setProductIds] = useState<number[]>([]);
@@ -41,10 +43,21 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
     email?: string;
     password?: string;
     role?: string;
+    vendorId?: string;
   }>({});
 
   const createCustomer = useCreateCustomer();
   const { isEnabled } = useResolvedFeatureToggles();
+  const { data: vendorsData } = useVendors({ limit: 1000 });
+
+  const vendorOptions = useMemo(
+    () =>
+      vendorsData?.data?.map((vendor) => ({
+        value: vendor.id.toString(),
+        label: vendor.name_en,
+      })) || [],
+    [vendorsData],
+  );
 
   const validate = () => {
     const result = validateCustomerForm(
@@ -60,6 +73,11 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
 
     if (!result.isValid) {
       setFormErrors(result.errors);
+      return false;
+    }
+
+    if ((role === "vendor_admin" || role === "store_admin") && !vendorId) {
+      setFormErrors((prev) => ({ ...prev, vendorId: "Vendor is required" }));
       return false;
     }
 
@@ -79,9 +97,15 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
         email,
         password,
         role,
+        vendor_id:
+          role === "vendor_admin" || role === "store_admin"
+            ? Number(vendorId)
+            : undefined,
         product_ids: productIds.length > 0 ? productIds : undefined,
         adminAccess: isAdmin
-          ? constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
+          ? role === "vendor_admin" || role === "store_admin"
+            ? DEFAULT_VENDOR_PORTAL_ACCESS
+            : constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
           : undefined,
       });
 
@@ -101,6 +125,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
       email={email}
       password={password}
       role={role}
+      vendorId={vendorId}
       isActive={isActive}
       productIds={productIds}
       assignedProducts={[]}
@@ -128,7 +153,14 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
           setFormErrors((prev) => ({ ...prev, password: undefined }));
         }
       }}
-      onRoleChange={() => {}} // Role is fixed
+      onRoleChange={(value) => {
+        setRole(value);
+        if (value !== "vendor_admin" && value !== "store_admin") {
+          setVendorId("");
+        }
+      }}
+      onVendorIdChange={setVendorId}
+      vendorOptions={vendorOptions}
       onIsActiveChange={setIsActive}
       adminAccess={isAdmin ? adminAccess : undefined}
       onAdminAccessChange={isAdmin ? setAdminAccess : undefined}

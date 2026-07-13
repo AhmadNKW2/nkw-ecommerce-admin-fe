@@ -22,10 +22,16 @@ import { queryKeys } from "../../src/lib/query-keys";
 import { Attribute, AttributeValue } from "../../src/services/attributes/types/attribute.types";
 import { Specification, SpecificationValue } from "../../src/services/specifications/types/specification.types";
 import { finishToastError, finishToastSuccess, showLoadingToast, updateLoadingToast } from "../../src/lib/toast";
+import { useAuth } from "../../src/contexts/auth.context";
+import { getSimplifiedProductStatus, isSimplifiedProductCreator } from "../../src/lib/simplified-product-creator";
 
 export default function CreateProductPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const simplifiedMode = isSimplifiedProductCreator(user);
+  const simplifiedStatus = getSimplifiedProductStatus(user?.role);
+  const lockedVendorId = user?.vendorId ? String(user.vendorId) : undefined;
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
   const { data: vendorsData, isLoading: vendorsLoading } = useVendors();
   const { data: brandsData, isLoading: brandsLoading } = useBrands();
@@ -83,6 +89,9 @@ export default function CreateProductPage() {
       const { dto, mediaFiles } = transformFormDataToDto(data, {
         availableAttributes: attributes,
         availableSpecifications: specifications,
+        simplifiedMode,
+        simplifiedStatus,
+        lockedVendorId: lockedVendorId ? Number(lockedVendorId) : undefined,
       });
       const productMedia = mediaFiles.singleMedia || [];
       const productAttachments = mediaFiles.attachments || [];
@@ -219,6 +228,9 @@ export default function CreateProductPage() {
       brands={brands}
       attributes={attributes}
       specifications={specifications}
+      simplifiedMode={simplifiedMode}
+      lockedVendorId={lockedVendorId}
+      simplifiedStatus={simplifiedStatus}
     />
   );
 }

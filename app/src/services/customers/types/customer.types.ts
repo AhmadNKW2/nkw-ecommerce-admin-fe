@@ -55,7 +55,13 @@ export interface WishlistItem {
 }
 
 // User Role
-export type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";
+export type UserRole =
+  | "user"
+  | "admin"
+  | "constant_token_admin"
+  | "catalog_manager"
+  | "vendor_admin"
+  | "store_admin";
 
 // Customer/User Schema (matches backend /api/users)
 export const customerSchema = z.object({
@@ -64,7 +70,14 @@ export const customerSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   phone: z.string().optional().nullable(),
-  role: z.enum(["user", "admin", "constant_token_admin", "catalog_manager"]).default("user"),
+  role: z.enum([
+    "user",
+    "admin",
+    "constant_token_admin",
+    "catalog_manager",
+    "vendor_admin",
+    "store_admin",
+  ]).default("user"),
   isActive: z.boolean().default(true),
   emailVerified: z.boolean().optional(),
   createdAt: z.string().or(z.date()).optional(),
@@ -173,6 +186,7 @@ export interface CreateCustomerDto {
   lastName: string;
   password: string;
   role?: UserRole;
+  vendor_id?: number;
   product_ids?: number[];
   adminAccess?: AdminAccess;
 }
@@ -184,6 +198,7 @@ export interface UpdateCustomerDto {
   lastName?: string;
   phone?: string | null;
   role?: UserRole;
+  vendor_id?: number;
   isActive?: boolean;
   product_ids?: number[];
   adminAccess?: AdminAccess;

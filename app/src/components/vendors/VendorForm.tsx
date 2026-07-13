@@ -24,6 +24,8 @@ interface VendorFormProps {
   nameAr: string;
   descriptionEn: string;
   descriptionAr: string;
+  email: string;
+  password: string;
   logo: ImageUploadItem | null;
   visible: boolean;
   product_ids: number[];
@@ -31,6 +33,8 @@ interface VendorFormProps {
   onNameArChange: (value: string) => void;
   onDescriptionEnChange: (value: string) => void;
   onDescriptionArChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
   onLogoChange: (value: ImageUploadItem | null) => void;
   onVisibleChange: (value: boolean) => void;
   onProductIdsChange: (value: number[]) => void;
@@ -39,6 +43,8 @@ interface VendorFormProps {
     name_ar?: string;
     description_en?: string;
     description_ar?: string;
+    email?: string;
+    password?: string;
     logo?: string;
   };
   allProducts?: ProductItem[];
@@ -55,6 +61,8 @@ export const VendorForm: React.FC<VendorFormProps> = ({
   nameAr,
   descriptionEn,
   descriptionAr,
+  email,
+  password,
   logo,
   visible,
   product_ids,
@@ -62,6 +70,8 @@ export const VendorForm: React.FC<VendorFormProps> = ({
   onNameArChange,
   onDescriptionEnChange,
   onDescriptionArChange,
+  onEmailChange,
+  onPasswordChange,
   onLogoChange,
   onVisibleChange,
   onProductIdsChange,
@@ -143,6 +153,24 @@ export const VendorForm: React.FC<VendorFormProps> = ({
             rows={3}
             isRtl
             maxLength={1000}
+          />
+
+          <Input
+            label="Portal Email (optional)"
+            type="email"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            error={formErrors.email}
+            placeholder="vendor@example.com"
+          />
+
+          <Input
+            label={mode === "create" ? "Portal Password (optional)" : "New Portal Password (optional)"}
+            type="password"
+            value={password}
+            onChange={(e) => onPasswordChange(e.target.value)}
+            error={formErrors.password}
+            placeholder={mode === "edit" ? "Leave blank to keep current password" : ""}
           />
 
           {/* Visible Status */}

@@ -18,6 +18,10 @@ export function roleMatchesAllowedRoles(
     return false;
   }
 
+  if (role === "vendor_admin" || role === "store_admin") {
+    return allowedRoles.includes("vendor_admin") || allowedRoles.includes("store_admin");
+  }
+
   const effectiveRole = role === "constant_token_admin" ? "admin" : role;
 
   return (

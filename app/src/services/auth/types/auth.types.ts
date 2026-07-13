@@ -25,10 +25,17 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  vendorId?: number | null;
   adminAccess?: import("@/lib/admin-access").AdminAccess;
 }
 
-export type UserRole = "user" | "admin" | "constant_token_admin" | "catalog_manager";
+export type UserRole =
+  | "user"
+  | "admin"
+  | "constant_token_admin"
+  | "catalog_manager"
+  | "vendor_admin"
+  | "store_admin";
 
 export interface AuthState {
   user: User | null;

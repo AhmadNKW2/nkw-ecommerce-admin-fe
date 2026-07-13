@@ -7,7 +7,13 @@ import type {
   ProductSpecificationValue as ProductSpecificationValueEntity,
 } from "../../specifications/types/specification.types";
 
-export type ProductStatus = "active" | "archived" | "updated" | "review";
+export type ProductStatus =
+  | "active"
+  | "archived"
+  | "updated"
+  | "review"
+  | "vendor"
+  | "store";
 
 // Category Schema (matches backend)
 export const categorySchema = z.object({
@@ -179,7 +185,7 @@ export const productSchema = z.object({
   linked_group_id: z.number().optional().nullable(),
   linked_product_ids: z.array(z.number()).optional(),
   linked_products: z.array(linkedProductSummarySchema).optional(),
-  status: z.enum(["active", "archived", "updated", "review"]).optional(),
+  status: z.enum(["active", "archived", "updated", "review", "vendor", "store"]).optional(),
   visible: z.boolean().optional(),
   archived_at: z.string().or(z.date()).optional().nullable(),
   archived_by: z.number().optional().nullable(),

@@ -5,7 +5,10 @@ import type { UserRole } from "@/services/auth/types/auth.types";
 type RouteAccessRule = {
   prefix: string;
   access: AdminAccessKey;
-  roles?: Extract<UserRole, "admin" | "constant_token_admin" | "catalog_manager">[];
+  roles?: Extract<
+    UserRole,
+    "admin" | "constant_token_admin" | "catalog_manager" | "vendor_admin" | "store_admin"
+  >[];
   /** Allow catalog managers even when the access key is denied. */
   catalogManagerBypass?: boolean;
 };
@@ -20,7 +23,7 @@ const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
   { prefix: "/archived-vendors", access: "archived", roles: ["admin", "constant_token_admin"] },
   { prefix: "/archived-brands", access: "archived", roles: ["admin", "constant_token_admin"] },
   { prefix: "/concepts", access: "concepts", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/products", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager"] },
+  { prefix: "/products", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager", "vendor_admin", "store_admin"] },
   { prefix: "/categories", access: "categories", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/vendors", access: "vendors", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/brands", access: "brands", roles: ["admin", "constant_token_admin", "catalog_manager"] },

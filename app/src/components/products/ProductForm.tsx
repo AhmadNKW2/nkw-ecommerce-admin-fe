@@ -20,6 +20,7 @@ import { PageHeader } from "../common/PageHeader";
 import {
   ProductFormData,
   createProductFormValidationSchema,
+  createSimplifiedProductFormValidationSchema,
   Attribute,
   ProductSpecificationSelection
 } from "../../services/products/types/product-form.types";
@@ -32,12 +33,14 @@ import { MediaSection } from "./sections/MediaSection";
 import { AttachmentsSection } from "./sections/AttachmentsSection";
 import { StockSection } from "./sections/StockSection";
 import { Card } from "../ui";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { useZodValidation, flattenZodErrors } from "../../hooks/use-zod-validation";
 import { Package } from "lucide-react";
 import type { Attribute as CatalogAttribute, AttributeValue as CatalogAttributeValue } from "../../services/attributes/types/attribute.types";
 import { Category } from "../../services/categories/types/category.types";
 import type { Specification as CatalogSpecification, SpecificationValue as CatalogSpecificationValue } from "../../services/specifications/types/specification.types";
-import type { LinkedProductSummary } from "../../services/products/types/product.types";
+import type { LinkedProductSummary, ProductStatus } from "../../services/products/types/product.types";
 import {
     generateCombinations,
     
@@ -55,10 +58,27 @@ interface ProductFormProps {
   attributes?: Array<{ id: string; name: string; displayName: string; values: Array<{ id: string; value: string; displayValue: string }> }>;
   specifications?: Array<{ id: string; name: string; displayName: string; parentId?: string; parentValueId?: string; values: Array<{ id: string; value: string; displayValue: string; parentId?: string }> }>;
   initialLinkedProducts?: LinkedProductSummary[];
+  simplifiedMode?: boolean;
+  lockedVendorId?: string;
+  simplifiedStatus?: "vendor" | "store";
 }
 
 type AvailableAttributeOption = NonNullable<ProductFormProps["attributes"]>[number];
 type AvailableSpecificationOption = NonNullable<ProductFormProps["specifications"]>[number];
+
+const toWorkflowProductStatus = (
+  status: ProductFormData["status"] | undefined,
+): ProductStatus | undefined => {
+  if (
+    status === "active" ||
+    status === "archived" ||
+    status === "updated" ||
+    status === "review"
+  ) {
+    return status;
+  }
+  return undefined;
+};
 
 const mapAttributeDefinitions = (
   attributeDefinitions: CatalogAttribute[] | undefined
@@ -113,6 +133,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   attributes = [],
   specifications = [],
   initialLinkedProducts = [],
+  simplifiedMode = false,
+  lockedVendorId,
+  simplifiedStatus = "vendor",
 }) => {
   const router = useRouter();
 
@@ -251,8 +274,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   // Build dynamic Zod schema based on form state — pricing is only
   // required when this admin has product-pricing access.
   const zodSchema = React.useMemo(
-    () => createProductFormValidationSchema({ requirePricing: canEditProductPricing }),
-    [canEditProductPricing]
+    () =>
+      simplifiedMode
+        ? createSimplifiedProductFormValidationSchema()
+        : createProductFormValidationSchema({ requirePricing: canEditProductPricing }),
+    [canEditProductPricing, simplifiedMode]
   );
   
   const { errors, validateForm, validateField, clearFieldError, isSubmitted } = useZodValidation<ProductFormData>({
@@ -268,10 +294,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       nameAr: formData.nameAr || '',
       sku: formData.sku || '',
       record: formData.record || '',
-      status: productStatusEnabled ? (formData.status || 'active') : 'active',
-      categoryIds: formData.categoryIds || [],
-      vendorId: formData.vendorId || '',
-      brandId: formData.brandId || '',
+      status: simplifiedMode ? simplifiedStatus : (productStatusEnabled ? (formData.status || 'active') : 'active'),
+      categoryIds: simplifiedMode ? [] : (formData.categoryIds || []),
+      vendorId: lockedVendorId || formData.vendorId || '',
+      brandId: simplifiedMode ? '' : (formData.brandId || ''),
       referenceLink: formData.referenceLink || '',
       linked_product_ids: linkedProductsEnabled ? (formData.linked_product_ids || []) : [],
       quantity: formData.quantity,
@@ -631,13 +657,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         }}
       />
       {/* Basic Information */}
+      {!simplifiedMode ? (
       <BasicInformationSection
         formData={{
           nameEn: formData.nameEn,
           nameAr: formData.nameAr,
           sku: formData.sku,
           record: formData.record,
-          status: formData.status,
+          status: toWorkflowProductStatus(formData.status),
           categoryIds: formData.categoryIds,
           vendorId: formData.vendorId,
           brandId: formData.brandId,
@@ -669,9 +696,46 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         statusVisible={statusVisible}
         linkedProductsEnabled={linkedProductsEnabled}
       />
+      ) : (
+      <Card>
+        <h2 className="text-lg font-semibold">Product Details</h2>
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Input
+            label="Name (English)"
+            value={formData.nameEn || ""}
+            error={errors.nameEn}
+            onChange={(e) => handleFieldChange("nameEn", e.target.value)}
+            required
+          />
+          <Input
+            label="Name (Arabic)"
+            value={formData.nameAr || ""}
+            error={errors.nameAr}
+            onChange={(e) => handleFieldChange("nameAr", e.target.value)}
+            required
+          />
+        </div>
+        <div className="mt-5 grid grid-cols-1 gap-5">
+          <Textarea
+            label="Long Description (English)"
+            value={formData.longDescriptionEn || ""}
+            error={errors.longDescriptionEn}
+            onChange={(e) => handleFieldChange("longDescriptionEn", e.target.value)}
+            required
+          />
+          <Textarea
+            label="Long Description (Arabic)"
+            value={formData.longDescriptionAr || ""}
+            error={errors.longDescriptionAr}
+            onChange={(e) => handleFieldChange("longDescriptionAr", e.target.value)}
+            required
+          />
+        </div>
+      </Card>
+      )}
 
       {/* Attributes Configuration — hidden when attributes_enabled is false */}
-      {attributesEnabled && (
+      {!simplifiedMode && attributesEnabled && (
       <AttributesSection
         attributes={formData.attributes || []}
         availableAttributes={availableAttributeOptions}
@@ -731,7 +795,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       />
       )}
 
-      {specificationsEnabled && (
+      {specificationsEnabled && !simplifiedMode && (
       <SpecificationsSection
         specifications={formData.specifications || []}
         availableSpecifications={availableSpecificationOptions}
@@ -748,6 +812,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       )}
 
       {/* Stock Management */}
+      {!simplifiedMode ? (
       <StockSection
           quantity={formData.quantity}
           isOutOfStock={formData.is_out_of_stock || false}
@@ -755,20 +820,21 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           onChangeIsOutOfStock={(isOut) => handleFieldChange("is_out_of_stock", isOut)}
           errors={errors}
         />
+      ) : null}
 
       {/* Pricing Configuration */}
-      {canEditProductPricing ? (
+      {(simplifiedMode || canEditProductPricing) ? (
       <PricingSection
         pricing={formData.pricing}
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
-        vendorSourcePricesVisible={vendorsEnabled}
+        vendorSourcePricesVisible={!simplifiedMode && vendorsEnabled}
       />
       ) : null}
 
       {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}
-      {weightAndDimensionsEnabled && (
+      {!simplifiedMode && weightAndDimensionsEnabled && (
       <WeightDimensionsSection
         weightDimensions={formData.weightDimensions}
         onChange={(data) => handleFieldChange("weightDimensions", data)}
@@ -783,7 +849,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         errors={errors}
       />
 
-      {productFilesEnabled ? (
+      {productFilesEnabled && !simplifiedMode ? (
       <AttachmentsSection
         attachments={formData.attachments || []}
         onChange={(attachments) => handleFieldChange("attachments", attachments)}

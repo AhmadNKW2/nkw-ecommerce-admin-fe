@@ -85,7 +85,7 @@ const productFormObjectSchema = z.object({
   nameAr: z.string().min(1, "Arabic name is required"),
   sku: z.string().optional(),
   record: z.string().optional(),
-  status: z.enum(["active", "archived", "updated", "review"]).default("active"),
+  status: z.enum(["active", "archived", "updated", "review", "vendor", "store"]).default("active"),
   categoryIds: z.array(z.string()).min(1, "At least one category is required"),
   vendorId: z.string().optional(),
   brandId: z.string().optional(),
@@ -226,6 +226,26 @@ export function createProductFormValidationSchema(
       }
     }
   });
+}
+
+export function createSimplifiedProductFormValidationSchema() {
+  return productFormObjectSchema
+    .extend({
+      categoryIds: z.array(z.string()).default([]),
+      status: z.enum(["active", "archived", "updated", "review", "vendor", "store"]).default("vendor"),
+      longDescriptionEn: z.string().min(1, "English description is required"),
+      longDescriptionAr: z.string().min(1, "Arabic description is required"),
+    })
+    .superRefine((data, ctx) => {
+      const price = data.pricing?.price;
+      if (price === undefined || price === null || Number.isNaN(price)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["pricing", "price"],
+        });
+      }
+    });
 }
 
 export const productFormSchema = createProductFormValidationSchema();

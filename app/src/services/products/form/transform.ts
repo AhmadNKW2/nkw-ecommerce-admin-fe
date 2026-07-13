@@ -41,6 +41,9 @@ interface TransformFormDataOptions {
   includeEmptyRelations?: boolean;
   availableAttributes?: HierarchyDefinition[];
   availableSpecifications?: HierarchyDefinition[];
+  simplifiedMode?: boolean;
+  simplifiedStatus?: "vendor" | "store";
+  lockedVendorId?: number;
 }
 
 interface HierarchyDefinition {
@@ -191,6 +194,9 @@ export function transformFormDataToDto(
     includeEmptyRelations = false,
     availableAttributes,
     availableSpecifications,
+    simplifiedMode = false,
+    simplifiedStatus = "vendor",
+    lockedVendorId,
   } = options;
   const specificationsPayload = buildProductSpecificationsPayload(
     data.specifications,
@@ -214,24 +220,26 @@ export function transformFormDataToDto(
     name_ar: data.nameAr,
     sku: normalizeOptionalString(data.sku),
     record: normalizeOptionalString(data.record) ?? null,
-    status: data.status,
-    short_description_en: data.shortDescriptionEn || "",
-    short_description_ar: data.shortDescriptionAr || "",
+    status: simplifiedMode ? simplifiedStatus : data.status,
+    short_description_en: data.shortDescriptionEn || data.nameEn || "",
+    short_description_ar: data.shortDescriptionAr || data.nameAr || "",
     long_description_en: data.longDescriptionEn || "",
     long_description_ar: data.longDescriptionAr || "",
-    category_ids: (data.categoryIds || [])
-      .map((id) => parseInt(id, 10))
-      .filter((id) => !Number.isNaN(id)),
+    category_ids: simplifiedMode
+      ? []
+      : (data.categoryIds || [])
+          .map((id) => parseInt(id, 10))
+          .filter((id) => !Number.isNaN(id)),
     reference_link: data.referenceLink?.trim() || null,
-    quantity: data.quantity || 0,
+    quantity: simplifiedMode ? 0 : (data.quantity || 0),
     is_out_of_stock: data.is_out_of_stock || false,
     meta_title_en: normalizeOptionalString(data.metaTitleEn),
     meta_title_ar: normalizeOptionalString(data.metaTitleAr),
     meta_description_en: normalizeOptionalString(data.metaDescriptionEn),
     meta_description_ar: normalizeOptionalString(data.metaDescriptionAr),
-    tags: normalizedTags,
-    linked_product_ids: linkedProductIds,
-    visible: data.visible,
+    tags: simplifiedMode ? [] : normalizedTags,
+    linked_product_ids: simplifiedMode ? [] : linkedProductIds,
+    visible: simplifiedMode ? false : data.visible,
   };
 
   if (data.pricing) {
@@ -257,15 +265,15 @@ export function transformFormDataToDto(
     dto.sale_price = data.pricing.isSale === true ? data.pricing.salePrice : null;
   }
 
-  const vendorId = parseOptionalId(data.vendorId);
-  const brandId = parseOptionalId(data.brandId);
+  const vendorId = lockedVendorId ?? parseOptionalId(data.vendorId);
+  const brandId = simplifiedMode ? undefined : parseOptionalId(data.brandId);
 
   if (vendorId !== undefined) dto.vendor_id = vendorId;
   if (brandId !== undefined) dto.brand_id = brandId;
-  if (specificationsPayload.length > 0 || includeEmptyRelations) {
+  if (!simplifiedMode && (specificationsPayload.length > 0 || includeEmptyRelations)) {
     dto.specifications = specificationsPayload;
   }
-  if (attributesPayload.length > 0 || includeEmptyRelations) {
+  if (!simplifiedMode && (attributesPayload.length > 0 || includeEmptyRelations)) {
     dto.attributes = attributesPayload;
   }
 

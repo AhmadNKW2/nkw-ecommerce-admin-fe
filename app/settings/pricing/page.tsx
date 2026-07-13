@@ -323,7 +323,7 @@ export default function PricingSettingsPage() {
       <PageHeader
         icon={<Percent />}
         title="Pricing Rules"
-        description="Use bulk pricing to change existing product prices. Pricing rules only define how AI import calculates prices for new products."
+        description="Manage vendor-price rules and apply bulk pricing changes by vendor when needed."
       />
 
       <SettingsNav />
@@ -333,9 +333,8 @@ export default function PricingSettingsPage() {
           <div>
             <h2 className="text-lg font-semibold">Bulk Product Pricing</h2>
             <p className="mt-1 max-w-3xl text-sm text-gray-500">
-              Apply a percentage increase or decrease to existing product prices,
-              or reset products back to their stored original vendor prices.
-              This is the action that updates prices in your catalog.
+              Apply a percentage increase or decrease to current product prices, or
+              reset products back to their stored original vendor prices.
             </p>
           </div>
         </div>
@@ -410,12 +409,11 @@ export default function PricingSettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold">
-                    AI Import Pricing Rules
+                    Product Pricing Rules
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Define how AI import should calculate prices for newly
-                    imported products. Saving these rules does not change
-                    existing catalog prices.
+                    Define persisted increase/decrease rules by vendor, brand,
+                    category, and original-price conditions.
                   </p>
                 </div>
               </div>
@@ -454,8 +452,8 @@ export default function PricingSettingsPage() {
             <div className="flex flex-col gap-4">
               {ruleDrafts.length === 0 && !isLoading ? (
                 <div className="rounded-r1 border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-                  No pricing rules yet. Add a rule to control how AI import
-                  calculates prices from original source prices.
+                  No pricing rules yet. Add your first rule to control how
+                  product prices are managed from original source prices.
                 </div>
               ) : null}
 
@@ -613,8 +611,7 @@ export default function PricingSettingsPage() {
 
                   <p className="text-sm text-gray-500">
                     Leave vendors, brands, categories, and min/max product prices
-                    empty to apply the rule to all imported products. Use bulk
-                    pricing above to update existing catalog prices.
+                    empty to apply the rule to all products.
                   </p>
 
                   <div className="flex flex-wrap gap-3">

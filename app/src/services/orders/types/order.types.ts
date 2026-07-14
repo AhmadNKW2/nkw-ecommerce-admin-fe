@@ -36,6 +36,8 @@ export interface AdminOrderItemInput {
   /** Optional price override; defaults to the product's current sale/list price. */
   price?: number;
   cost?: number;
+  /** Optional vendor override; defaults to the product's vendor. */
+  vendorId?: number;
 }
 
 /** Payload for POST /orders/admin — lets an admin build an order for an existing customer or a guest. */
@@ -58,6 +60,7 @@ export interface UpdateOrderItemEntry {
   itemId: number;
   price?: number;
   cost?: number;
+  vendorId?: number;
 }
 
 /** Payload for PATCH /orders/:id — general admin edits to an existing order. */
@@ -110,16 +113,24 @@ export interface ItemVariant {
     attribute_values?: Record<string, any>; 
 }
 
+export interface OrderItemVendor {
+  id: number;
+  name_en?: string;
+  name_ar?: string;
+}
+
 export interface OrderItem {
   id: number;
   productId?: number;
   variantId?: number;
+  vendorId?: number | null;
   quantity: number;
   price: string | number;
   cost?: string | number;
   product?: ItemProduct;
   variant?: ItemVariant;
-  
+  vendor?: OrderItemVendor | null;
+
   // Backward compat (if needed)
   [key: string]: any;
 }

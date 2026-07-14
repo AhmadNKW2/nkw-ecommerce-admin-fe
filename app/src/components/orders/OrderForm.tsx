@@ -35,6 +35,7 @@ import { useCustomers } from "../../services/customers/hooks/use-customers";
 import { getCustomerFullName } from "../../services/customers/types/customer.types";
 import { getProductImageUrl } from "../common/product-table-utils";
 import { useSeoSettings } from "../../services/settings/hooks/use-settings";
+import { useVendors } from "../../services/vendors/hooks/use-vendors";
 import type { Product } from "../../services/products/types/product.types";
 import type {
   AdminCreateOrderDto,
@@ -57,7 +58,26 @@ export interface OrderFormItem {
   quantity: number;
   price: NullableNumber;
   cost: NullableNumber;
+  vendorId: number | null;
   maxQuantity?: number;
+}
+
+function resolveProductVendorId(product: Product): number | null {
+  const raw = product.vendor_id ?? (product as { vendorId?: number | string | null }).vendorId;
+  if (raw == null || raw === "") return null;
+  const id = Number(raw);
+  return Number.isFinite(id) ? id : null;
+}
+
+function formatVendorLabel(vendor: {
+  name_en?: string;
+  name_ar?: string;
+  name?: string;
+}): string {
+  if (vendor.name_en && vendor.name_ar) {
+    return `${vendor.name_en} - ${vendor.name_ar}`;
+  }
+  return vendor.name_en || vendor.name_ar || vendor.name || "Unknown vendor";
 }
 
 interface OrderFormSubmitPayload {
@@ -200,6 +220,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         quantity: item.quantity,
         price: item.price != null ? Number(item.price) : null,
         cost: item.cost != null ? Number(item.cost) : null,
+        vendorId:
+          item.vendorId != null
+            ? Number(item.vendorId)
+            : item.vendor?.id != null
+              ? Number(item.vendor.id)
+              : null,
       };
     });
   });
@@ -220,6 +246,38 @@ export const OrderForm: React.FC<OrderFormProps> = ({
       })),
     [productResults]
   );
+
+  const { data: vendorsResponse } = useVendors({ limit: 200 });
+  const vendorOptions: SelectOption[] = useMemo(() => {
+    const list = vendorsResponse?.data || [];
+    const options = list.map((vendor) => ({
+      value: String(vendor.id),
+      label: formatVendorLabel(vendor),
+    }));
+
+    // Keep currently selected vendors visible even if they fall outside the fetched page.
+    for (const item of items) {
+      if (
+        item.vendorId != null &&
+        !options.some((o) => o.value === String(item.vendorId))
+      ) {
+        const fromOrder = initialOrder?.items?.find(
+          (oi) =>
+            oi.id === item.itemId ||
+            Number(oi.vendorId) === item.vendorId ||
+            oi.vendor?.id === item.vendorId
+        )?.vendor;
+        options.unshift({
+          value: String(item.vendorId),
+          label: fromOrder
+            ? formatVendorLabel(fromOrder)
+            : `Vendor #${item.vendorId}`,
+        });
+      }
+    }
+
+    return options;
+  }, [vendorsResponse, items, initialOrder]);
 
   const handleAddProduct = (productIdStr: string) => {
     const product = productResults.find((p) => String(p.id) === productIdStr);
@@ -244,6 +302,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           quantity: 1,
           price: getEffectivePrice(product),
           cost: product.cost != null ? Number(product.cost) : null,
+          vendorId: resolveProductVendorId(product),
           maxQuantity: product.quantity ?? undefined,
         },
       ];
@@ -371,6 +430,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             itemId: it.itemId!,
             price: it.price ?? undefined,
             cost: it.cost ?? undefined,
+            vendorId: it.vendorId ?? undefined,
           })),
         };
         await onSubmit({ update: payload, create: {} as AdminCreateOrderDto });
@@ -382,6 +442,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             quantity: it.quantity,
             price: it.price ?? undefined,
             cost: it.cost ?? undefined,
+            vendorId: it.vendorId ?? undefined,
           })),
           shippingAddress: address,
           billingAddress: address,
@@ -521,7 +582,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             {isEditMode
-              ? "Adjust unit price and cost for each line item"
+              ? "Adjust vendor, cost and unit price for each line item"
               : "Search and add products to this order"}
           </p>
         </div>
@@ -567,6 +628,22 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                   )}
                 </div>
 
+                <div className="w-44 shrink-0">
+                  <Select
+                    label="Vendor"
+                    value={item.vendorId != null ? String(item.vendorId) : ""}
+                    onChange={(value) => {
+                      const selected = Array.isArray(value) ? value[0] ?? "" : value;
+                      updateItem(item.key, {
+                        vendorId: selected ? Number(selected) : null,
+                      });
+                    }}
+                    options={vendorOptions}
+                    search={true}
+                    placeholder="Select vendor"
+                  />
+                </div>
+
                 <div className="flex items-center gap-1">
                   {isEditMode ? (
                     <span className="w-14 text-center font-medium text-gray-900">
@@ -607,12 +684,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
                 <div className="w-24 shrink-0">
                   <Input
-                    label="Price"
+                    label="Cost"
                     type="number"
                     min={0}
                     step="0.01"
-                    value={item.price}
-                    onNumberChange={(value) => updateItem(item.key, { price: value })}
+                    value={item.cost}
+                    onNumberChange={(value) => updateItem(item.key, { cost: value })}
                     className="text-left"
                     dir="ltr"
                   />
@@ -620,12 +697,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
                 <div className="w-24 shrink-0">
                   <Input
-                    label="Cost"
+                    label="Price"
                     type="number"
                     min={0}
                     step="0.01"
-                    value={item.cost}
-                    onNumberChange={(value) => updateItem(item.key, { cost: value })}
+                    value={item.price}
+                    onNumberChange={(value) => updateItem(item.key, { price: value })}
                     className="text-left"
                     dir="ltr"
                   />

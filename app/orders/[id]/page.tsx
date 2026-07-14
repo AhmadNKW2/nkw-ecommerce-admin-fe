@@ -336,9 +336,10 @@ export default function OrderDetailsPage() {
                                         <TableRow>
                                             <TableHead className="w-[80px]">Product</TableHead>
                                             <TableHead>Details</TableHead>
+                                            <TableHead>Vendor</TableHead>
                                             <TableHead className="text-center w-[90px]">Links</TableHead>
-                                            <TableHead className="text-right">Unit Price</TableHead>
                                             <TableHead className="text-right">Cost</TableHead>
+                                            <TableHead className="text-right">Unit Price</TableHead>
                                             <TableHead className="text-right">Qty</TableHead>
                                             <TableHead className="text-right">Total</TableHead>
                                         </TableRow>
@@ -351,6 +352,10 @@ export default function OrderDetailsPage() {
                                             const itemCost = parseFloat(String(item.cost ?? 0));
                                             const itemTotal = itemPrice * item.quantity;
                                             const variantParams = item.variant?.attribute_values || {};
+                                            const vendorName =
+                                                item.vendor?.name_en ||
+                                                item.vendor?.name_ar ||
+                                                (item.vendorId != null ? `Vendor #${item.vendorId}` : "—");
 
                                             return (
                                                 <TableRow key={item.id} className="group hover:bg-gray-50/50">
@@ -385,6 +390,9 @@ export default function OrderDetailsPage() {
                                                                 </div>
                                                             )}
                                                         </div>
+                                                    </TableCell>
+                                                    <TableCell className="align-top py-4 text-sm text-gray-700">
+                                                        {vendorName}
                                                     </TableCell>
                                                     <TableCell className="align-top py-4">
                                                         <div className="flex items-center justify-center gap-1.5">
@@ -427,10 +435,10 @@ export default function OrderDetailsPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right align-top py-4 font-mono text-gray-600">
-                                                        {formatCurrency(itemPrice)}
+                                                        {formatCurrency(itemCost)}
                                                     </TableCell>
                                                     <TableCell className="text-right align-top py-4 font-mono text-gray-600">
-                                                        {formatCurrency(itemCost)}
+                                                        {formatCurrency(itemPrice)}
                                                     </TableCell>
                                                     <TableCell className="text-right align-top py-4 font-mono text-gray-900 font-medium">
                                                         x{item.quantity}

@@ -4,6 +4,7 @@ import type {
   AdminCreateOrderDto,
   CreateOrderDto,
   Order,
+  OrderAdminStats,
   OrderFilters,
   OrderListResponse,
   OrderStatus,
@@ -25,6 +26,15 @@ class OrderService {
     // If our http-client unwraps the response, we might need to adjust. 
     // Usually http-client returns the data payload.
     return httpClient.get<OrderListResponse>(`/orders/admin?${query}`);
+  }
+
+  getAdminStats(
+    filters?: Pick<OrderFilters, "search" | "userId">
+  ): Promise<ApiResponse<OrderAdminStats>> {
+    const query = objectToQueryParams(filters || {});
+    return httpClient.get<ApiResponse<OrderAdminStats>>(
+      `/orders/admin/stats?${query}`
+    );
   }
 
   getOrder(id: number): Promise<ApiResponse<Order>> {

@@ -1,5 +1,6 @@
 export {
   useOrders,
+  useOrderAdminStats,
   useOrder,
   useCreateOrder,
   useCreateOrderAdmin,
@@ -11,6 +12,7 @@ export {
 export type {
   Order,
   OrderItem,
+  OrderAdminStats,
   OrderStatus,
   PaymentMethod,
   CreateOrderDto,

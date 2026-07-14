@@ -100,6 +100,18 @@ export interface OrderListResponse {
   meta: OrderMeta;
 }
 
+/** Aggregate stats for the admin orders dashboard (all pages). */
+export interface OrderAdminStats {
+  pendingCount: number;
+  deliveredCount: number;
+  cancelledCount: number;
+  refundedCount: number;
+  /** Σ(price × quantity) for delivered orders only. */
+  revenue: number;
+  /** Σ((price − cost) × quantity) for delivered orders only. */
+  profit: number;
+}
+
 export interface ItemProduct {
     id: number;
     name_en: string;

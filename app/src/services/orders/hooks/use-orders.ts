@@ -20,6 +20,16 @@ export const useOrders = (filters?: OrderFilters) => {
   });
 };
 
+export const useOrderAdminStats = (
+  filters?: Pick<OrderFilters, "search" | "userId">
+) => {
+  return useQuery({
+    queryKey: queryKeys.orders.stats(filters),
+    queryFn: () => orderService.getAdminStats(filters),
+    select: (response) => response.data,
+  });
+};
+
 export const useOrder = (id: number, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: queryKeys.orders.detail(id),

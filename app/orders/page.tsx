@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useLoading } from "../src/providers/loading-provider";
-import { useOrders, useDeleteOrder } from "../src/services/orders/hooks/use-orders";
+import {
+  useOrders,
+  useOrderAdminStats,
+  useDeleteOrder,
+} from "../src/services/orders/hooks/use-orders";
 import type { Order, OrderStatus, OrderFilters } from "../src/services/orders/types/order.types";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { Card } from "../src/components/ui/card";
@@ -26,6 +30,7 @@ import {
   Clock,
   PackageCheck,
   Wallet,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "../src/components/ui/button";
 import { IconButton } from "../src/components/ui/icon-button";
@@ -91,6 +96,10 @@ export default function OrdersPage() {
   const orders = response?.data || [];
   const meta = response?.meta || { total: 0, page: 1, limit: 10, totalPages: 1 };
 
+  const { data: stats, refetch: refetchStats } = useOrderAdminStats({
+    search: queryParams.search || undefined,
+  });
+
   const deleteOrder = useDeleteOrder();
   const [orderPendingDelete, setOrderPendingDelete] = useState<Order | null>(null);
 
@@ -116,12 +125,15 @@ export default function OrdersPage() {
     setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1 }));
   };
 
-  const pageStats = useMemo(() => {
-    const revenue = orders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
-    const pending = orders.filter((o) => o.status === "pending").length;
-    const fulfilled = orders.filter((o) => o.status === "delivered").length;
-    return { revenue, pending, fulfilled };
-  }, [orders]);
+  const handleRefresh = () => {
+    refetch();
+    refetchStats();
+  };
+
+  const revenue = Number(stats?.revenue ?? 0);
+  const profit = Number(stats?.profit ?? 0);
+  const pendingCount = Number(stats?.pendingCount ?? 0);
+  const deliveredCount = Number(stats?.deliveredCount ?? 0);
 
   return (
     <div className="admin-page">
@@ -131,7 +143,7 @@ export default function OrdersPage() {
         description="View, create and manage customer orders"
         cancelAction={{
           label: "Refresh",
-          onClick: () => refetch(),
+          onClick: handleRefresh,
         }}
         action={{
           label: "Create Order",
@@ -139,8 +151,8 @@ export default function OrdersPage() {
         }}
       />
 
-      {/* Snapshot */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+      {/* Snapshot — revenue/profit are all delivered orders across every page */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 w-full">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -155,8 +167,8 @@ export default function OrdersPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Pending (this page)</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.pending}</p>
+              <p className="text-sm text-gray-500">Pending</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{pendingCount}</p>
             </div>
             <div className="p-3 bg-yellow-50 rounded-r1 text-yellow-600">
               <Clock className="w-5 h-5" />
@@ -167,7 +179,7 @@ export default function OrdersPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Delivered</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.fulfilled}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{deliveredCount}</p>
             </div>
             <div className="p-3 bg-green-50 rounded-r1 text-green-600">
               <PackageCheck className="w-5 h-5" />
@@ -177,11 +189,24 @@ export default function OrdersPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Revenue (this page)</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{pageStats.revenue.toFixed(2)} JOD</p>
+              <p className="text-sm text-gray-500">Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{revenue.toFixed(2)} JOD</p>
+              <p className="text-xs text-gray-400 mt-0.5">Delivered orders</p>
             </div>
             <div className="p-3 bg-blue-50 rounded-r1 text-blue-600">
               <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Profit</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{profit.toFixed(2)} JOD</p>
+              <p className="text-xs text-gray-400 mt-0.5">Price − cost</p>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-r1 text-emerald-600">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
         </Card>
@@ -199,7 +224,7 @@ export default function OrdersPage() {
               />
             </div>
             <div className="flex items-end self-end">
-              <Button variant="outline" onClick={() => refetch()} className="h-13">
+              <Button variant="outline" onClick={handleRefresh} className="h-13">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>

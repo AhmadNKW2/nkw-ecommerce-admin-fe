@@ -21,6 +21,8 @@ export const queryKeys = {
     lists: () => [...queryKeys.orders.all, "list"] as const,
     list: (params?: Record<string, any>) =>
       [...queryKeys.orders.lists(), params] as const,
+    stats: (params?: Record<string, any>) =>
+      [...queryKeys.orders.all, "stats", params] as const,
     details: () => [...queryKeys.orders.all, "detail"] as const,
     detail: (id: string | number) =>
       [...queryKeys.orders.details(), id] as const,

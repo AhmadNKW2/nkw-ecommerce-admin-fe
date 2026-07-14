@@ -235,6 +235,15 @@ export default function OrderDetailsPage() {
 
     const items = Array.isArray(order.items) ? order.items : [];
     const shipping = order.shippingAddress || (order as any).shipping || {};
+    const easyPurchaseStreetPlaceholders = new Set([
+      "cash on delivery",
+      "not provided",
+      "address not collected",
+    ]);
+    const shippingStreet = String(shipping.street || "").trim();
+    const hasRealStreet =
+      Boolean(shippingStreet) &&
+      !easyPurchaseStreetPlaceholders.has(shippingStreet.toLowerCase());
     const user = (order.user || {}) as any;
     const isGuest = !order.user;
 
@@ -604,7 +613,11 @@ export default function OrderDetailsPage() {
                                             {shipping.fullName || customerName}
                                         </p>
                                     )}
-                                    {shipping.street && <p className="text-gray-700">{shipping.street}</p>}
+                                    {hasRealStreet ? (
+                                        <p className="text-gray-700">{shippingStreet}</p>
+                                    ) : (
+                                        <p className="text-gray-400 italic">Street not collected (easy purchase)</p>
+                                    )}
                                     {shippingUnitLine && (
                                         <p className="text-gray-500">{shippingUnitLine}</p>
                                     )}
@@ -612,7 +625,7 @@ export default function OrderDetailsPage() {
                                     {shipping.country && (
                                         <p className="font-medium text-gray-900">{shipping.country}</p>
                                     )}
-                                    {!shipping.street && !shipping.city && !shipping.country && (
+                                    {!hasRealStreet && !shipping.city && !shipping.country && (
                                         <p className="text-gray-400 italic">No shipping address provided</p>
                                     )}
                                     {(shipping.notes || shipping.details) && (

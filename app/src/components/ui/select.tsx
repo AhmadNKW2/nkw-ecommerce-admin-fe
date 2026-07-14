@@ -333,8 +333,8 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             // Ensure it has at least 100% width of parent, but can be auto for small inputs
             minWidth: '100%',
             width: menuWidth,
-            // Fallback constraint
-            maxWidth: '300px'
+            // Allow longer labels (e.g. vendor names) without clipping
+            maxWidth: isSm ? '300px' : 'min(100vw - 2rem, 28rem)',
           }}
         >
           {/* Search Input */}

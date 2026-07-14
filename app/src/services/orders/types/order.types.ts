@@ -57,7 +57,10 @@ export interface AdminCreateOrderDto {
 
 /** A single line item update when editing an existing order. */
 export interface UpdateOrderItemEntry {
-  itemId: number;
+  /** Existing line id. Omit when adding a new product. */
+  itemId?: number;
+  productId?: number;
+  quantity?: number;
   price?: number;
   cost?: number;
   vendorId?: number;

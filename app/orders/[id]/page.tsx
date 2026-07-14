@@ -363,7 +363,6 @@ export default function OrderDetailsPage() {
                                             const variantParams = item.variant?.attribute_values || {};
                                             const vendorName =
                                                 item.vendor?.name_en ||
-                                                item.vendor?.name_ar ||
                                                 (item.vendorId != null ? `Vendor #${item.vendorId}` : "—");
 
                                             return (

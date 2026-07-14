@@ -63,10 +63,14 @@ export interface OrderFormItem {
 }
 
 function resolveProductVendorId(product: Product): number | null {
-  const raw = product.vendor_id ?? (product as { vendorId?: number | string | null }).vendorId;
+  const nestedVendorId = (product as { vendor?: { id?: number | string | null } }).vendor?.id;
+  const raw =
+    product.vendor_id ??
+    (product as { vendorId?: number | string | null }).vendorId ??
+    nestedVendorId;
   if (raw == null || raw === "") return null;
   const id = Number(raw);
-  return Number.isFinite(id) ? id : null;
+  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 function formatVendorLabel(vendor: {
@@ -74,10 +78,7 @@ function formatVendorLabel(vendor: {
   name_ar?: string;
   name?: string;
 }): string {
-  if (vendor.name_en && vendor.name_ar) {
-    return `${vendor.name_en} - ${vendor.name_ar}`;
-  }
-  return vendor.name_en || vendor.name_ar || vendor.name || "Unknown vendor";
+  return vendor.name_en || vendor.name || "Unknown vendor";
 }
 
 interface OrderFormSubmitPayload {
@@ -299,11 +300,22 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     const product = productResults.find((p) => String(p.id) === productIdStr);
     if (!product) return;
 
+    const productVendorId = resolveProductVendorId(product);
+
     setItems((prev) => {
-      const existing = prev.find((it) => it.key === `${product.id}-base`);
+      const existing = prev.find(
+        (it) => it.key === `${product.id}-base` || it.productId === product.id
+      );
       if (existing) {
         return prev.map((it) =>
-          it.key === existing.key ? { ...it, quantity: it.quantity + 1 } : it
+          it.key === existing.key
+            ? {
+                ...it,
+                quantity: it.quantity + 1,
+                // Keep/refresh vendor from the product when still unset.
+                vendorId: it.vendorId ?? productVendorId,
+              }
+            : it
         );
       }
       const image = getProductImageUrl(product) || null;
@@ -318,7 +330,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           quantity: 1,
           price: getEffectivePrice(product),
           cost: product.cost != null ? Number(product.cost) : null,
-          vendorId: resolveProductVendorId(product),
+          vendorId: productVendorId,
           maxQuantity: product.quantity ?? undefined,
         },
       ];
@@ -629,98 +641,26 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             {items.map((item) => (
               <div
                 key={item.key}
-                className="flex flex-col gap-3 p-4 bg-white hover:bg-gray-50/50 transition-colors overflow-visible"
+                className="flex flex-wrap md:flex-nowrap items-end gap-4 p-4 bg-white hover:bg-gray-50/50 transition-colors overflow-visible"
               >
-                <div className="flex flex-wrap md:flex-nowrap items-end gap-4">
-                  <div className="relative w-14 h-14 rounded-r1 overflow-hidden border bg-gray-50 shrink-0">
-                    {item.image ? (
-                      <Image src={item.image} alt={item.name} fill className="object-cover" unoptimized />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300">
-                        <ImageOff className="w-5 h-5" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1 self-center">
-                    <p className="font-medium text-gray-900 truncate">{item.name}</p>
-                    {item.sku && (
-                      <p className="text-xs font-mono text-gray-400">SKU: {item.sku}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0 pb-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
-                      }
-                      className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(item.key, {
-                          quantity: Math.max(1, Number(e.target.value) || 1),
-                        })
-                      }
-                      className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
-                      className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="w-24 shrink-0">
-                    <Input
-                      label="Cost"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.cost}
-                      onNumberChange={(value) => updateItem(item.key, { cost: value })}
-                      className="text-left"
-                      dir="ltr"
-                    />
-                  </div>
-
-                  <div className="w-24 shrink-0">
-                    <Input
-                      label="Price"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.price}
-                      onNumberChange={(value) => updateItem(item.key, { price: value })}
-                      className="text-left"
-                      dir="ltr"
-                    />
-                  </div>
-
-                  <div className="w-24 text-right font-semibold text-gray-900 shrink-0 pb-2.5">
-                    {formatMoney(item.price != null ? item.price * item.quantity : null)} JOD
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0 mb-1"
-                    title="Remove item"
-                    disabled={items.length <= 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="relative w-14 h-14 rounded-r1 overflow-hidden border bg-gray-50 shrink-0">
+                  {item.image ? (
+                    <Image src={item.image} alt={item.name} fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <ImageOff className="w-5 h-5" />
+                    </div>
+                  )}
                 </div>
 
-                <div className="w-full max-w-md md:pl-[4.5rem]">
+                <div className="min-w-0 flex-1 self-center">
+                  <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                  {item.sku && (
+                    <p className="text-xs font-mono text-gray-400">SKU: {item.sku}</p>
+                  )}
+                </div>
+
+                <div className="w-44 shrink-0">
                   <Select
                     label="Vendor"
                     value={item.vendorId != null ? String(item.vendorId) : ""}
@@ -735,6 +675,76 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                     placeholder="Select vendor"
                   />
                 </div>
+
+                <div className="flex items-center gap-1 shrink-0 pb-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateItem(item.key, { quantity: Math.max(1, item.quantity - 1) })
+                    }
+                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateItem(item.key, {
+                        quantity: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                    className="w-14 text-center border border-primary/20 rounded-r1 py-1.5 focus:outline-none focus:border-secondary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateItem(item.key, { quantity: item.quantity + 1 })}
+                    className="w-8 h-8 flex items-center justify-center rounded-r1 border border-primary/20 hover:bg-primary/5 text-gray-600"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Cost"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.cost}
+                    onNumberChange={(value) => updateItem(item.key, { cost: value })}
+                    className="text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="w-24 shrink-0">
+                  <Input
+                    label="Price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.price}
+                    onNumberChange={(value) => updateItem(item.key, { price: value })}
+                    className="text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="w-24 text-right font-semibold text-gray-900 shrink-0 pb-2.5">
+                  {formatMoney(item.price != null ? item.price * item.quantity : null)} JOD
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeItem(item.key)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 shrink-0 mb-1"
+                  title="Remove item"
+                  disabled={items.length <= 1}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>

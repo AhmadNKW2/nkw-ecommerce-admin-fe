@@ -17,7 +17,6 @@ import {
 } from "../../src/services/settings/hooks/use-settings";
 import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
 import { mediaService } from "../../src/services/media/api/media.service";
-import type { NullableNumber } from "../../src/lib/nullable-number";
 
 type FormState = {
   site_name_en: string;
@@ -37,9 +36,6 @@ type FormState = {
   robots_index: boolean;
   robots_follow: boolean;
   show_sale_pricing: boolean;
-  free_delivery_enabled: boolean;
-  free_delivery_amount: NullableNumber;
-  delivery_fee: NullableNumber;
 };
 
 const emptyFormState: FormState = {
@@ -60,9 +56,6 @@ const emptyFormState: FormState = {
   robots_index: true,
   robots_follow: true,
   show_sale_pricing: true,
-  free_delivery_enabled: true,
-  free_delivery_amount: null,
-  delivery_fee: null,
 };
 
 export default function SeoSettingsPage() {
@@ -101,9 +94,6 @@ export default function SeoSettingsPage() {
       robots_index: data.robots_index ?? true,
       robots_follow: data.robots_follow ?? true,
       show_sale_pricing: data.show_sale_pricing ?? true,
-      free_delivery_enabled: data.free_delivery_enabled ?? true,
-      free_delivery_amount: data.free_delivery_amount ?? null,
-      delivery_fee: data.delivery_fee ?? null,
     });
   }, [data]);
 
@@ -141,9 +131,6 @@ export default function SeoSettingsPage() {
       robots_index: formState.robots_index,
       robots_follow: formState.robots_follow,
       show_sale_pricing: formState.show_sale_pricing,
-      free_delivery_enabled: formState.free_delivery_enabled,
-      free_delivery_amount: formState.free_delivery_amount,
-      delivery_fee: formState.delivery_fee,
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -378,73 +365,6 @@ export default function SeoSettingsPage() {
             />
           </div>
 
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold">Delivery Settings</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Control the standard delivery fee and free-delivery rules shown on the storefront.
-        </p>
-
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4">
-            <div>
-              <p className="font-medium">Standard Delivery Fee (JOD)</p>
-              <p className="text-sm text-gray-500">
-                Applied to orders that do not qualify for free delivery.
-              </p>
-            </div>
-            <div className="w-48">
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={formState.delivery_fee}
-                onNumberChange={(value) => setField("delivery_fee", value)}
-                disabled={isLoading || updateSeoSettings.isPending}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-4">
-            <div>
-              <p className="font-medium">Free Delivery Threshold (JOD)</p>
-              <p className="text-sm text-gray-500">
-                Minimum order amount required to unlock free delivery.
-              </p>
-            </div>
-            <div className="w-48">
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={formState.free_delivery_amount}
-                onNumberChange={(value) => setField("free_delivery_amount", value)}
-                disabled={
-                  isLoading ||
-                  updateSeoSettings.isPending ||
-                  !formState.free_delivery_enabled
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
-            <div>
-              <p className="font-medium">Enable Free Delivery</p>
-              <p className="text-sm text-gray-500">
-                When enabled, orders above the threshold ship for free.
-              </p>
-            </div>
-            <Toggle
-              checked={formState.free_delivery_enabled}
-              onChange={(value) => setField("free_delivery_enabled", value)}
-              disabled={isLoading || updateSeoSettings.isPending}
-            />
-          </div>
         </div>
       </Card>
     </div>

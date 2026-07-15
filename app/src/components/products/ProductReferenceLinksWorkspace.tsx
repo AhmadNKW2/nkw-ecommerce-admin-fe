@@ -51,8 +51,11 @@ interface ProductReferenceLinksWorkspaceProps {
   title?: string;
   description?: string;
   showViewToggle?: boolean;
+  showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
   showReferenceLinksViewToggle?: boolean;
+  showStatusFilter?: boolean;
+  showBulkStatusChange?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
 }
@@ -206,6 +209,7 @@ export function ProductReferenceLinksWorkspace({
   title = "Products",
   description = "Clean up duplicate supplier references and inspect products by link or slug.",
   showViewToggle = false,
+  showReviewViewToggle = true,
   showPricingViewToggle = false,
   showReferenceLinksViewToggle = true,
   viewMode = "reference-links",
@@ -327,6 +331,7 @@ export function ProductReferenceLinksWorkspace({
         onCreate={() => router.push("/products/create")}
         showCreate={false}
         showViewToggle={showViewToggle}
+        showReviewViewToggle={showReviewViewToggle}
         showPricingViewToggle={showPricingViewToggle}
         showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}

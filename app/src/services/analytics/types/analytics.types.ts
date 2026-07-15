@@ -104,4 +104,13 @@ export type AnalyticsVisitorsParams = {
   endDate?: string;
   search?: string;
   audience?: "visitors" | "admins";
+  sortBy?:
+    | "lastPath"
+    | "sessions"
+    | "events"
+    | "duration"
+    | "lastSeen"
+    | "deviceName"
+    | "admin";
+  sortOrder?: "asc" | "desc";
 };

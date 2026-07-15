@@ -11,6 +11,7 @@ interface ProductsPageHeaderProps {
   description: string;
   onCreate: () => void;
   showViewToggle?: boolean;
+  showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
   showReferenceLinksViewToggle?: boolean;
   showCreate?: boolean;
@@ -25,6 +26,7 @@ export function ProductsPageHeader({
   description,
   onCreate,
   showViewToggle = false,
+  showReviewViewToggle = true,
   showPricingViewToggle = false,
   showReferenceLinksViewToggle = false,
   showCreate = true,
@@ -52,15 +54,17 @@ export function ProductsPageHeader({
                 <List className="mr-1.5 inline h-4 w-4" />
                 List view
               </Button>
-              <Button
-                variant={viewMode === "review" ? "solid" : "outline"}
-                color="var(--color-primary2)"
-                onClick={() => onViewModeChange("review")}
-                className="rounded-full px-3 py-1.5 text-sm"
-              >
-                <LayoutGrid className="mr-1.5 inline h-4 w-4" />
-                Review view
-              </Button>
+              {showReviewViewToggle ? (
+                <Button
+                  variant={viewMode === "review" ? "solid" : "outline"}
+                  color="var(--color-primary2)"
+                  onClick={() => onViewModeChange("review")}
+                  className="rounded-full px-3 py-1.5 text-sm"
+                >
+                  <LayoutGrid className="mr-1.5 inline h-4 w-4" />
+                  Review view
+                </Button>
+              ) : null}
               {showPricingViewToggle ? (
                 <Button
                   variant={viewMode === "pricing" ? "solid" : "outline"}

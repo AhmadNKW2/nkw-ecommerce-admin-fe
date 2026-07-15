@@ -34,9 +34,17 @@ export function useProductFilters({
   initialVisible,
   onStatusCleared,
 }: UseProductFiltersOptions) {
+  const { user } = useAuth();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const lockedVendorId =
+    isVendorPortalUser && user?.vendorId != null && Number(user.vendorId) > 0
+      ? String(user.vendorId)
+      : null;
+
   const { isEnabled, isResolved } = useResolvedFeatureToggles();
   const vendorsEnabled = isEnabled("vendors_enabled");
-  const referenceLinksEnabled = isEnabled("reference_links_enabled");
+  const referenceLinksEnabled =
+    isEnabled("reference_links_enabled") && !isVendorPortalUser;
 
   const {
     page: storedPage,
@@ -75,11 +83,23 @@ export function useProductFilters({
 
   const productQueryParams = useMemo(() => {
     const search = debouncedSearch.trim() || undefined;
-    return {
+    const next: ProductFilters = {
       ...queryParams,
       search,
     };
-  }, [queryParams, debouncedSearch]);
+
+    if (lockedVendorId) {
+      next.vendor_ids = lockedVendorId;
+      next.vendor_id = undefined;
+      next.vendorId = undefined;
+      next.has_no_vendor = undefined;
+      next.status = undefined;
+      next.has_duplicate_reference_link = undefined;
+      next.created_by = undefined;
+    }
+
+    return next;
+  }, [queryParams, debouncedSearch, lockedVendorId]);
   const [minPrice, setMinPrice] = useState(queryParams.minPrice?.toString() || "");
   const [maxPrice, setMaxPrice] = useState(queryParams.maxPrice?.toString() || "");
   const [startDate, setStartDate] = useState(queryParams.start_date || "");
@@ -101,10 +121,9 @@ export function useProductFilters({
     queryParams.created_by?.split(",") || []
   );
 
-  const { user } = useAuth();
-  const isVendorPortalUser = isSimplifiedProductCreator(user);
-
-  const { data: vendorsData } = useVendors();
+  const { data: vendorsData } = useVendors(undefined, {
+    enabled: !isVendorPortalUser,
+  });
   const { data: brandsData } = useBrands();
   const categoriesData = useCategories();
   const { data: adminsData } = useCustomers(
@@ -114,6 +133,32 @@ export function useProductFilters({
     } as any,
     { enabled: !isVendorPortalUser },
   );
+
+  // Vendor/store portal users can only see their own vendor's products.
+  useEffect(() => {
+    if (!lockedVendorId) return;
+
+    setSelectedVendorIds([lockedVendorId]);
+    setQueryParams((prev) => {
+      if (
+        prev.vendor_ids === lockedVendorId &&
+        !prev.vendor_id &&
+        !prev.vendorId &&
+        !prev.has_no_vendor
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        vendor_ids: lockedVendorId,
+        vendor_id: undefined,
+        vendorId: undefined,
+        has_no_vendor: undefined,
+        page: 1,
+      };
+    });
+  }, [lockedVendorId]);
 
   useEffect(() => {
     if (!fixedStatus && initialStatus) {
@@ -154,7 +199,8 @@ export function useProductFilters({
       return;
     }
 
-    if (!vendorsEnabled) {
+    // Never clear the locked vendor scope for portal users.
+    if (!vendorsEnabled && !lockedVendorId) {
       setSelectedVendorIds((current) => (current.length > 0 ? [] : current));
       setQueryParams((prev) => {
         if (
@@ -186,7 +232,26 @@ export function useProductFilters({
         return { ...next, page: 1 };
       });
     }
-  }, [isResolved, vendorsEnabled, referenceLinksEnabled]);
+
+    if (isVendorPortalUser) {
+      setSelectedCreatedByIds((current) => (current.length > 0 ? [] : current));
+      setQueryParams((prev) => {
+        if (
+          prev.status === undefined &&
+          prev.created_by === undefined &&
+          prev.has_duplicate_reference_link === undefined
+        ) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next.status;
+        delete next.created_by;
+        delete next.has_duplicate_reference_link;
+        return { ...next, page: 1 };
+      });
+    }
+  }, [isResolved, vendorsEnabled, referenceLinksEnabled, lockedVendorId, isVendorPortalUser]);
 
   const handleFilterChange = (filters: ProductFilters) => {
     setQueryParams((prev) => {
@@ -254,6 +319,17 @@ export function useProductFilters({
   };
 
   const handleVendorChange = (value: string | string[]) => {
+    if (lockedVendorId) {
+      setSelectedVendorIds([lockedVendorId]);
+      handleFilterChange({
+        vendor_id: undefined,
+        vendorId: undefined,
+        vendor_ids: lockedVendorId,
+        has_no_vendor: undefined,
+      });
+      return;
+    }
+
     const normalized = Array.from(new Set(Array.isArray(value) ? value : [value].filter(Boolean)));
     const hasNoVendor = normalized.includes(NO_VENDOR_FILTER_VALUE);
     const vendorIds = normalized.filter((id) => id !== NO_VENDOR_FILTER_VALUE);
@@ -353,11 +429,23 @@ export function useProductFilters({
     setMaxPrice("");
     setStartDate("");
     setEndDate("");
-    setSelectedVendorIds([]);
+    setSelectedVendorIds(lockedVendorId ? [lockedVendorId] : []);
     setSelectedBrandIds([]);
     setSelectedCategoryIds([]);
     setSelectedCreatedByIds([]);
-    setQueryParams({ page: 1, limit: storedLimit, status: fixedStatus });
+    setQueryParams({
+      page: 1,
+      limit: storedLimit,
+      status: isVendorPortalUser ? undefined : fixedStatus,
+      ...(lockedVendorId
+        ? {
+            vendor_ids: lockedVendorId,
+            vendor_id: undefined,
+            vendorId: undefined,
+            has_no_vendor: undefined,
+          }
+        : {}),
+    });
   };
 
   const hasActiveFilters = Object.keys(queryParams).some((key) => {
@@ -365,6 +453,13 @@ export function useProductFilters({
       return false;
     }
     if (fixedStatus && key === "status") {
+      return false;
+    }
+    // Locked vendor scope is always on for portal users — not an "active" filter.
+    if (
+      lockedVendorId &&
+      (key === "vendor_ids" || key === "vendor_id" || key === "vendorId")
+    ) {
       return false;
     }
     return queryParams[key as keyof ProductFilters] !== undefined;
@@ -433,7 +528,8 @@ export function useProductFilters({
     selectedBrandIds,
     selectedCategoryIds,
     selectedCreatedByIds,
-    vendorsEnabled,
+    vendorsEnabled: vendorsEnabled && !isVendorPortalUser,
+    createdByFilterEnabled: !isVendorPortalUser,
     referenceLinksEnabled,
     vendorOptions,
     brandOptions,
@@ -443,6 +539,8 @@ export function useProductFilters({
     hasActiveFilters,
     todayStr,
     storedLimit,
+    isVendorPortalUser,
+    lockedVendorId,
     handleSearchChange,
     setMinPrice,
     setMaxPrice,

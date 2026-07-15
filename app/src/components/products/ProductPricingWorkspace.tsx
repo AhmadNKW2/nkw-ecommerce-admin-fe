@@ -24,7 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { showSuccessToast } from "@/lib/toast";
 
 type PricingDraft = {
@@ -49,9 +48,11 @@ interface ProductPricingWorkspaceProps {
   description?: string;
   storageKey?: string;
   showViewToggle?: boolean;
+  showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
   showReferenceLinksViewToggle?: boolean;
   showStatusFilter?: boolean;
+  showBulkStatusChange?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
 }
@@ -234,15 +235,15 @@ export function ProductPricingWorkspace({
   description = "Manage product pricing in one place.",
   storageKey = "pricing_products",
   showViewToggle = false,
+  showReviewViewToggle = true,
   showPricingViewToggle = false,
   showReferenceLinksViewToggle = false,
   showStatusFilter = false,
+  showBulkStatusChange = true,
   viewMode = "pricing",
   onViewModeChange,
 }: ProductPricingWorkspaceProps = {}) {
   const router = useRouter();
-  const { isEnabled } = useResolvedFeatureToggles();
-  const vendorsEnabled = isEnabled("vendors_enabled");
   const { setShowOverlay } = useLoading();
 
   const filters = useProductFilters({
@@ -262,7 +263,9 @@ export function ProductPricingWorkspace({
     selectedBrandIds,
     selectedCategoryIds,
     selectedCreatedByIds,
+    vendorsEnabled,
     referenceLinksEnabled,
+    createdByFilterEnabled,
     vendorOptions,
     brandOptions,
     categoryOptions,
@@ -459,13 +462,16 @@ export function ProductPricingWorkspace({
         description={description}
         onCreate={() => router.push("/products/create")}
         showViewToggle={showViewToggle}
+        showReviewViewToggle={showReviewViewToggle}
         showPricingViewToggle={showPricingViewToggle}
         showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showStatusFilter={showStatusFilter}
         onBulkStatusClick={
-          showStatusFilter ? () => setBulkStatusModalOpen(true) : undefined
+          showBulkStatusChange && showStatusFilter
+            ? () => setBulkStatusModalOpen(true)
+            : undefined
         }
       />
 
@@ -493,6 +499,7 @@ export function ProductPricingWorkspace({
         selectedCreatedByIds={selectedCreatedByIds}
         onCreatedByChange={handleCreatedByChange}
         adminOptions={adminOptions}
+        createdByFilterEnabled={createdByFilterEnabled}
         showStatusFilter={showStatusFilter}
         queryParams={queryParams}
         onStatusFilterChange={handleStatusFilterChange}

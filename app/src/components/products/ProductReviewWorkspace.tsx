@@ -1346,11 +1346,13 @@ export function ProductReviewWorkspace({
   description = "Manage your product inventory",
   storageKey = "products_review",
   showViewToggle = false,
+  showReviewViewToggle = true,
   showPricingViewToggle = false,
   showReferenceLinksViewToggle = false,
   viewMode = "review",
   onViewModeChange,
   showStatusFilter = false,
+  showBulkStatusChange = true,
   initialStatus,
   onStatusCleared,
   allowPriceEdit = false,
@@ -1360,11 +1362,13 @@ export function ProductReviewWorkspace({
   description?: string;
   storageKey?: string;
   showViewToggle?: boolean;
+  showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
   showReferenceLinksViewToggle?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
+  showBulkStatusChange?: boolean;
   initialStatus?: ProductStatus;
   onStatusCleared?: () => void;
   allowPriceEdit?: boolean;
@@ -1393,6 +1397,7 @@ export function ProductReviewWorkspace({
         selectedCreatedByIds,
         vendorsEnabled,
         referenceLinksEnabled,
+        createdByFilterEnabled,
         vendorOptions,
         brandOptions,
         categoryOptions,
@@ -1780,12 +1785,15 @@ export function ProductReviewWorkspace({
                 description={description}
                 onCreate={handleCreateNew}
                 showViewToggle={showViewToggle}
+                showReviewViewToggle={showReviewViewToggle}
                 showPricingViewToggle={showPricingViewToggle}
                 showReferenceLinksViewToggle={showReferenceLinksViewToggle}
                 viewMode={viewMode}
                 onViewModeChange={onViewModeChange}
                 showStatusFilter={showStatusFilter}
-                onBulkStatusClick={() => setBulkStatusModalOpen(true)}
+                onBulkStatusClick={
+                  showBulkStatusChange ? () => setBulkStatusModalOpen(true) : undefined
+                }
             />
 
             <ProductFiltersPanel
@@ -1812,6 +1820,7 @@ export function ProductReviewWorkspace({
                 selectedCreatedByIds={selectedCreatedByIds}
                 onCreatedByChange={handleCreatedByChange}
                 adminOptions={adminOptions}
+                createdByFilterEnabled={createdByFilterEnabled}
                 showStatusFilter={showStatusFilter}
                 queryParams={queryParams}
                 onStatusFilterChange={handleStatusFilterChange}

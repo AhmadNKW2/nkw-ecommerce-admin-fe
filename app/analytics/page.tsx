@@ -79,6 +79,15 @@ const CHART_COLORS = [
 
 type TabKey = "overview" | "visitors" | "admins";
 
+type VisitorSortKey =
+  | "lastPath"
+  | "sessions"
+  | "events"
+  | "duration"
+  | "lastSeen"
+  | "deviceName"
+  | "admin";
+
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US", {
     notation: value >= 10_000 ? "compact" : "standard",
@@ -253,6 +262,8 @@ export default function AnalyticsPage() {
   const [customEnd, setCustomEnd] = useState("");
   const [visitorPage, setVisitorPage] = useState(1);
   const [visitorSearch, setVisitorSearch] = useState("");
+  const [visitorSortBy, setVisitorSortBy] = useState<VisitorSortKey>("lastSeen");
+  const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedVisitorId, setSelectedVisitorId] = useState<number | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [visitorPendingDelete, setVisitorPendingDelete] =
@@ -315,6 +326,8 @@ export default function AnalyticsPage() {
       limit: 20,
       search: visitorSearch || undefined,
       audience: tab === "admins" ? "admins" : "visitors",
+      sortBy: visitorSortBy,
+      sortOrder: visitorSortOrder,
       ...(tab === "admins" ? {} : visitorDateParams),
     },
     { enabled: tab === "visitors" || tab === "admins" },
@@ -384,6 +397,22 @@ export default function AnalyticsPage() {
   };
   const isAdminsTab = tab === "admins";
   const isClientsTab = tab === "visitors" || tab === "admins";
+
+  const visitorCurrentSort = {
+    key: visitorSortBy,
+    order: visitorSortOrder,
+  };
+
+  const handleVisitorSort = (key: string) => {
+    const sortKey = key as VisitorSortKey;
+    if (visitorSortBy === sortKey) {
+      setVisitorSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setVisitorSortBy(sortKey);
+      setVisitorSortOrder(sortKey === "lastPath" || sortKey === "deviceName" || sortKey === "admin" ? "asc" : "desc");
+    }
+    setVisitorPage(1);
+  };
 
   const handleConfirmDeleteVisitor = async () => {
     if (!visitorPendingDelete) return;
@@ -530,6 +559,10 @@ export default function AnalyticsPage() {
             setTab("visitors");
             setVisitorPage(1);
             setVisitorSearch("");
+            if (visitorSortBy === "deviceName" || visitorSortBy === "admin") {
+              setVisitorSortBy("lastSeen");
+              setVisitorSortOrder("desc");
+            }
           }}
           className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
             tab === "visitors"
@@ -934,14 +967,67 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
-                    {isAdminsTab ? <TableHead>Device name</TableHead> : null}
+                    {isAdminsTab ? (
+                      <TableHead
+                        sortable
+                        sortKey="deviceName"
+                        currentSort={visitorCurrentSort}
+                        onSort={handleVisitorSort}
+                      >
+                        Device name
+                      </TableHead>
+                    ) : null}
                     <TableHead>Device</TableHead>
-                    {isAdminsTab ? <TableHead>Admin</TableHead> : null}
-                    <TableHead>Last page</TableHead>
-                    <TableHead>Sessions</TableHead>
-                    <TableHead>Events</TableHead>
-                    <TableHead>Time on site</TableHead>
-                    <TableHead>Last seen ↓</TableHead>
+                    {isAdminsTab ? (
+                      <TableHead
+                        sortable
+                        sortKey="admin"
+                        currentSort={visitorCurrentSort}
+                        onSort={handleVisitorSort}
+                      >
+                        Admin
+                      </TableHead>
+                    ) : null}
+                    <TableHead
+                      sortable
+                      sortKey="lastPath"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      Last page
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="sessions"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      Sessions
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="events"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      Events
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="duration"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      Time on site
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="lastSeen"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      Last seen
+                    </TableHead>
                     <TableHead className="w-[96px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>

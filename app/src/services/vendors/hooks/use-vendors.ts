@@ -17,10 +17,14 @@ import {
 } from "../types/vendor.types";
 import { showSuccessToast } from "../../../lib/toast";
 
-export const useVendors = (params?: VendorQueryParams) => {
+export const useVendors = (
+  params?: VendorQueryParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: queryKeys.vendors.list(params),
     queryFn: () => vendorService.getVendors(params),
+    enabled: options?.enabled ?? true,
   });
 };
 

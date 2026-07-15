@@ -5,8 +5,10 @@ import { ProductListPage } from "../src/components/products/ProductListPage";
 import { ProductReviewWorkspace } from "../src/components/products/ProductReviewWorkspace";
 import { ProductPricingWorkspace } from "../src/components/products/ProductPricingWorkspace";
 import { ProductReferenceLinksWorkspace } from "../src/components/products/ProductReferenceLinksWorkspace";
+import { useAuth } from "../src/contexts/auth.context";
 import { useAdminAccess } from "../src/hooks/use-admin-access";
 import { useResolvedFeatureToggles } from "../src/hooks/use-resolved-feature-toggles";
+import { isSimplifiedProductCreator } from "../src/lib/simplified-product-creator";
 import type { ProductStatus } from "../src/services/products/types/product.types";
 import type { ProductsViewMode } from "../src/components/products/ProductsPageHeader";
 
@@ -15,14 +17,21 @@ const VALID_STATUSES = new Set<ProductStatus>(["active", "review", "updated", "a
 export default function ProductsPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
   const { canEditProductPricing } = useAdminAccess();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
 
   const productStatusEnabled = isEnabled("product_status_enabled");
   const pricingViewEnabled = isEnabled("pricing_view_enabled");
   const referenceLinksViewEnabled = isEnabled("reference_links_enabled");
-  const showPricingViewToggle = canEditProductPricing && pricingViewEnabled;
-  const showReferenceLinksViewToggle = referenceLinksViewEnabled;
+  const showReviewViewToggle = !isVendorPortalUser;
+  const showPricingViewToggle =
+    !isVendorPortalUser && canEditProductPricing && pricingViewEnabled;
+  const showReferenceLinksViewToggle =
+    !isVendorPortalUser && referenceLinksViewEnabled;
+  const showBulkStatusChange = !isVendorPortalUser && productStatusEnabled;
+  const showStatusFilter = !isVendorPortalUser && productStatusEnabled;
 
   const viewParam = searchParams.get("view");
   const viewMode: ProductsViewMode =
@@ -34,31 +43,37 @@ export default function ProductsPageClient() {
           ? "reference-links"
           : "list";
 
-  if (viewMode === "pricing" && !showPricingViewToggle) {
+  const redirectToList = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("view");
     const query = params.toString();
     router.replace(query ? `/products?${query}` : "/products");
+  };
+
+  if (viewMode === "pricing" && !showPricingViewToggle) {
+    redirectToList();
     return null;
   }
 
   if (viewMode === "reference-links" && !showReferenceLinksViewToggle) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("view");
-    const query = params.toString();
-    router.replace(query ? `/products?${query}` : "/products");
+    redirectToList();
+    return null;
+  }
+
+  if (viewMode === "review" && !showReviewViewToggle) {
+    redirectToList();
     return null;
   }
 
   const statusParam = searchParams.get("status");
   const initialStatus =
-    productStatusEnabled &&
+    showStatusFilter &&
     statusParam &&
     VALID_STATUSES.has(statusParam as ProductStatus)
       ? (statusParam as ProductStatus)
       : undefined;
 
-  if (productStatusEnabled === false && statusParam) {
+  if (!showStatusFilter && statusParam) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("status");
     const query = params.toString();
@@ -96,18 +111,24 @@ export default function ProductsPageClient() {
     return null;
   }
 
+  const sharedViewProps = {
+    showViewToggle: true as const,
+    showReviewViewToggle,
+    showPricingViewToggle,
+    showReferenceLinksViewToggle,
+    viewMode,
+    onViewModeChange: handleViewModeChange,
+    showStatusFilter,
+    showBulkStatusChange,
+  };
+
   if (viewMode === "pricing") {
     return (
       <ProductPricingWorkspace
         title="Products"
         description="Manage product pricing in one place."
         storageKey="products"
-        showViewToggle
-        showPricingViewToggle={showPricingViewToggle}
-        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        showStatusFilter={productStatusEnabled}
+        {...sharedViewProps}
       />
     );
   }
@@ -117,11 +138,7 @@ export default function ProductsPageClient() {
       <ProductReferenceLinksWorkspace
         title="Products"
         description="Clean up duplicate supplier references and inspect products by link or slug."
-        showViewToggle
-        showPricingViewToggle={showPricingViewToggle}
-        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
+        {...sharedViewProps}
       />
     );
   }
@@ -133,12 +150,8 @@ export default function ProductsPageClient() {
         title="Products"
         description="Manage your product inventory"
         storageKey="products"
-        showViewToggle
-        showPricingViewToggle={showPricingViewToggle}
-        showReferenceLinksViewToggle={showReferenceLinksViewToggle}
+        {...sharedViewProps}
         viewMode="review"
-        onViewModeChange={handleViewModeChange}
-        showStatusFilter={productStatusEnabled}
         initialStatus={initialStatus}
         onStatusCleared={handleStatusCleared}
         allowPriceEdit={false}
@@ -151,12 +164,7 @@ export default function ProductsPageClient() {
       title="Products"
       description="Manage your product inventory"
       storageKey="products"
-      showViewToggle
-      showPricingViewToggle={showPricingViewToggle}
-      showReferenceLinksViewToggle={showReferenceLinksViewToggle}
-      viewMode={viewMode}
-      onViewModeChange={handleViewModeChange}
-      showStatusFilter={productStatusEnabled}
+      {...sharedViewProps}
       initialStatus={initialStatus}
       initialVisible={initialVisible}
       onStatusCleared={handleStatusCleared}

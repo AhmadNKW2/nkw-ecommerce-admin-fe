@@ -33,6 +33,7 @@ interface ProductFiltersPanelProps {
   selectedCreatedByIds: string[];
   onCreatedByChange: (value: string | string[]) => void;
   adminOptions: Array<{ value: string; label: string }>;
+  createdByFilterEnabled?: boolean;
   showStatusFilter?: boolean;
   fixedStatus?: ProductStatus;
   queryParams: ProductFilters;
@@ -71,6 +72,7 @@ export function ProductFiltersPanel({
   selectedCreatedByIds,
   onCreatedByChange,
   adminOptions,
+  createdByFilterEnabled = true,
   showStatusFilter = false,
   fixedStatus,
   queryParams,
@@ -172,18 +174,20 @@ export function ProductFiltersPanel({
             />
           </div>
 
-          <div className="relative flex-1">
-            <Select
-              label="Created By"
-              value={selectedCreatedByIds}
-              onChange={onCreatedByChange}
-              options={adminOptions}
-              search={adminOptions.length > 6}
-              multiple={true}
-              placeholder="All Admins"
-              disabled={adminOptions.length === 0}
-            />
-          </div>
+          {createdByFilterEnabled ? (
+            <div className="relative flex-1">
+              <Select
+                label="Created By"
+                value={selectedCreatedByIds}
+                onChange={onCreatedByChange}
+                options={adminOptions}
+                search={adminOptions.length > 6}
+                multiple={true}
+                placeholder="All Admins"
+                disabled={adminOptions.length === 0}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-4">

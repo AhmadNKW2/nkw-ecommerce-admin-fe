@@ -45,11 +45,13 @@ interface ProductListPageProps {
   storageKey: string;
   fixedStatus?: ProductStatus;
   showViewToggle?: boolean;
+  showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
   showReferenceLinksViewToggle?: boolean;
   viewMode?: ProductsViewMode;
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
+  showBulkStatusChange?: boolean;
   initialStatus?: ProductStatus;
   initialVisible?: boolean;
   onStatusCleared?: () => void;
@@ -196,11 +198,13 @@ export function ProductListPage({
   storageKey,
   fixedStatus,
   showViewToggle = false,
+  showReviewViewToggle = true,
   showPricingViewToggle = false,
   showReferenceLinksViewToggle = false,
   viewMode = "list",
   onViewModeChange,
   showStatusFilter = false,
+  showBulkStatusChange = true,
   initialStatus,
   initialVisible,
   onStatusCleared,
@@ -231,6 +235,7 @@ export function ProductListPage({
     selectedCreatedByIds,
     vendorsEnabled,
     referenceLinksEnabled,
+    createdByFilterEnabled,
     vendorOptions,
     brandOptions,
     categoryOptions,
@@ -440,12 +445,15 @@ export function ProductListPage({
         description={description}
         onCreate={handleCreateNew}
         showViewToggle={showViewToggle}
+        showReviewViewToggle={showReviewViewToggle}
         showPricingViewToggle={showPricingViewToggle}
         showReferenceLinksViewToggle={showReferenceLinksViewToggle}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showStatusFilter={showStatusFilter}
-        onBulkStatusClick={() => setBulkStatusModalOpen(true)}
+        onBulkStatusClick={
+          showBulkStatusChange ? () => setBulkStatusModalOpen(true) : undefined
+        }
       />
 
       <ProductFiltersPanel
@@ -472,6 +480,7 @@ export function ProductListPage({
         selectedCreatedByIds={selectedCreatedByIds}
         onCreatedByChange={handleCreatedByChange}
         adminOptions={adminOptions}
+        createdByFilterEnabled={createdByFilterEnabled}
         showStatusFilter={showStatusFilter}
         fixedStatus={fixedStatus}
         queryParams={queryParams}

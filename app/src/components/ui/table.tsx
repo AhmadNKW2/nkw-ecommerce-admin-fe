@@ -190,12 +190,20 @@ interface TableCellProps {
   className?: string;
   width?: string;
   colSpan?: number;
+  title?: string;
 }
 
-export const TableCell: React.FC<TableCellProps> = ({ children, className = '', width, colSpan }) => {
+export const TableCell: React.FC<TableCellProps> = ({
+  children,
+  className = '',
+  width,
+  colSpan,
+  title,
+}) => {
   return (
     <td
       colSpan={colSpan}
+      title={title}
       className={`px-3 py-2 text-sm text-start align-middle lg:px-4 ${className}`}
       style={{ width }}
     >

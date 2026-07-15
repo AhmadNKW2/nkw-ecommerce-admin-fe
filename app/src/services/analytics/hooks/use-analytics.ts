@@ -34,7 +34,7 @@ export const useAnalyticsVisitors = (
         page: 1,
         limit: 20,
         totalPages: 1,
-        showAdminVisitors: false,
+        audience: "visitors",
       },
     }),
     staleTime: 30_000,

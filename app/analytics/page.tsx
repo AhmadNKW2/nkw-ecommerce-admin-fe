@@ -75,7 +75,7 @@ const CHART_COLORS = [
   "#475569",
 ];
 
-type TabKey = "overview" | "visitors";
+type TabKey = "overview" | "visitors" | "admins";
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -306,9 +306,10 @@ export default function AnalyticsPage() {
       page: visitorPage,
       limit: 20,
       search: visitorSearch || undefined,
+      audience: tab === "admins" ? "admins" : "visitors",
       ...visitorDateParams,
     },
-    { enabled: tab === "visitors" },
+    { enabled: tab === "visitors" || tab === "admins" },
   );
 
   const { data: visitorDetail, isLoading: visitorDetailLoading } =
@@ -371,11 +372,9 @@ export default function AnalyticsPage() {
     page: 1,
     limit: 20,
     totalPages: 1,
-    showAdminVisitors: false,
   };
-  const showAdminVisitors = Boolean(
-    (visitorsMeta as { showAdminVisitors?: boolean }).showAdminVisitors,
-  );
+  const isAdminsTab = tab === "admins";
+  const isClientsTab = tab === "visitors" || tab === "admins";
 
   const handleConfirmDeleteVisitor = async () => {
     if (!visitorPendingDelete) return;
@@ -502,7 +501,11 @@ export default function AnalyticsPage() {
         </button>
         <button
           type="button"
-          onClick={() => setTab("visitors")}
+          onClick={() => {
+            setTab("visitors");
+            setVisitorPage(1);
+            setVisitorSearch("");
+          }}
           className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
             tab === "visitors"
               ? "bg-primary text-white"
@@ -510,6 +513,21 @@ export default function AnalyticsPage() {
           }`}
         >
           Visitors
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("admins");
+            setVisitorPage(1);
+            setVisitorSearch("");
+          }}
+          className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+            tab === "admins"
+              ? "bg-primary text-white"
+              : "text-gray-600 hover:bg-primary/5"
+          }`}
+        >
+          Admins
         </button>
       </div>
 
@@ -813,35 +831,48 @@ export default function AnalyticsPage() {
             </>
           ) : null}
         </>
-      ) : (
+      ) : isClientsTab ? (
         <Card>
           <div className="rounded-r1 border border-amber-200 bg-amber-50 px-4 py-3 mb-4">
             <p className="text-sm font-semibold text-amber-900">
-              Visitors ≠ Overview (Google Analytics)
+              {isAdminsTab
+                ? "Admins = staff browsers on the storefront"
+                : "Visitors ≠ Overview (Google Analytics)"}
             </p>
             <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-              <strong>Overview</strong> shows historical GA4 totals (thousands of users over 90 days).
-              <strong> Visitors</strong> only lists browsers recorded in your own database since
-              first-party tracking was turned on — it does not import past GA users. Low counts here
-              are expected until more real storefront traffic is collected (admin devices are also hidden).
+              {isAdminsTab ? (
+                <>
+                  Lists browsers marked as admin devices (dashboard or storefront staff login).
+                  Each admin account can appear as multiple Client #s across devices/profiles.
+                  Name and email come from the admin user linked to that client id.
+                </>
+              ) : (
+                <>
+                  <strong>Overview</strong> shows historical GA4 totals.
+                  <strong> Visitors</strong> only lists non-admin browsers recorded in your own
+                  database since first-party tracking started. Admin devices are listed under the
+                  Admins tab.
+                </>
+              )}
             </p>
           </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Visitors</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                {isAdminsTab ? "Admins" : "Visitors"}
+              </h3>
               <p className="text-xs text-gray-500">
-                Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …).
-                {showAdminVisitors
-                  ? " Admin devices are visible with name and email (Settings → Feature Settings)."
-                  : " Admin devices are hidden (enable in Settings → Feature Settings → Show Admin Visitors)."}
+                {isAdminsTab
+                  ? "Click a row to see that admin client’s journey. Same account can have many client IDs."
+                  : "Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …)."}
               </p>
             </div>
             <div className="w-full sm:w-72">
               <Input
                 variant="search"
                 placeholder={
-                  showAdminVisitors
+                  isAdminsTab
                     ? "Search by ID, path, admin email…"
                     : "Search by ID or path…"
                 }
@@ -863,8 +894,12 @@ export default function AnalyticsPage() {
           ) : visitors.length === 0 ? (
             <EmptyState
               icon={<Users />}
-              title="No visitors yet"
-              description="Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
+              title={isAdminsTab ? "No admin clients yet" : "No visitors yet"}
+              description={
+                isAdminsTab
+                  ? "Open the storefront while logged in as staff, or use the admin dashboard — client IDs register on refresh and page changes."
+                  : "Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
+              }
             />
           ) : (
             <>
@@ -872,7 +907,7 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
-                    {showAdminVisitors ? <TableHead>Admin</TableHead> : null}
+                    {isAdminsTab ? <TableHead>Admin</TableHead> : null}
                     <TableHead>Last page</TableHead>
                     <TableHead>Sessions</TableHead>
                     <TableHead>Events</TableHead>
@@ -896,7 +931,7 @@ export default function AnalyticsPage() {
                           </span>
                         ) : null}
                       </TableCell>
-                      {showAdminVisitors ? (
+                      {isAdminsTab ? (
                         <TableCell>
                           {visitor.admin ? (
                             <div className="min-w-0">
@@ -908,7 +943,7 @@ export default function AnalyticsPage() {
                               </p>
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400">Guest</span>
+                            <span className="text-xs text-gray-400">Admin device</span>
                           )}
                         </TableCell>
                       ) : null}
@@ -938,8 +973,8 @@ export default function AnalyticsPage() {
 
               <div className="flex items-center justify-between gap-3 pt-4">
                 <p className="text-xs text-gray-500">
-                  {visitorsMeta.total} visitors · page {visitorsMeta.page} of{" "}
-                  {visitorsMeta.totalPages}
+                  {visitorsMeta.total} {isAdminsTab ? "admins" : "visitors"} · page{" "}
+                  {visitorsMeta.page} of {visitorsMeta.totalPages}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -961,7 +996,7 @@ export default function AnalyticsPage() {
             </>
           )}
         </Card>
-      )}
+      ) : null}
 
       <Modal
         isOpen={selectedVisitorId != null}

@@ -69,8 +69,6 @@ export interface FeatureToggles {
   easy_purchase_enabled: boolean;
   cart_sidebar_button_enabled: boolean;
   popup_enabled: boolean;
-  /** Show admin-marked browsers in Analytics → Visitors with email/name. */
-  show_admin_visitors_enabled: boolean;
   // Appearance-only toggles — admin dashboard UI only; BE ignores them.
   reference_link_visible_admin: boolean;
   meta_title_visible_admin: boolean;

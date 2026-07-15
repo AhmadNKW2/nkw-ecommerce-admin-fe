@@ -95,4 +95,5 @@ export type AnalyticsVisitorsParams = {
   startDate?: string;
   endDate?: string;
   search?: string;
+  audience?: "visitors" | "admins";
 };

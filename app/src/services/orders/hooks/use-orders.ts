@@ -11,11 +11,15 @@ import type {
   UpdateOrderDto,
 } from "../types/order.types";
 
-export const useOrders = (filters?: OrderFilters) => {
+export const useOrders = (
+  filters?: OrderFilters,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     // Must stay under queryKeys.orders.all so SSE + mutations can invalidate with ["orders"].
     queryKey: queryKeys.orders.list(filters),
     queryFn: () => orderService.listOrders(filters),
+    enabled: options?.enabled ?? true,
   });
 };
 

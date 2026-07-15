@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/contexts/auth.context";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
+import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { useVendors } from "@/services/vendors/hooks/use-vendors";
 import { useBrands } from "@/services/brands/hooks/use-brands";
 import { useCategories } from "@/services/categories/hooks/use-categories";
@@ -99,13 +101,19 @@ export function useProductFilters({
     queryParams.created_by?.split(",") || []
   );
 
+  const { user } = useAuth();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
+
   const { data: vendorsData } = useVendors();
   const { data: brandsData } = useBrands();
   const categoriesData = useCategories();
-  const { data: adminsData } = useCustomers({
-    role: ["admin", "constant_token_admin", "catalog_manager"],
-    limit: 100,
-  } as any);
+  const { data: adminsData } = useCustomers(
+    {
+      role: ["admin", "constant_token_admin", "catalog_manager"],
+      limit: 100,
+    } as any,
+    { enabled: !isVendorPortalUser },
+  );
 
   useEffect(() => {
     if (!fixedStatus && initialStatus) {

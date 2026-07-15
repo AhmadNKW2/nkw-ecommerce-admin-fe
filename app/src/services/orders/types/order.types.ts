@@ -183,6 +183,12 @@ export interface Order {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
+  /** Analytics browser key from storefront. */
+  browserKey?: string | null;
+  /** Sequential Client # from analytics_visitors when known. */
+  clientId?: number | null;
+  /** True when browserKey is registered as an admin device (even for guest checkout). */
+  isAdminClient?: boolean;
   
   [key: string]: any;
 }

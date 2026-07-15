@@ -287,6 +287,7 @@ export default function OrdersPage() {
               <TableRow>
                 <TableHead className="w-24">ID</TableHead>
                 <TableHead width="320px">Customer</TableHead>
+                <TableHead>Client</TableHead>
                 <TableHead>Shipping Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Items</TableHead>
@@ -318,6 +319,32 @@ export default function OrdersPage() {
                         </div>
                         <p className="font-medium text-gray-900 whitespace-normal wrap-break-word">{customerLabel}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {order.clientId != null ? (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-primary tabular-nums">
+                            Client #{order.clientId}
+                          </p>
+                          {order.isAdminClient ? (
+                            <Badge variant="warning">Admin</Badge>
+                          ) : null}
+                        </div>
+                      ) : order.browserKey ? (
+                        <div className="space-y-1">
+                          <p
+                            className="text-xs text-gray-600 font-mono truncate max-w-[120px]"
+                            title={order.browserKey}
+                          >
+                            {order.browserKey.slice(0, 8)}…
+                          </p>
+                          {order.isAdminClient ? (
+                            <Badge variant="warning">Admin</Badge>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <p className="truncate font-medium text-gray-900">{shippingName}</p>

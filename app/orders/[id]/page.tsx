@@ -560,7 +560,7 @@ export default function OrderDetailsPage() {
                                 </div>
                                 <div className="overflow-hidden">
                                     <p className="font-semibold text-gray-900 truncate leading-snug">{customerName}</p>
-                                    <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                                    <p className="text-xs text-gray-500 flex flex-wrap items-center gap-1.5">
                                         {isGuest ? (
                                             <span className="inline-flex items-center gap-1 text-orange-600">
                                                 <UserCircle2 className="w-3 h-3" /> Guest checkout
@@ -568,6 +568,23 @@ export default function OrderDetailsPage() {
                                         ) : (
                                             <span>Customer ID: {user.id || "N/A"}</span>
                                         )}
+                                        {order.clientId != null ? (
+                                            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                                                · Client #{order.clientId}
+                                            </span>
+                                        ) : order.browserKey ? (
+                                            <span
+                                              className="inline-flex items-center gap-1 font-mono text-gray-500"
+                                              title={order.browserKey}
+                                            >
+                                                · {order.browserKey.slice(0, 8)}…
+                                            </span>
+                                        ) : null}
+                                        {order.isAdminClient ? (
+                                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                                                Admin device
+                                            </span>
+                                        ) : null}
                                     </p>
                                 </div>
                             </div>

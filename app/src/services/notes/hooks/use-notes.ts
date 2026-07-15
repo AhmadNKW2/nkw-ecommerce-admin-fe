@@ -4,10 +4,14 @@ import { showSuccessToast } from "../../../lib/toast";
 import { noteService } from "../api/note.service";
 import type { NoteListParams } from "../types/note.types";
 
-export const useNotes = (params?: NoteListParams) => {
+export const useNotes = (
+  params?: NoteListParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: queryKeys.notes.list(params),
     queryFn: () => noteService.listNotes(params),
+    enabled: options?.enabled ?? true,
     select: (response: any) => response?.data ?? response,
   });
 };

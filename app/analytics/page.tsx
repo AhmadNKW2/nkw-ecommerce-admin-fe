@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
       limit: 20,
       search: visitorSearch || undefined,
       audience: tab === "admins" ? "admins" : "visitors",
-      ...visitorDateParams,
+      ...(tab === "admins" ? {} : visitorDateParams),
     },
     { enabled: tab === "visitors" || tab === "admins" },
   );
@@ -924,7 +924,7 @@ export default function AnalyticsPage() {
               title={isAdminsTab ? "No admin clients yet" : "No visitors yet"}
               description={
                 isAdminsTab
-                  ? "Open the storefront while logged in as staff — admin browsers appear here after they have real visit activity."
+                  ? "All admin-registered browsers. Device name is your label; Device shows Desktop/Mobile/Tablet and phone model when the browser sends it."
                   : "Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
               }
             />
@@ -995,23 +995,43 @@ export default function AnalyticsPage() {
                         </TableCell>
                       ) : null}
                       <TableCell>
-                        <span className="text-sm text-gray-800">
-                          {visitor.deviceType ||
+                        {(() => {
+                          const type =
+                            (isAdminsTab
+                              ? visitor.admin?.deviceType
+                              : visitor.deviceType) ||
+                            visitor.deviceType ||
                             visitor.admin?.deviceType ||
-                            "Unknown"}
-                        </span>
-                        {visitor.deviceModel || visitor.admin?.deviceModel ? (
-                          <p
-                            className="text-[11px] text-gray-500 mt-0.5 truncate max-w-[180px]"
-                            title={
-                              visitor.deviceModel ||
-                              visitor.admin?.deviceModel ||
-                              undefined
-                            }
-                          >
-                            {visitor.deviceModel || visitor.admin?.deviceModel}
-                          </p>
-                        ) : null}
+                            "Unknown";
+                          const model =
+                            type === "Desktop"
+                              ? null
+                              : (isAdminsTab
+                                  ? visitor.admin?.deviceModel
+                                  : visitor.deviceModel) ||
+                                visitor.deviceModel ||
+                                visitor.admin?.deviceModel ||
+                                null;
+                          return (
+                            <>
+                              <span className="text-sm font-medium text-gray-900">
+                                {type}
+                              </span>
+                              {model ? (
+                                <p
+                                  className="text-[11px] text-gray-500 mt-0.5 truncate max-w-[200px]"
+                                  title={model}
+                                >
+                                  Model: {model}
+                                </p>
+                              ) : type === "Mobile" || type === "Tablet" ? (
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                  Model not provided by browser
+                                </p>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                       </TableCell>
                       {isAdminsTab ? (
                         <TableCell>

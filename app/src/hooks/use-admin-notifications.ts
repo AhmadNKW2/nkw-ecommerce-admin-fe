@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { useAuth } from "@/contexts/auth.context";
+import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { useOrders } from "@/services/orders/hooks/use-orders";
 import { useNotes } from "@/services/notes/hooks/use-notes";
 
@@ -38,24 +40,39 @@ function readNotesTotal(data: unknown): number {
 }
 
 export function useAdminNotifications(): AdminNotificationState {
-  const pendingOrdersQuery = useOrders({
-    page: 1,
-    limit: 1,
-    status: "pending",
-  });
-  const notesQuery = useNotes({ page: 1, per_page: 1 });
+  const { user } = useAuth();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
+
+  const pendingOrdersQuery = useOrders(
+    {
+      page: 1,
+      limit: 1,
+      status: "pending",
+    },
+    { enabled: !isVendorPortalUser },
+  );
+  const notesQuery = useNotes(
+    { page: 1, per_page: 1 },
+    { enabled: !isVendorPortalUser },
+  );
 
   const pendingOrdersCount = useMemo(() => {
+    if (isVendorPortalUser) return 0;
     const total = pendingOrdersQuery.data?.meta?.total;
     if (typeof total === "number" && Number.isFinite(total)) {
       return Math.max(0, total);
     }
     return 0;
-  }, [pendingOrdersQuery.data]);
+  }, [isVendorPortalUser, pendingOrdersQuery.data]);
 
-  const notesCount = useMemo(() => readNotesTotal(notesQuery.data), [notesQuery.data]);
+  const notesCount = useMemo(() => {
+    if (isVendorPortalUser) return 0;
+    return readNotesTotal(notesQuery.data);
+  }, [isVendorPortalUser, notesQuery.data]);
 
   const notifications = useMemo<AdminNotificationItem[]>(() => {
+    if (isVendorPortalUser) return [];
+
     const items: AdminNotificationItem[] = [];
 
     if (pendingOrdersCount > 0) {
@@ -90,7 +107,7 @@ export function useAdminNotifications(): AdminNotificationState {
     });
 
     return items;
-  }, [notesCount, pendingOrdersCount]);
+  }, [isVendorPortalUser, notesCount, pendingOrdersCount]);
 
   const unreadCount = useMemo(
     () => notifications.reduce((sum, item) => sum + item.count, 0),
@@ -109,6 +126,8 @@ export function useAdminNotifications(): AdminNotificationState {
     notifications,
     unreadCount,
     navBadges,
-    isLoading: pendingOrdersQuery.isLoading || notesQuery.isLoading,
+    isLoading: isVendorPortalUser
+      ? false
+      : pendingOrdersQuery.isLoading || notesQuery.isLoading,
   };
 }

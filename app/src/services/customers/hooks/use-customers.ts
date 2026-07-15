@@ -12,10 +12,14 @@ import {
 } from "../types/customer.types";
 import { showSuccessToast } from "../../../lib/toast";
 
-export const useCustomers = (filters?: CustomerFilters) => {
+export const useCustomers = (
+  filters?: CustomerFilters,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: queryKeys.customers.list(filters),
     queryFn: () => customerService.getCustomers(filters),
+    enabled: options?.enabled ?? true,
   });
 };
 

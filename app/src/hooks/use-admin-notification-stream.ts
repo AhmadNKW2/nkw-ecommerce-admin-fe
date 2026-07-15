@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth.context";
+import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { queryKeys } from "@/lib/query-keys";
 import { showInfoToast } from "@/lib/toast";
 
@@ -110,12 +112,16 @@ function refreshNotificationQueries(queryClient: ReturnType<typeof useQueryClien
 
 export function useAdminNotificationStream() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
   const lastAlertAtRef = useRef(0);
   const reconnectFallbackRef = useRef<number | null>(null);
   const lastFallbackInvalidateAtRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Vendor/store portal users cannot access admin notification APIs.
+    if (isVendorPortalUser) return;
 
     bindAudioUnlockOnce();
 
@@ -209,5 +215,5 @@ export function useAdminNotificationStream() {
         reconnectFallbackRef.current = null;
       }
     };
-  }, [queryClient]);
+  }, [isVendorPortalUser, queryClient]);
 }

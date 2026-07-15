@@ -33,7 +33,16 @@ export const customerFormSchema = z.object({
     .optional()
     .or(z.literal("")),
   
-  role: z.enum(["user", "admin", "constant_token_admin"]).default("user"),
+  role: z
+    .enum([
+      "user",
+      "admin",
+      "constant_token_admin",
+      "catalog_manager",
+      "vendor_admin",
+      "store_admin",
+    ])
+    .default("user"),
   
   isActive: z.boolean().default(true),
 });
@@ -121,8 +130,16 @@ export function validateCustomerForm(
   }
 
   // Role validation
-  if (data.role && !["user", "admin", "constant_token_admin"].includes(data.role)) {
-    errors.role = "Role must be either 'user', 'admin', or 'constant_token_admin'";
+  const allowedRoles = [
+    "user",
+    "admin",
+    "constant_token_admin",
+    "catalog_manager",
+    "vendor_admin",
+    "store_admin",
+  ];
+  if (data.role && !allowedRoles.includes(data.role)) {
+    errors.role = "Invalid role selected";
   }
 
   return {

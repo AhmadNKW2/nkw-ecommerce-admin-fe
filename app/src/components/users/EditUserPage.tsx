@@ -22,12 +22,13 @@ import { UserRole } from "../../services/customers/types/customer.types";
 import {
   createDefaultAdminAccess,
   constrainAdminAccessByFeatureToggles,
-  normalizeAdminAccess,
+  resolveAdminAccess,
   type AdminAccess,
 } from "../../lib/admin-access";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 import { ProductItem } from "../common/ProductsTableSection";
 import type { Order } from "../../services/orders/types/order.types";
+import { useVendors } from "../../services/vendors/hooks/use-vendors";
 
 export interface EditUserPageProps {
   userType: "customer" | "admin";
@@ -39,7 +40,6 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const { setShowOverlay } = useLoading();
 
   const isAdmin = userType === "admin";
-  const role: UserRole = isAdmin ? "admin" : "user";
   const basePath = isAdmin ? "/admins" : "/customers";
   const label = isAdmin ? "Admin" : "Customer";
 
@@ -48,6 +48,8 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<UserRole>(isAdmin ? "admin" : "user");
+  const [vendorId, setVendorId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [adminAccess, setAdminAccess] = useState<AdminAccess>(createDefaultAdminAccess());
   const [productIds, setProductIds] = useState<number[]>([]);
@@ -59,6 +61,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
     phone?: string;
     password?: string;
     role?: string;
+    vendorId?: string;
   }>({});
 
   const {
@@ -72,6 +75,16 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
   const updateCustomer = useUpdateCustomer();
   const updateWishlist = useUpdateUserWishlist();
   const { isEnabled } = useResolvedFeatureToggles();
+  const { data: vendorsData } = useVendors({ limit: 1000 });
+
+  const vendorOptions = useMemo(
+    () =>
+      vendorsData?.data?.map((vendor) => ({
+        value: vendor.id.toString(),
+        label: vendor.name_en,
+      })) || [],
+    [vendorsData],
+  );
 
   const userOrders = useMemo<Order[]>(() => {
     if (!user?.orders) return [];
@@ -109,11 +122,20 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setIsActive(user.isActive ?? true);
+      setRole((user.role as UserRole) || (isAdmin ? "admin" : "user"));
+      const linkedVendorId =
+        (user as { vendor_id?: number | null; vendorId?: number | null })
+          .vendor_id ??
+        (user as { vendorId?: number | null }).vendorId ??
+        null;
+      setVendorId(linkedVendorId ? String(linkedVendorId) : "");
       if (isAdmin) {
         setAdminAccess(
-          normalizeAdminAccess(
-            (user as { adminAccess?: Partial<AdminAccess> }).adminAccess,
-          ),
+          resolveAdminAccess({
+            role: user.role as UserRole,
+            adminAccess: (user as { adminAccess?: Partial<AdminAccess> })
+              .adminAccess,
+          }),
         );
       }
     }
@@ -135,6 +157,11 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       return false;
     }
 
+    if ((role === "vendor_admin" || role === "store_admin") && !vendorId) {
+      setFormErrors((prev) => ({ ...prev, vendorId: "Vendor is required" }));
+      return false;
+    }
+
     setFormErrors({});
     return true;
   };
@@ -153,6 +180,10 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
           email,
           phone: phone.trim() || null,
           role,
+          vendor_id:
+            role === "vendor_admin" || role === "store_admin"
+              ? Number(vendorId)
+              : undefined,
           isActive,
           product_ids: productIds.length > 0 ? productIds : undefined,
           adminAccess: isAdmin
@@ -249,6 +280,7 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
       phone={phone}
       password={password}
       role={role}
+      vendorId={vendorId}
       isActive={isActive}
       productIds={productIds}
       assignedProducts={assignedProducts}
@@ -288,6 +320,8 @@ export const EditUserPage: React.FC<EditUserPageProps> = ({ userType, userId }) 
         }
       }}
       onRoleChange={() => {}}
+      onVendorIdChange={setVendorId}
+      vendorOptions={vendorOptions}
       onIsActiveChange={setIsActive}
       adminAccess={isAdmin ? adminAccess : undefined}
       onAdminAccessChange={isAdmin ? setAdminAccess : undefined}

@@ -24,11 +24,22 @@ import { Specification, SpecificationValue } from "../../src/services/specificat
 import { finishToastError, finishToastSuccess, showLoadingToast, updateLoadingToast } from "../../src/lib/toast";
 import { useAuth } from "../../src/contexts/auth.context";
 import { getSimplifiedProductStatus, isSimplifiedProductCreator } from "../../src/lib/simplified-product-creator";
+import { useAdminAccess } from "../../src/hooks/use-admin-access";
 
 export default function CreateProductPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const {
+    canEditProductPricing,
+    canShowProductFormBasic,
+    canShowProductFormAttributes,
+    canShowProductFormSpecifications,
+    canShowProductFormStock,
+    canShowProductFormWeightDimensions,
+    canShowProductFormMedia,
+    canShowProductFormAttachments,
+  } = useAdminAccess();
   const simplifiedMode = isSimplifiedProductCreator(user);
   const simplifiedStatus = getSimplifiedProductStatus(user?.role);
   const lockedVendorId = user?.vendorId ? String(user.vendorId) : undefined;
@@ -92,6 +103,16 @@ export default function CreateProductPage() {
         simplifiedMode,
         simplifiedStatus,
         lockedVendorId: lockedVendorId ? Number(lockedVendorId) : undefined,
+        productFormAccess: {
+          basic: canShowProductFormBasic,
+          attributes: canShowProductFormAttributes,
+          specifications: canShowProductFormSpecifications,
+          stock: canShowProductFormStock,
+          pricing: canEditProductPricing,
+          weightDimensions: canShowProductFormWeightDimensions,
+          media: canShowProductFormMedia,
+          attachments: canShowProductFormAttachments,
+        },
       });
       const productMedia = mediaFiles.singleMedia || [];
       const productAttachments = mediaFiles.attachments || [];

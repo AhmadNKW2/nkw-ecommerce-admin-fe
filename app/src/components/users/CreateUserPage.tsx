@@ -12,7 +12,7 @@ import { useVendors } from "../../services/vendors/hooks/use-vendors";
 import { UserForm } from "./UserForm";
 import { validateCustomerForm } from "../../lib/validations/customer.schema";
 import { UserRole } from "../../services/customers/types/customer.types";
-import { createDefaultAdminAccess, constrainAdminAccessByFeatureToggles, DEFAULT_VENDOR_PORTAL_ACCESS } from "../../lib/admin-access";
+import { createDefaultAdminAccess, constrainAdminAccessByFeatureToggles, getDefaultAdminAccessForRole } from "../../lib/admin-access";
 import type { AdminAccess } from "../../lib/admin-access";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
@@ -103,9 +103,7 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
             : undefined,
         product_ids: productIds.length > 0 ? productIds : undefined,
         adminAccess: isAdmin
-          ? role === "vendor_admin" || role === "store_admin"
-            ? DEFAULT_VENDOR_PORTAL_ACCESS
-            : constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
+          ? constrainAdminAccessByFeatureToggles(adminAccess, isEnabled)
           : undefined,
       });
 
@@ -155,11 +153,22 @@ export const CreateUserPage: React.FC<CreateUserPageProps> = ({ userType }) => {
       }}
       onRoleChange={(value) => {
         setRole(value);
+        if (formErrors.role) {
+          setFormErrors((prev) => ({ ...prev, role: undefined }));
+        }
         if (value !== "vendor_admin" && value !== "store_admin") {
           setVendorId("");
         }
+        if (isAdmin) {
+          setAdminAccess(getDefaultAdminAccessForRole(value));
+        }
       }}
-      onVendorIdChange={setVendorId}
+      onVendorIdChange={(value) => {
+        setVendorId(value);
+        if (formErrors.vendorId) {
+          setFormErrors((prev) => ({ ...prev, vendorId: undefined }));
+        }
+      }}
       vendorOptions={vendorOptions}
       onIsActiveChange={setIsActive}
       adminAccess={isAdmin ? adminAccess : undefined}

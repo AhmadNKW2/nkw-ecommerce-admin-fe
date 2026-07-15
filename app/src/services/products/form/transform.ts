@@ -44,6 +44,17 @@ interface TransformFormDataOptions {
   simplifiedMode?: boolean;
   simplifiedStatus?: "vendor" | "store";
   lockedVendorId?: number;
+  /** When set, controls which simplified-mode fields are included in the DTO. */
+  productFormAccess?: {
+    basic?: boolean;
+    attributes?: boolean;
+    specifications?: boolean;
+    stock?: boolean;
+    pricing?: boolean;
+    weightDimensions?: boolean;
+    media?: boolean;
+    attachments?: boolean;
+  };
 }
 
 interface HierarchyDefinition {
@@ -197,7 +208,16 @@ export function transformFormDataToDto(
     simplifiedMode = false,
     simplifiedStatus = "vendor",
     lockedVendorId,
+    productFormAccess,
   } = options;
+  const allowAttributes =
+    !simplifiedMode || productFormAccess?.attributes === true;
+  const allowSpecifications =
+    !simplifiedMode || productFormAccess?.specifications === true;
+  const allowStock = !simplifiedMode || productFormAccess?.stock === true;
+  const allowCatalogFields = allowAttributes || allowSpecifications;
+  const allowAttachments =
+    !simplifiedMode || productFormAccess?.attachments === true;
   const specificationsPayload = buildProductSpecificationsPayload(
     data.specifications,
     availableSpecifications,
@@ -225,13 +245,14 @@ export function transformFormDataToDto(
     short_description_ar: data.shortDescriptionAr || data.nameAr || "",
     long_description_en: data.longDescriptionEn || "",
     long_description_ar: data.longDescriptionAr || "",
-    category_ids: simplifiedMode
-      ? []
-      : (data.categoryIds || [])
-          .map((id) => parseInt(id, 10))
-          .filter((id) => !Number.isNaN(id)),
+    category_ids:
+      simplifiedMode && !allowCatalogFields
+        ? []
+        : (data.categoryIds || [])
+            .map((id) => parseInt(id, 10))
+            .filter((id) => !Number.isNaN(id)),
     reference_link: data.referenceLink?.trim() || null,
-    quantity: simplifiedMode ? 0 : (data.quantity || 0),
+    quantity: allowStock ? (data.quantity || 0) : 0,
     is_out_of_stock: data.is_out_of_stock || false,
     meta_title_en: normalizeOptionalString(data.metaTitleEn),
     meta_title_ar: normalizeOptionalString(data.metaTitleAr),
@@ -242,7 +263,7 @@ export function transformFormDataToDto(
     visible: simplifiedMode ? false : data.visible,
   };
 
-  if (data.pricing) {
+  if (data.pricing && productFormAccess?.pricing !== false) {
     if (data.pricing.originalVendorPrice === undefined) {
       dto.original_vendor_price = data.pricing.price;
       dto.original_vendor_sale_price = data.pricing.isSale === true
@@ -266,18 +287,21 @@ export function transformFormDataToDto(
   }
 
   const vendorId = lockedVendorId ?? parseOptionalId(data.vendorId);
-  const brandId = simplifiedMode ? undefined : parseOptionalId(data.brandId);
+  const brandId =
+    simplifiedMode && !allowCatalogFields
+      ? undefined
+      : parseOptionalId(data.brandId);
 
   if (vendorId !== undefined) dto.vendor_id = vendorId;
   if (brandId !== undefined) dto.brand_id = brandId;
-  if (!simplifiedMode && (specificationsPayload.length > 0 || includeEmptyRelations)) {
+  if (allowSpecifications && (specificationsPayload.length > 0 || includeEmptyRelations)) {
     dto.specifications = specificationsPayload;
   }
-  if (!simplifiedMode && (attributesPayload.length > 0 || includeEmptyRelations)) {
+  if (allowAttributes && (attributesPayload.length > 0 || includeEmptyRelations)) {
     dto.attributes = attributesPayload;
   }
 
-  if (data.weightDimensions) {
+  if (data.weightDimensions && productFormAccess?.weightDimensions !== false) {
     dto.weight = data.weightDimensions.weight;
     dto.length = data.weightDimensions.length;
     dto.width = data.weightDimensions.width;
@@ -297,10 +321,14 @@ export function transformFormDataToDto(
   }
 
   const mediaFiles: MediaUploadData = {};
-  if (data.media && data.media.length > 0) {
+  if (data.media && data.media.length > 0 && productFormAccess?.media !== false) {
     mediaFiles.singleMedia = data.media;
   }
-  if (data.attachments && data.attachments.length > 0) {
+  if (
+    data.attachments &&
+    data.attachments.length > 0 &&
+    allowAttachments
+  ) {
     mediaFiles.attachments = data.attachments;
   }
 

@@ -253,6 +253,8 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
     if (isSse) {
       resHeaders.set("Cache-Control", "no-cache, no-transform");
       resHeaders.set("Connection", "keep-alive");
+      // Prevent reverse proxies (e.g. nginx) from buffering the SSE body.
+      resHeaders.set("X-Accel-Buffering", "no");
     }
 
     if (requestLog) {

@@ -29,6 +29,7 @@ const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
   { prefix: "/brands", access: "brands", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/attributes", access: "attributes", roles: ["admin", "constant_token_admin", "catalog_manager"] },
   { prefix: "/specifications", access: "specifications", roles: ["admin", "constant_token_admin", "catalog_manager"] },
+  { prefix: "/analytics", access: "analytics", roles: ["admin", "constant_token_admin"] },
   { prefix: "/orders", access: "orders", roles: ["admin", "constant_token_admin"] },
   { prefix: "/customers", access: "customers", roles: ["admin", "constant_token_admin"] },
   { prefix: "/partners", access: "partners", roles: ["admin", "constant_token_admin"] },

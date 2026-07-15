@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { showInfoToast } from "@/lib/toast";
 
 type AdminStreamEvent = {
   type?: "order.created" | "note.created";
@@ -17,16 +18,59 @@ type MaybeWrappedStreamPayload =
       success?: boolean;
     };
 
-function playNotificationSound() {
-  if (typeof window === "undefined") return;
+let sharedAudioContext: AudioContext | null = null;
+let audioUnlockBound = false;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+
   const AudioContextCtor =
     window.AudioContext ||
     (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 
-  if (!AudioContextCtor) return;
+  if (!AudioContextCtor) return null;
+
+  if (!sharedAudioContext || sharedAudioContext.state === "closed") {
+    sharedAudioContext = new AudioContextCtor();
+  }
+
+  return sharedAudioContext;
+}
+
+function unlockNotificationAudio() {
+  const audioContext = getAudioContext();
+  if (!audioContext) return;
+
+  if (audioContext.state === "suspended") {
+    void audioContext.resume().catch(() => {
+      // Ignore autoplay unlock failures.
+    });
+  }
+}
+
+function bindAudioUnlockOnce() {
+  if (typeof window === "undefined" || audioUnlockBound) return;
+  audioUnlockBound = true;
+
+  const unlock = () => {
+    unlockNotificationAudio();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+
+  window.addEventListener("pointerdown", unlock, { once: true });
+  window.addEventListener("keydown", unlock, { once: true });
+}
+
+function playNotificationSound() {
+  const audioContext = getAudioContext();
+  if (!audioContext) return;
 
   try {
-    const audioContext = new AudioContextCtor();
+    if (audioContext.state === "suspended") {
+      void audioContext.resume();
+    }
+
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     const now = audioContext.currentTime;
@@ -43,37 +87,53 @@ function playNotificationSound() {
     gainNode.connect(audioContext.destination);
     oscillator.start(now);
     oscillator.stop(now + 0.26);
-
-    window.setTimeout(() => {
-      void audioContext.close();
-    }, 350);
   } catch {
     // Ignore audio errors (browser autoplay restrictions, unsupported APIs, etc).
   }
 }
 
+function toastForEvent(type: AdminStreamEvent["type"], entityId?: number) {
+  if (type === "order.created") {
+    showInfoToast(
+      typeof entityId === "number" ? `New order #${entityId} received` : "New order received",
+    );
+    return;
+  }
+
+  if (type === "note.created") {
+    showInfoToast(
+      typeof entityId === "number"
+        ? `New customer note #${entityId}`
+        : "New customer note received",
+    );
+  }
+}
+
 export function useAdminNotificationStream() {
   const queryClient = useQueryClient();
-  const lastSoundAtRef = useRef(0);
+  const lastAlertAtRef = useRef(0);
   const reconnectFallbackRef = useRef<number | null>(null);
   const lastFallbackInvalidateAtRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    bindAudioUnlockOnce();
+
     const source = new EventSource("/api/admin-notifications/stream", {
       withCredentials: true,
     });
 
-    const triggerRefreshAndSound = () => {
+    const triggerRefreshSoundAndToast = (payload: AdminStreamEvent) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
 
       const now = Date.now();
-      if (now - lastSoundAtRef.current > 700) {
-        playNotificationSound();
-        lastSoundAtRef.current = now;
-      }
+      if (now - lastAlertAtRef.current <= 700) return;
+      lastAlertAtRef.current = now;
+
+      playNotificationSound();
+      toastForEvent(payload.type, payload.entityId);
     };
 
     const resolvePayload = (raw: MaybeWrappedStreamPayload | null): AdminStreamEvent | null => {
@@ -98,7 +158,7 @@ export function useAdminNotificationStream() {
       return null;
     };
 
-    const onAnyMessage = (event: MessageEvent<string>) => {
+    const onNotificationMessage = (event: MessageEvent<string>) => {
       let rawPayload: MaybeWrappedStreamPayload | null = null;
       try {
         rawPayload = JSON.parse(event.data) as MaybeWrappedStreamPayload;
@@ -107,29 +167,30 @@ export function useAdminNotificationStream() {
       }
 
       const payload = resolvePayload(rawPayload);
-      if (!payload?.type || payload.type === undefined) return;
+      if (!payload?.type) return;
       if (payload.type !== "order.created" && payload.type !== "note.created") return;
 
-      triggerRefreshAndSound();
+      triggerRefreshSoundAndToast(payload);
     };
 
-    source.addEventListener("notification", onAnyMessage as EventListener);
-    source.addEventListener("message", onAnyMessage as EventListener);
-    source.onmessage = onAnyMessage;
+    // Nest emits `event: notification` — listen only to that named event.
+    // Keep a single `message` fallback for servers that omit the event name.
+    source.addEventListener("notification", onNotificationMessage as EventListener);
+    source.onmessage = onNotificationMessage;
+
     source.onopen = () => {
       if (reconnectFallbackRef.current !== null) {
         window.clearInterval(reconnectFallbackRef.current);
         reconnectFallbackRef.current = null;
       }
     };
+
     source.onerror = () => {
-      // EventSource can emit frequent error events while auto-reconnecting.
-      // Avoid request storms by switching to a throttled fallback poller only once.
+      // EventSource auto-reconnects. Use a throttled poller only while disconnected.
       if (reconnectFallbackRef.current !== null) return;
 
       const invalidateBadgeQueries = () => {
         const now = Date.now();
-        // Guard against accidental burst invalidations from rapid reconnect cycles.
         if (now - lastFallbackInvalidateAtRef.current < 10_000) return;
         lastFallbackInvalidateAtRef.current = now;
         void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all, refetchType: "active" });
@@ -143,8 +204,8 @@ export function useAdminNotificationStream() {
     };
 
     return () => {
-      source.removeEventListener("notification", onAnyMessage as EventListener);
-      source.removeEventListener("message", onAnyMessage as EventListener);
+      source.removeEventListener("notification", onNotificationMessage as EventListener);
+      source.onmessage = null;
       source.close();
       if (reconnectFallbackRef.current !== null) {
         window.clearInterval(reconnectFallbackRef.current);

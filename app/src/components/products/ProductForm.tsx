@@ -32,6 +32,7 @@ import { WeightDimensionsSection } from "./sections/WeightDimensionsSection";
 import { MediaSection } from "./sections/MediaSection";
 import { AttachmentsSection } from "./sections/AttachmentsSection";
 import { StockSection } from "./sections/StockSection";
+import { CategoryTreeSelect } from "./CategoryTreeSelect";
 import { Card } from "../ui";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -156,7 +157,32 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const productStatusEnabled = isEnabled("product_status_enabled");
   const productFilesEnabled = isEnabled("product_files_enabled");
   const statusVisible = productStatusEnabled;
-  const { canEditProductPricing } = useAdminAccess();
+  const {
+    canEditProductPricing,
+    canShowProductFormBasic,
+    canShowProductFormAttributes,
+    canShowProductFormSpecifications,
+    canShowProductFormStock,
+    canShowProductFormWeightDimensions,
+    canShowProductFormMedia,
+    canShowProductFormAttachments,
+  } = useAdminAccess();
+
+  const showBasicStep = canShowProductFormBasic;
+  const showAttributesStep =
+    attributesEnabled && canShowProductFormAttributes;
+  const showSpecificationsStep =
+    specificationsEnabled && canShowProductFormSpecifications;
+  const showStockStep = canShowProductFormStock;
+  const showPricingStep = canEditProductPricing;
+  const showWeightStep =
+    weightAndDimensionsEnabled && canShowProductFormWeightDimensions;
+  const showMediaStep = canShowProductFormMedia;
+  const showAttachmentsStep =
+    productFilesEnabled && canShowProductFormAttachments;
+  // Vendor/store creators need categories when attribute/spec steps are enabled.
+  const showCatalogFieldsInSimplifiedMode =
+    simplifiedMode && (showAttributesStep || showSpecificationsStep);
 
   // Draft persistence – only active in create mode.
   const { restoredDraft, saveDraft, clearDraft } = useProductFormDraft({
@@ -170,7 +196,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     record: "",
     status: "active",
     categoryIds: [],
-    vendorId: "",
+    vendorId: lockedVendorId || "",
     brandId: "",
     referenceLink: "",
     linked_product_ids: [],
@@ -194,7 +220,19 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     // Overlay any previously saved draft (create mode only; ignored when
     // restoredDraft is null or when initialData already provides values).
     ...(!isEditMode && restoredDraft ? restoredDraft : {}),
+    ...(lockedVendorId ? { vendorId: lockedVendorId } : {}),
   });
+
+  useEffect(() => {
+    if (!lockedVendorId) {
+      return;
+    }
+    setFormData((prev) =>
+      prev.vendorId === lockedVendorId
+        ? prev
+        : { ...prev, vendorId: lockedVendorId },
+    );
+  }, [lockedVendorId]);
 
   const selectedCategoryIds = formData.categoryIds || [];
   const categoryIdsQuery = useMemo(() => {
@@ -271,14 +309,30 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [isEditMode, initialDataJson]);
 
-  // Build dynamic Zod schema based on form state — pricing is only
-  // required when this admin has product-pricing access.
+  // Build dynamic Zod schema based on form state — only require fields for
+  // steps this admin is allowed to see.
   const zodSchema = React.useMemo(
     () =>
       simplifiedMode
-        ? createSimplifiedProductFormValidationSchema()
-        : createProductFormValidationSchema({ requirePricing: canEditProductPricing }),
-    [canEditProductPricing, simplifiedMode]
+        ? createSimplifiedProductFormValidationSchema({
+            requireBasic: showBasicStep,
+            requirePricing: showPricingStep,
+            requireMedia: showMediaStep,
+            requireStock: showStockStep,
+          })
+        : createProductFormValidationSchema({
+            requireBasic: showBasicStep,
+            requirePricing: showPricingStep,
+            requireStock: showStockStep,
+            requireMedia: false,
+          }),
+    [
+      simplifiedMode,
+      showBasicStep,
+      showPricingStep,
+      showMediaStep,
+      showStockStep,
+    ]
   );
   
   const { errors, validateForm, validateField, clearFieldError, isSubmitted } = useZodValidation<ProductFormData>({
@@ -295,9 +349,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       sku: formData.sku || '',
       record: formData.record || '',
       status: simplifiedMode ? simplifiedStatus : (productStatusEnabled ? (formData.status || 'active') : 'active'),
-      categoryIds: simplifiedMode ? [] : (formData.categoryIds || []),
+      categoryIds:
+        simplifiedMode && !showCatalogFieldsInSimplifiedMode
+          ? []
+          : formData.categoryIds || [],
       vendorId: lockedVendorId || formData.vendorId || '',
-      brandId: simplifiedMode ? '' : (formData.brandId || ''),
+      brandId:
+        simplifiedMode && !showCatalogFieldsInSimplifiedMode
+          ? ''
+          : formData.brandId || '',
       referenceLink: formData.referenceLink || '',
       linked_product_ids: linkedProductsEnabled ? (formData.linked_product_ids || []) : [],
       quantity: formData.quantity,
@@ -657,7 +717,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         }}
       />
       {/* Basic Information */}
-      {!simplifiedMode ? (
+      {showBasicStep && !simplifiedMode ? (
       <BasicInformationSection
         formData={{
           nameEn: formData.nameEn,
@@ -666,7 +726,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           record: formData.record,
           status: toWorkflowProductStatus(formData.status),
           categoryIds: formData.categoryIds,
-          vendorId: formData.vendorId,
+          vendorId: lockedVendorId || formData.vendorId,
           brandId: formData.brandId,
           referenceLink: formData.referenceLink,
           linked_product_ids: formData.linked_product_ids,
@@ -688,7 +748,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         onChange={handleFieldChange}
         currentProductId={productId}
         initialLinkedProducts={initialLinkedProducts}
-        vendorsEnabled={vendorsEnabled}
+        vendorsEnabled={vendorsEnabled && !lockedVendorId}
         referenceLinkVisible={referenceLinkVisible}
         referenceLinkActionsEnabled={referenceLinksEnabled}
         metaTitleVisible={metaTitleVisible}
@@ -696,7 +756,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         statusVisible={statusVisible}
         linkedProductsEnabled={linkedProductsEnabled}
       />
-      ) : (
+      ) : null}
+
+      {showBasicStep && simplifiedMode ? (
       <Card>
         <h2 className="text-lg font-semibold">Product Details</h2>
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -732,10 +794,29 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           />
         </div>
       </Card>
-      )}
+      ) : null}
+
+      {showCatalogFieldsInSimplifiedMode ? (
+        <Card>
+          <h2 className="text-lg font-semibold">Categories</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Required to load attribute and specification options.
+          </p>
+          <div className="mt-5">
+            <CategoryTreeSelect
+              id="categoryIds"
+              label="Categories"
+              categories={categories}
+              selectedIds={formData.categoryIds || []}
+              onChange={(ids) => handleFieldChange("categoryIds", ids)}
+              error={errors.categoryIds}
+            />
+          </div>
+        </Card>
+      ) : null}
 
       {/* Attributes Configuration — hidden when attributes_enabled is false */}
-      {!simplifiedMode && attributesEnabled && (
+      {showAttributesStep && (
       <AttributesSection
         attributes={formData.attributes || []}
         availableAttributes={availableAttributeOptions}
@@ -795,7 +876,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       />
       )}
 
-      {specificationsEnabled && !simplifiedMode && (
+      {showSpecificationsStep && (
       <SpecificationsSection
         specifications={formData.specifications || []}
         availableSpecifications={availableSpecificationOptions}
@@ -812,7 +893,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       )}
 
       {/* Stock Management */}
-      {!simplifiedMode ? (
+      {showStockStep ? (
       <StockSection
           quantity={formData.quantity}
           isOutOfStock={formData.is_out_of_stock || false}
@@ -823,7 +904,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       ) : null}
 
       {/* Pricing Configuration */}
-      {(simplifiedMode || canEditProductPricing) ? (
+      {showPricingStep ? (
       <PricingSection
         pricing={formData.pricing}
         onChange={(pricing) => handleFieldChange("pricing", pricing)}
@@ -834,7 +915,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       ) : null}
 
       {/* Weight & Dimensions — hidden when weight_and_dimensions_enabled is false */}
-      {!simplifiedMode && weightAndDimensionsEnabled && (
+      {showWeightStep && (
       <WeightDimensionsSection
         weightDimensions={formData.weightDimensions}
         onChange={(data) => handleFieldChange("weightDimensions", data)}
@@ -843,13 +924,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       )}
 
       {/* Media Management */}
+      {showMediaStep ? (
       <MediaSection
         media={formData.media || []}
         onChange={(media) => handleFieldChange("media", media)}
         errors={errors}
       />
+      ) : null}
 
-      {productFilesEnabled && !simplifiedMode ? (
+      {showAttachmentsStep ? (
       <AttachmentsSection
         attachments={formData.attachments || []}
         onChange={(attachments) => handleFieldChange("attachments", attachments)}

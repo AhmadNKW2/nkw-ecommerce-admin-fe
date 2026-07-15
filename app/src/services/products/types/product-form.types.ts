@@ -198,15 +198,43 @@ export type ProductFormData = z.infer<typeof productFormObjectSchema>;
  * optional for them.
  */
 export function createProductFormValidationSchema(
-  options: { requirePricing?: boolean } = {}
+  options: {
+    requirePricing?: boolean;
+    requireStock?: boolean;
+    requireBasic?: boolean;
+    requireMedia?: boolean;
+  } = {}
 ) {
-  const { requirePricing = true } = options;
+  const {
+    requirePricing = true,
+    requireStock = true,
+    requireBasic = true,
+    requireMedia = false,
+  } = options;
 
   return productFormObjectSchema.superRefine((data, ctx) => {
+    if (requireBasic) {
+      if (!data.nameEn?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["nameEn"],
+        });
+      }
+      if (!data.nameAr?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["nameAr"],
+        });
+      }
+    }
+
     if (
-      data.quantity === undefined ||
-      data.quantity === null ||
-      Number.isNaN(data.quantity)
+      requireStock &&
+      (data.quantity === undefined ||
+        data.quantity === null ||
+        Number.isNaN(data.quantity))
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -225,24 +253,90 @@ export function createProductFormValidationSchema(
         });
       }
     }
+
+    if (requireMedia && (!data.media || data.media.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one media item is required",
+        path: ["media"],
+      });
+    }
   });
 }
 
-export function createSimplifiedProductFormValidationSchema() {
+export function createSimplifiedProductFormValidationSchema(
+  options: {
+    requirePricing?: boolean;
+    requireBasic?: boolean;
+    requireMedia?: boolean;
+    requireStock?: boolean;
+  } = {},
+) {
+  const {
+    requirePricing = true,
+    requireBasic = true,
+    requireMedia = true,
+    requireStock = false,
+  } = options;
+
   return productFormObjectSchema
     .extend({
       categoryIds: z.array(z.string()).default([]),
       status: z.enum(["active", "archived", "updated", "review", "vendor", "store"]).default("vendor"),
-      longDescriptionEn: z.string().min(1, "English description is required"),
-      longDescriptionAr: z.string().min(1, "Arabic description is required"),
+      longDescriptionEn: requireBasic
+        ? z.string().min(1, "English description is required")
+        : z.string().optional().default(""),
+      longDescriptionAr: requireBasic
+        ? z.string().min(1, "Arabic description is required")
+        : z.string().optional().default(""),
     })
     .superRefine((data, ctx) => {
-      const price = data.pricing?.price;
-      if (price === undefined || price === null || Number.isNaN(price)) {
+      if (requireBasic) {
+        if (!data.nameEn?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["nameEn"],
+          });
+        }
+        if (!data.nameAr?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["nameAr"],
+          });
+        }
+      }
+
+      if (requirePricing) {
+        const price = data.pricing?.price;
+        if (price === undefined || price === null || Number.isNaN(price)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["pricing", "price"],
+          });
+        }
+      }
+
+      if (requireMedia && (!data.media || data.media.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one media item is required",
+          path: ["media"],
+        });
+      }
+
+      if (
+        requireStock &&
+        (data.quantity === undefined ||
+          data.quantity === null ||
+          Number.isNaN(data.quantity))
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Required",
-          path: ["pricing", "price"],
+          path: ["quantity"],
         });
       }
     });

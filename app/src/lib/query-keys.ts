@@ -189,6 +189,13 @@ export const queryKeys = {
       [...queryKeys.partners.details(), id] as const,
   },
 
+  // Analytics
+  analytics: {
+    all: ["analytics"] as const,
+    overview: (params?: Record<string, any>) =>
+      [...queryKeys.analytics.all, "overview", params] as const,
+  },
+
   // Settings
   settings: {
     all: ["settings"] as const,

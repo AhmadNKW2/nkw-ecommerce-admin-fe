@@ -30,5 +30,12 @@ export function useAdminAccess() {
     access,
     canAccess,
     canEditProductPricing: access.product_pricing,
+    canShowProductFormBasic: access.product_form_basic,
+    canShowProductFormAttributes: access.product_form_attributes,
+    canShowProductFormSpecifications: access.product_form_specifications,
+    canShowProductFormStock: access.product_form_stock,
+    canShowProductFormWeightDimensions: access.product_form_weight_dimensions,
+    canShowProductFormMedia: access.product_form_media,
+    canShowProductFormAttachments: access.product_form_attachments,
   };
 }

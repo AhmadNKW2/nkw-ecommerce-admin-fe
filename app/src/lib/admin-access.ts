@@ -8,7 +8,45 @@ export type AdminAccessFeatureToggle = keyof Pick<
   | "partners_enabled"
   | "banners_enabled"
   | "cashback_enabled"
+  | "weight_and_dimensions_enabled"
+  | "product_files_enabled"
 >;
+
+/** Section/nav access keys (sidebar + route guards). */
+export const ADMIN_SECTION_ACCESS_KEYS = [
+  "products",
+  "categories",
+  "vendors",
+  "brands",
+  "attributes",
+  "specifications",
+  "orders",
+  "customers",
+  "partners",
+  "banners",
+  "cashback_rules",
+  "notes",
+  "concepts",
+  "archived",
+  "analytics",
+  "settings",
+  "admins",
+] as const;
+
+/**
+ * Product form step keys — when disabled, the step is hidden on create/edit
+ * product forms for that admin. `product_pricing` also gates pricing routes.
+ */
+export const PRODUCT_FORM_ACCESS_KEYS = [
+  "product_form_basic",
+  "product_form_attributes",
+  "product_form_specifications",
+  "product_form_stock",
+  "product_pricing",
+  "product_form_weight_dimensions",
+  "product_form_media",
+  "product_form_attachments",
+] as const;
 
 export const ADMIN_ACCESS_KEYS = [
   "products",
@@ -26,11 +64,21 @@ export const ADMIN_ACCESS_KEYS = [
   "notes",
   "concepts",
   "archived",
+  "analytics",
   "settings",
   "admins",
+  "product_form_basic",
+  "product_form_attributes",
+  "product_form_specifications",
+  "product_form_stock",
+  "product_form_weight_dimensions",
+  "product_form_media",
+  "product_form_attachments",
 ] as const;
 
 export type AdminAccessKey = (typeof ADMIN_ACCESS_KEYS)[number];
+export type ProductFormAccessKey = (typeof PRODUCT_FORM_ACCESS_KEYS)[number];
+export type AdminSectionAccessKey = (typeof ADMIN_SECTION_ACCESS_KEYS)[number];
 export type AdminAccess = Record<AdminAccessKey, boolean>;
 
 /** Maps admin-access keys to feature toggles that gate them project-wide. */
@@ -43,7 +91,21 @@ export const ADMIN_ACCESS_FEATURE_TOGGLES: Partial<
   partners: "partners_enabled",
   banners: "banners_enabled",
   cashback_rules: "cashback_enabled",
+  product_form_attributes: "attributes_enabled",
+  product_form_specifications: "specifications_enabled",
+  product_form_weight_dimensions: "weight_and_dimensions_enabled",
+  product_form_attachments: "product_files_enabled",
 };
+
+const ALL_PRODUCT_FORM_STEPS_ON = {
+  product_form_basic: true,
+  product_form_attributes: true,
+  product_form_specifications: true,
+  product_form_stock: true,
+  product_form_weight_dimensions: true,
+  product_form_media: true,
+  product_form_attachments: true,
+} as const;
 
 export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   products: true,
@@ -61,8 +123,10 @@ export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   notes: true,
   concepts: true,
   archived: true,
+  analytics: true,
   settings: true,
   admins: true,
+  ...ALL_PRODUCT_FORM_STEPS_ON,
 };
 
 export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
@@ -81,10 +145,16 @@ export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
   notes: false,
   concepts: true,
   archived: false,
+  analytics: false,
   settings: false,
   admins: false,
+  ...ALL_PRODUCT_FORM_STEPS_ON,
+  product_form_stock: true,
+  product_form_media: true,
+  product_form_attachments: true,
 };
 
+/** Vendor/store portal defaults — matches the current simplified product form. */
 export const DEFAULT_VENDOR_PORTAL_ACCESS: AdminAccess = {
   products: true,
   product_pricing: true,
@@ -101,13 +171,21 @@ export const DEFAULT_VENDOR_PORTAL_ACCESS: AdminAccess = {
   notes: false,
   concepts: false,
   archived: false,
+  analytics: false,
   settings: false,
   admins: false,
+  product_form_basic: true,
+  product_form_attributes: false,
+  product_form_specifications: false,
+  product_form_stock: false,
+  product_form_weight_dimensions: false,
+  product_form_media: true,
+  product_form_attachments: false,
 };
 
 export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   products: "Products",
-  product_pricing: "Product pricing",
+  product_pricing: "Pricing",
   categories: "Categories",
   vendors: "Vendors",
   brands: "Brands",
@@ -121,12 +199,37 @@ export const ADMIN_ACCESS_LABELS: Record<AdminAccessKey, string> = {
   notes: "Notes",
   concepts: "Concepts",
   archived: "Archived",
+  analytics: "Analytics",
   settings: "Settings",
   admins: "Admins",
+  product_form_basic: "Basic information",
+  product_form_attributes: "Attributes",
+  product_form_specifications: "Specifications",
+  product_form_stock: "Stock",
+  product_form_weight_dimensions: "Weight & dimensions",
+  product_form_media: "Media",
+  product_form_attachments: "Attachments",
+};
+
+export const PRODUCT_FORM_ACCESS_LABELS: Record<ProductFormAccessKey, string> = {
+  product_form_basic: ADMIN_ACCESS_LABELS.product_form_basic,
+  product_form_attributes: ADMIN_ACCESS_LABELS.product_form_attributes,
+  product_form_specifications: ADMIN_ACCESS_LABELS.product_form_specifications,
+  product_form_stock: ADMIN_ACCESS_LABELS.product_form_stock,
+  product_pricing: ADMIN_ACCESS_LABELS.product_pricing,
+  product_form_weight_dimensions: ADMIN_ACCESS_LABELS.product_form_weight_dimensions,
+  product_form_media: ADMIN_ACCESS_LABELS.product_form_media,
+  product_form_attachments: ADMIN_ACCESS_LABELS.product_form_attachments,
 };
 
 export function createDefaultAdminAccess(): AdminAccess {
   return { ...DEFAULT_ADMIN_ACCESS };
+}
+
+export function getDefaultAdminAccessForRole(
+  role: UserRole | undefined,
+): AdminAccess {
+  return getDefaultAccessForRole(role);
 }
 
 type UserRole =
@@ -207,14 +310,33 @@ export function normalizeAdminAccess(
 
 export function getAdminAccessKeysVisibleByFeatureToggle(
   isFeatureEnabled: (key: AdminAccessFeatureToggle) => boolean,
+  keys: readonly AdminAccessKey[] = ADMIN_ACCESS_KEYS,
 ): AdminAccessKey[] {
-  return ADMIN_ACCESS_KEYS.filter((key) => {
+  return keys.filter((key) => {
     const toggle = ADMIN_ACCESS_FEATURE_TOGGLES[key];
     if (!toggle) {
       return true;
     }
     return isFeatureEnabled(toggle);
   });
+}
+
+export function getVisibleSectionAccessKeys(
+  isFeatureEnabled: (key: AdminAccessFeatureToggle) => boolean,
+): AdminAccessKey[] {
+  return getAdminAccessKeysVisibleByFeatureToggle(
+    isFeatureEnabled,
+    ADMIN_SECTION_ACCESS_KEYS,
+  );
+}
+
+export function getVisibleProductFormAccessKeys(
+  isFeatureEnabled: (key: AdminAccessFeatureToggle) => boolean,
+): ProductFormAccessKey[] {
+  return getAdminAccessKeysVisibleByFeatureToggle(
+    isFeatureEnabled,
+    PRODUCT_FORM_ACCESS_KEYS,
+  ) as ProductFormAccessKey[];
 }
 
 export function constrainAdminAccessByFeatureToggles(

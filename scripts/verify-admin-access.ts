@@ -60,8 +60,17 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
     "/archived-vendors",
     "/archived-brands",
   ],
+  analytics: ["/analytics"],
   settings: ["/settings/seo", "/settings/features", "/settings/popup", "/settings/terms"],
   admins: ["/admins", "/admins/create"],
+  // Product form steps gate form sections, not routes.
+  product_form_basic: [],
+  product_form_attributes: [],
+  product_form_specifications: [],
+  product_form_stock: [],
+  product_form_weight_dimensions: [],
+  product_form_media: [],
+  product_form_attachments: [],
 };
 
 function collectSidebarLinks() {

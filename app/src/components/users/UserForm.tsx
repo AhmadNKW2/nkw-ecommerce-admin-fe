@@ -25,11 +25,14 @@ import {
 import { Users, Heart, Package, Pencil, Shield } from "lucide-react";
 import { UserRole, WishlistItem } from "../../services/customers/types/customer.types";
 import {
-  ADMIN_ACCESS_KEYS,
   ADMIN_ACCESS_LABELS,
+  PRODUCT_FORM_ACCESS_LABELS,
   constrainAdminAccessByFeatureToggles,
-  getAdminAccessKeysVisibleByFeatureToggle,
+  getVisibleProductFormAccessKeys,
+  getVisibleSectionAccessKeys,
   type AdminAccess,
+  type AdminAccessKey,
+  type ProductFormAccessKey,
 } from "../../lib/admin-access";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 import { ProductSelectionModal } from "../common/ProductSelectionModal";
@@ -166,11 +169,14 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   const isAdmin = userType === "admin";
   const { isResolved: featureTogglesResolved, isEnabled } = useResolvedFeatureToggles();
-  const visibleAdminAccessKeys = useMemo(
+  const visibleSectionAccessKeys = useMemo(
     () =>
-      featureTogglesResolved
-        ? getAdminAccessKeysVisibleByFeatureToggle(isEnabled)
-        : [],
+      featureTogglesResolved ? getVisibleSectionAccessKeys(isEnabled) : [],
+    [featureTogglesResolved, isEnabled],
+  );
+  const visibleProductFormAccessKeys = useMemo(
+    () =>
+      featureTogglesResolved ? getVisibleProductFormAccessKeys(isEnabled) : [],
     [featureTogglesResolved, isEnabled],
   );
 
@@ -180,7 +186,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     }
 
     const constrained = constrainAdminAccessByFeatureToggles(adminAccess, isEnabled);
-    const hasDisabledAccess = ADMIN_ACCESS_KEYS.some(
+    const hasDisabledAccess = (Object.keys(constrained) as AdminAccessKey[]).some(
       (key) => constrained[key] !== adminAccess[key],
     );
 
@@ -286,12 +292,17 @@ export const UserForm: React.FC<UserFormProps> = ({
               disabled={userType === 'customer'}
             />
           ) : (
-            <Select
-              label="Admin Type"
-              value={role}
-              onChange={(value) => onRoleChange(value as UserRole)}
-              options={adminRoleOptions}
-            />
+            <div className="space-y-1">
+              <Select
+                label="Admin Type"
+                value={role}
+                onChange={(value) => onRoleChange(value as UserRole)}
+                options={adminRoleOptions}
+              />
+              {formErrors.role ? (
+                <p className="text-sm text-danger">{formErrors.role}</p>
+              ) : null}
+            </div>
           )}
 
           {isAdmin && (role === "vendor_admin" || role === "store_admin") ? (
@@ -319,48 +330,92 @@ export const UserForm: React.FC<UserFormProps> = ({
         </div>
       </Card>
 
-      {isAdmin && adminAccess && onAdminAccessChange && role !== "vendor_admin" && role !== "store_admin" ? (
-        <Card>
-          <h2 className="text-lg font-semibold">Admin Access</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Control which sections this admin can use. Product pricing also controls
-            the pricing view and price fields on the product form. Sections disabled
-            in Feature Settings are hidden here and cannot be granted.
-          </p>
+      {isAdmin && adminAccess && onAdminAccessChange ? (
+        <>
+          <Card>
+            <h2 className="text-lg font-semibold">Admin Access</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Control which sections this admin can use. Sections disabled in
+              Feature Settings are hidden here and cannot be granted.
+            </p>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {!featureTogglesResolved
-              ? Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="flex animate-pulse items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
-                    aria-hidden="true"
-                  >
-                    <div className="h-4 w-24 rounded bg-gray-200" />
-                    <div className="h-6 w-11 rounded-full bg-gray-200" />
-                  </div>
-                ))
-              : visibleAdminAccessKeys.map((key) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
-                  >
-                    <div>
-                      <p className="font-medium">{ADMIN_ACCESS_LABELS[key]}</p>
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {!featureTogglesResolved
+                ? Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="flex animate-pulse items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                      aria-hidden="true"
+                    >
+                      <div className="h-4 w-24 rounded bg-gray-200" />
+                      <div className="h-6 w-11 rounded-full bg-gray-200" />
                     </div>
-                    <Toggle
-                      checked={adminAccess[key]}
-                      onChange={(checked) =>
-                        onAdminAccessChange({
-                          ...adminAccess,
-                          [key]: checked,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-          </div>
-        </Card>
+                  ))
+                : visibleSectionAccessKeys.map((key) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium">{ADMIN_ACCESS_LABELS[key]}</p>
+                      </div>
+                      <Toggle
+                        checked={adminAccess[key]}
+                        onChange={(checked) =>
+                          onAdminAccessChange({
+                            ...adminAccess,
+                            [key]: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold">Product creation steps</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Choose which product form steps this admin can see. Disabled steps
+              are hidden when they create or edit a product.
+            </p>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {!featureTogglesResolved
+                ? Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="flex animate-pulse items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                      aria-hidden="true"
+                    >
+                      <div className="h-4 w-28 rounded bg-gray-200" />
+                      <div className="h-6 w-11 rounded-full bg-gray-200" />
+                    </div>
+                  ))
+                : visibleProductFormAccessKeys.map((key: ProductFormAccessKey) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded-r1 border border-primary/15 bg-gray-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {PRODUCT_FORM_ACCESS_LABELS[key]}
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={adminAccess[key]}
+                        onChange={(checked) =>
+                          onAdminAccessChange({
+                            ...adminAccess,
+                            [key]: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+            </div>
+          </Card>
+        </>
       ) : null}
 
       {/* Customer profile overview - edit mode only */}

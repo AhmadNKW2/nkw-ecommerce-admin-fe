@@ -111,6 +111,7 @@ export type AnalyticsVisitorsParams = {
     | "sessions"
     | "events"
     | "duration"
+    | "firstSeen"
     | "lastSeen"
     | "deviceName"
     | "admin";

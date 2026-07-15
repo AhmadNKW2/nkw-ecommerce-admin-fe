@@ -86,8 +86,6 @@ export interface VendorFormErrors {
   name_ar?: string;
   description_en?: string;
   description_ar?: string;
-  email?: string;
-  password?: string;
   logo?: string;
 }
 
@@ -99,8 +97,6 @@ export function validateVendorForm(data: {
   name_ar: string;
   description_en?: string;
   description_ar?: string;
-  email?: string;
-  password?: string;
   logo?: File | null;
 }): { isValid: boolean; errors: VendorFormErrors } {
   const errors: VendorFormErrors = {};
@@ -144,17 +140,6 @@ export function validateVendorForm(data: {
     } else if (!["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"].includes(data.logo.type)) {
       errors.logo = "Only JPEG, PNG, GIF, WebP, and SVG images are allowed";
     }
-  }
-
-  const hasEmail = Boolean(data.email?.trim());
-  const hasPassword = Boolean(data.password?.trim());
-  if (hasEmail !== hasPassword) {
-    errors.email = "Email and password must both be provided or both omitted";
-    errors.password = "Email and password must both be provided or both omitted";
-  }
-
-  if (hasPassword && (data.password?.length ?? 0) < 6) {
-    errors.password = "Password must be at least 6 characters";
   }
 
   return {

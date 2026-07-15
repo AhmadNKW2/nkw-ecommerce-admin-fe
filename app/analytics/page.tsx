@@ -84,6 +84,7 @@ type VisitorSortKey =
   | "sessions"
   | "events"
   | "duration"
+  | "firstSeen"
   | "lastSeen"
   | "deviceName"
   | "admin";
@@ -1028,6 +1029,14 @@ export default function AnalyticsPage() {
                     </TableHead>
                     <TableHead
                       sortable
+                      sortKey="firstSeen"
+                      currentSort={visitorCurrentSort}
+                      onSort={handleVisitorSort}
+                    >
+                      First open
+                    </TableHead>
+                    <TableHead
+                      sortable
                       sortKey="lastSeen"
                       currentSort={visitorCurrentSort}
                       onSort={handleVisitorSort}
@@ -1147,6 +1156,7 @@ export default function AnalyticsPage() {
                       <TableCell>{visitor.sessionCount}</TableCell>
                       <TableCell>{visitor.eventCount}</TableCell>
                       <TableCell>{formatDuration(visitor.totalDurationSeconds)}</TableCell>
+                      <TableCell>{formatDateTime(visitor.firstSeenAt)}</TableCell>
                       <TableCell>{formatDateTime(visitor.lastSeenAt)}</TableCell>
                       <TableCell className="text-right">
                         <div
@@ -1269,8 +1279,11 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div className="rounded-r1 border border-gray-100 px-3 py-2">
-                  <p className="text-xs text-gray-500">First seen</p>
+                  <p className="text-xs text-gray-500">First open</p>
                   <p className="font-medium">{formatDateTime(visitorDetail.firstSeenAt)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    First time this client opened the site
+                  </p>
                 </div>
                 <div className="rounded-r1 border border-gray-100 px-3 py-2">
                   <p className="text-xs text-gray-500">Last seen</p>

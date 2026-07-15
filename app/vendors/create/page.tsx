@@ -22,8 +22,6 @@ export default function CreateVendorPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [logo, setLogo] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [product_ids, setProductIds] = useState<number[]>([]);
@@ -32,8 +30,6 @@ export default function CreateVendorPage() {
     name_ar?: string;
     description_en?: string;
     description_ar?: string;
-    email?: string;
-    password?: string;
     logo?: string;
   }>({});
 
@@ -66,8 +62,6 @@ export default function CreateVendorPage() {
       name_ar: nameAr,
       description_en: descriptionEn,
       description_ar: descriptionAr,
-      email,
-      password,
     });
 
     if (!result.isValid) {
@@ -90,8 +84,6 @@ export default function CreateVendorPage() {
         name_ar: nameAr,
         description_en: descriptionEn || undefined,
         description_ar: descriptionAr || undefined,
-        email: email || undefined,
-        password: password || undefined,
         visible: visible,
         logo: logo?.file || undefined,
         product_changes: buildCreateProductChanges(product_ids),
@@ -111,8 +103,6 @@ export default function CreateVendorPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
-      email={email}
-      password={password}
       logo={logo}
       visible={visible}
       product_ids={product_ids}
@@ -138,18 +128,6 @@ export default function CreateVendorPage() {
         setDescriptionAr(value);
         if (formErrors.description_ar) {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
-        }
-      }}
-      onEmailChange={(value) => {
-        setEmail(value);
-        if (formErrors.email) {
-          setFormErrors((prev) => ({ ...prev, email: undefined }));
-        }
-      }}
-      onPasswordChange={(value) => {
-        setPassword(value);
-        if (formErrors.password) {
-          setFormErrors((prev) => ({ ...prev, password: undefined }));
         }
       }}
       onLogoChange={setLogo}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -8,6 +8,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -30,9 +31,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { EmptyState } from "../src/components/common/EmptyState";
+import { DeleteConfirmationModal } from "../src/components/common/DeleteConfirmationModal";
 import { Card } from "../src/components/ui/card";
 import { Button } from "../src/components/ui/button";
 import { Input } from "../src/components/ui/input";
+import { IconButton } from "../src/components/ui/icon-button";
 import { Modal } from "../src/components/ui/modal";
 import {
   Table,
@@ -46,12 +49,14 @@ import {
   useAnalyticsOverview,
   useAnalyticsVisitor,
   useAnalyticsVisitors,
+  useDeleteAnalyticsVisitor,
 } from "../src/services/analytics/hooks/use-analytics";
 import type {
   AnalyticsKpi,
   AnalyticsNamedValue,
   AnalyticsOverviewParams,
   AnalyticsRange,
+  AnalyticsVisitorListItem,
 } from "../src/services/analytics/types/analytics.types";
 
 const RANGES: Array<{ value: AnalyticsRange; label: string }> = [
@@ -126,6 +131,45 @@ function formatDateTime(value: string): string {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
 }
+
+function shortPath(value: string | null | undefined): string {
+  if (!value) return "—";
+  try {
+    if (value.startsWith("http")) {
+      const url = new URL(value);
+      return `${url.pathname}${url.search}` || "/";
+    }
+  } catch {
+    // keep raw
+  }
+  return value.length > 80 ? `${value.slice(0, 80)}…` : value;
+}
+
+function eventDisplayName(event: {
+  name: string;
+  properties: Record<string, unknown> | null;
+}): string {
+  const searchTerm = event.properties?.search_term;
+  if (typeof searchTerm === "string" && searchTerm.trim()) {
+    const term = searchTerm.trim();
+    if (/^search_submit$/i.test(event.name)) {
+      return `Searched: ${term}`;
+    }
+    if (/^search_suggestion_click$/i.test(event.name)) {
+      return `Search suggestion: ${term}`;
+    }
+    if (!event.name.includes(term)) {
+      return `${event.name} — “${term}”`;
+    }
+  }
+  return event.name;
+}
+
+const TRAFFIC_LEGEND = [
+  { key: "activeUsers", label: "Users", color: "var(--color-primary)" },
+  { key: "sessions", label: "Sessions", color: "#0f766e" },
+  { key: "pageViews", label: "Page views", color: "#b45309" },
+] as const;
 
 function ChangeBadge({ changePercent }: { changePercent: number | null }) {
   if (changePercent == null) {
@@ -208,6 +252,9 @@ export default function AnalyticsPage() {
   const [visitorPage, setVisitorPage] = useState(1);
   const [visitorSearch, setVisitorSearch] = useState("");
   const [selectedVisitorId, setSelectedVisitorId] = useState<number | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
+  const [visitorPendingDelete, setVisitorPendingDelete] =
+    useState<AnalyticsVisitorListItem | null>(null);
 
   const overviewParams: AnalyticsOverviewParams = useMemo(() => {
     if (range === "custom" && customStart && customEnd) {
@@ -266,6 +313,30 @@ export default function AnalyticsPage() {
 
   const { data: visitorDetail, isLoading: visitorDetailLoading } =
     useAnalyticsVisitor(selectedVisitorId);
+  const deleteVisitor = useDeleteAnalyticsVisitor();
+
+  useEffect(() => {
+    if (!visitorDetail?.sessions.length) {
+      setSelectedSessionId(null);
+      return;
+    }
+    setSelectedSessionId((current) => {
+      if (current != null && visitorDetail.sessions.some((s) => s.id === current)) {
+        return current;
+      }
+      return visitorDetail.sessions[0].id;
+    });
+  }, [visitorDetail]);
+
+  const selectedSessionEvents = useMemo(() => {
+    if (!visitorDetail || selectedSessionId == null) return [];
+    return visitorDetail.events.filter((event) => event.sessionId === selectedSessionId);
+  }, [visitorDetail, selectedSessionId]);
+
+  const selectedSession = useMemo(() => {
+    if (!visitorDetail || selectedSessionId == null) return null;
+    return visitorDetail.sessions.find((s) => s.id === selectedSessionId) ?? null;
+  }, [visitorDetail, selectedSessionId]);
 
   const headlineKpis = useMemo(
     () =>
@@ -300,6 +371,20 @@ export default function AnalyticsPage() {
     page: 1,
     limit: 20,
     totalPages: 1,
+  };
+
+  const handleConfirmDeleteVisitor = async () => {
+    if (!visitorPendingDelete) return;
+    try {
+      await deleteVisitor.mutateAsync(visitorPendingDelete.id);
+      if (selectedVisitorId === visitorPendingDelete.id) {
+        setSelectedVisitorId(null);
+        setSelectedSessionId(null);
+      }
+      setVisitorPendingDelete(null);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const description =
@@ -473,7 +558,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                 <Card className="xl:col-span-2 min-h-[360px]">
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-r1 bg-primary/10 text-primary">
                         <Activity className="h-4 w-4" />
@@ -483,13 +568,27 @@ export default function AnalyticsPage() {
                           Traffic over time
                         </h3>
                         <p className="text-xs text-gray-500">
-                          Users, sessions, and page views
+                          Daily totals from Google Analytics
                         </p>
                       </div>
                     </div>
+                    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      {TRAFFIC_LEGEND.map((item) => (
+                        <li
+                          key={item.key}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          {item.label}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
-                  <div className="h-[280px] w-full mt-2">
+                  <div className="h-[300px] w-full mt-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <defs>
@@ -524,6 +623,12 @@ export default function AnalyticsPage() {
                             border: "1px solid #e5e7eb",
                             boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
                           }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={28}
+                          iconType="circle"
+                          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
                         />
                         <Area
                           type="monotone"
@@ -706,12 +811,23 @@ export default function AnalyticsPage() {
         </>
       ) : (
         <Card>
+          <div className="rounded-r1 border border-amber-200 bg-amber-50 px-4 py-3 mb-4">
+            <p className="text-sm font-semibold text-amber-900">
+              Visitors ≠ Overview (Google Analytics)
+            </p>
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              <strong>Overview</strong> shows historical GA4 totals (thousands of users over 90 days).
+              <strong> Visitors</strong> only lists browsers recorded in your own database since
+              first-party tracking was turned on — it does not import past GA users. Low counts here
+              are expected until more real storefront traffic is collected (admin devices are also hidden).
+            </p>
+          </div>
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Visitors</h3>
               <p className="text-xs text-gray-500">
-                Sequential client IDs (1, 2, 3…) with pages visited, time on site, and actions.
-                New journeys start collecting after this deploy.
+                Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …).
               </p>
             </div>
             <div className="w-full sm:w-72">
@@ -750,6 +866,7 @@ export default function AnalyticsPage() {
                     <TableHead>Events</TableHead>
                     <TableHead>Time on site</TableHead>
                     <TableHead>Last seen</TableHead>
+                    <TableHead className="w-[72px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -774,6 +891,18 @@ export default function AnalyticsPage() {
                       <TableCell>{visitor.eventCount}</TableCell>
                       <TableCell>{formatDuration(visitor.totalDurationSeconds)}</TableCell>
                       <TableCell>{formatDateTime(visitor.lastSeenAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div
+                          className="inline-flex items-center justify-end"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <IconButton
+                            variant="delete"
+                            title={`Delete Client #${visitor.id}`}
+                            onClick={() => setVisitorPendingDelete(visitor)}
+                          />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -808,16 +937,24 @@ export default function AnalyticsPage() {
 
       <Modal
         isOpen={selectedVisitorId != null}
-        onClose={() => setSelectedVisitorId(null)}
-        contentClassName="max-w-3xl"
+        onClose={() => {
+          setSelectedVisitorId(null);
+          setSelectedSessionId(null);
+        }}
+        className="!max-w-4xl w-full"
+        contentClassName="!justify-start !items-stretch !p-0 w-full text-left"
       >
-        <div className="p-5 space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="w-full px-5 pt-5 pb-6 sm:px-6 space-y-5">
+          <div className="pr-10">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Visitor journey
+            </p>
+            <h2 className="text-xl font-semibold text-gray-900 mt-1">
               Client #{selectedVisitorId}
             </h2>
-            <p className="text-sm text-gray-500">
-              Full journey on your website for this visitor.
+            <p className="text-sm text-gray-500 mt-1">
+              Summary of this browser on your storefront — how long they stayed, which visits,
+              and every recorded action in order.
             </p>
           </div>
 
@@ -829,76 +966,148 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-r1 bg-primary/5 p-3">
-                  <p className="text-xs text-gray-500">Time on site</p>
-                  <p className="font-semibold">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded-r1 border border-primary/15 bg-primary/5 p-3">
+                  <p className="text-xs text-gray-500">Total time on site</p>
+                  <p className="text-lg font-semibold tabular-nums">
                     {formatDuration(visitorDetail.totalDurationSeconds)}
                   </p>
                 </div>
-                <div className="rounded-r1 bg-primary/5 p-3">
-                  <p className="text-xs text-gray-500">Sessions</p>
-                  <p className="font-semibold">{visitorDetail.sessionCount}</p>
+                <div className="rounded-r1 border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Visits (sessions)</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {visitorDetail.sessionCount}
+                  </p>
                 </div>
-                <div className="rounded-r1 bg-primary/5 p-3">
-                  <p className="text-xs text-gray-500">Events</p>
-                  <p className="font-semibold">{visitorDetail.eventCount}</p>
+                <div className="rounded-r1 border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Actions recorded</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {visitorDetail.eventCount}
+                  </p>
                 </div>
-                <div className="rounded-r1 bg-primary/5 p-3">
+                <div className="rounded-r1 border border-gray-100 bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Account</p>
-                  <p className="font-semibold">
-                    {visitorDetail.userId ? `User ${visitorDetail.userId}` : "Guest"}
+                  <p className="text-lg font-semibold">
+                    {visitorDetail.userId ? `Logged-in #${visitorDetail.userId}` : "Guest"}
                   </p>
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Sessions</h3>
-                <ul className="space-y-2 max-h-40 overflow-y-auto">
-                  {visitorDetail.sessions.map((session) => (
-                    <li
-                      key={session.id}
-                      className="rounded-r1 border border-gray-100 px-3 py-2 text-sm"
-                    >
-                      <div className="flex justify-between gap-2">
-                        <span className="font-medium">Session #{session.id}</span>
-                        <span className="text-gray-500">
-                          {formatDuration(session.durationSeconds)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 truncate">
-                        {session.landingPath || "—"} → {session.exitPath || "—"}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-r1 border border-gray-100 px-3 py-2">
+                  <p className="text-xs text-gray-500">First seen</p>
+                  <p className="font-medium">{formatDateTime(visitorDetail.firstSeenAt)}</p>
+                </div>
+                <div className="rounded-r1 border border-gray-100 px-3 py-2">
+                  <p className="text-xs text-gray-500">Last seen</p>
+                  <p className="font-medium">{formatDateTime(visitorDetail.lastSeenAt)}</p>
+                </div>
+                <div className="rounded-r1 border border-gray-100 px-3 py-2 sm:col-span-2">
+                  <p className="text-xs text-gray-500">Last page</p>
+                  <p className="font-medium break-all">{shortPath(visitorDetail.lastPath)}</p>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-semibold mb-2">What they did</h3>
-                <ul className="space-y-2 max-h-72 overflow-y-auto">
-                  {visitorDetail.events.map((event) => (
-                    <li
-                      key={event.id}
-                      className="rounded-r1 border border-gray-100 px-3 py-2 text-sm"
-                    >
-                      <div className="flex justify-between gap-2">
-                        <span className="font-medium text-gray-900">{event.name}</span>
-                        <span className="text-xs text-gray-500 shrink-0">
-                          {formatDateTime(event.occurredAt)}
-                        </span>
-                      </div>
-                      {event.path ? (
-                        <p className="text-xs text-gray-500 truncate mt-0.5">{event.path}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Sessions</h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  Click a session to see only that visit’s actions below.
+                </p>
+                {visitorDetail.sessions.length === 0 ? (
+                  <p className="text-sm text-gray-500">No sessions recorded.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                    {visitorDetail.sessions.map((session, index) => {
+                      const isSelected = session.id === selectedSessionId;
+                      return (
+                        <li key={session.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSessionId(session.id)}
+                            className={`w-full text-left rounded-r1 border px-3 py-2.5 text-sm transition-colors ${
+                              isSelected
+                                ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                                : "border-gray-100 hover:border-primary/40 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-semibold text-gray-900">
+                                Session #{session.id}
+                                <span className="ml-2 text-xs font-normal text-gray-500">
+                                  (Visit {visitorDetail.sessions.length - index})
+                                </span>
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDuration(session.durationSeconds)} ·{" "}
+                                {session.pageViewCount} page views · {session.eventCount} actions
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1 break-all">
+                              <span className="text-gray-400">Entered</span>{" "}
+                              {shortPath(session.landingPath)}
+                              <span className="text-gray-400"> → Left </span>
+                              {shortPath(session.exitPath)}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-1">
+                              {formatDateTime(session.startedAt)} –{" "}
+                              {formatDateTime(session.lastSeenAt)}
+                            </p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">What they did</h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  {selectedSession
+                    ? `Actions for Session #${selectedSession.id} only — oldest first.`
+                    : "Select a session above to view its actions."}
+                </p>
+                {selectedSessionId == null ? (
+                  <p className="text-sm text-gray-500">Select a session to view actions.</p>
+                ) : selectedSessionEvents.length === 0 ? (
+                  <p className="text-sm text-gray-500">No actions recorded for this session.</p>
+                ) : (
+                  <ol className="relative space-y-0 max-h-80 overflow-y-auto pr-1 border-l-2 border-primary/20 ml-2">
+                    {selectedSessionEvents.map((event) => (
+                      <li key={event.id} className="relative pl-4 py-2.5">
+                        <span className="absolute -left-[5px] top-4 h-2 w-2 rounded-full bg-primary" />
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {eventDisplayName(event)}
+                          </span>
+                          <time className="text-[11px] text-gray-500 tabular-nums">
+                            {formatDateTime(event.occurredAt)}
+                          </time>
+                        </div>
+                        {event.path ? (
+                          <p className="text-xs text-gray-600 mt-0.5 break-all">
+                            Page: {shortPath(event.path)}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
             </>
           )}
         </div>
       </Modal>
+
+      <DeleteConfirmationModal
+        isOpen={!!visitorPendingDelete}
+        onClose={() => setVisitorPendingDelete(null)}
+        onConfirm={handleConfirmDeleteVisitor}
+        isLoading={deleteVisitor.isPending}
+        title="Delete client?"
+        itemName={visitorPendingDelete ? `Client #${visitorPendingDelete.id}` : undefined}
+        message="This permanently deletes this visitor’s sessions and events from first-party analytics. They may reappear as a new Client # if they browse again."
+      />
     </div>
   );
 }

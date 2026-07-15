@@ -33,6 +33,12 @@ class AnalyticsService {
     );
   }
 
+  async deleteVisitor(id: number): Promise<ApiResponse<{ success: boolean; id: number }>> {
+    return httpClient.delete<ApiResponse<{ success: boolean; id: number }>>(
+      `${this.endpoint}/visitors/${id}`,
+    );
+  }
+
   async registerAdminClient(payload: {
     browserKey: string;
     source?: string;

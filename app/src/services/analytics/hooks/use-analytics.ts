@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../../lib/query-keys";
+import { showSuccessToast } from "../../../lib/toast";
 import { analyticsService } from "../api/analytics.service";
 import type {
   AnalyticsOverviewParams,
@@ -44,5 +45,18 @@ export const useAnalyticsVisitor = (
     queryFn: () => analyticsService.getVisitor(id!),
     select: (response) => response.data,
     enabled: (options?.enabled ?? true) && !!id,
+  });
+};
+
+export const useDeleteAnalyticsVisitor = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => analyticsService.deleteVisitor(id),
+    onSuccess: (_, id) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+      queryClient.removeQueries({ queryKey: queryKeys.analytics.visitor(id) });
+      showSuccessToast(`Client #${id} deleted`);
+    },
   });
 };

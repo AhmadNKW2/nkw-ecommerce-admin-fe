@@ -18,33 +18,39 @@ type MaybeWrappedStreamPayload =
       success?: boolean;
     };
 
-let sharedAudioContext: AudioContext | null = null;
+const NOTIFICATION_SOUND_SRC = "/sounds/notification.wav";
+
+let sharedNotificationAudio: HTMLAudioElement | null = null;
 let audioUnlockBound = false;
 
-function getAudioContext(): AudioContext | null {
+function getNotificationAudio(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
 
-  const AudioContextCtor =
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-  if (!AudioContextCtor) return null;
-
-  if (!sharedAudioContext || sharedAudioContext.state === "closed") {
-    sharedAudioContext = new AudioContextCtor();
+  if (!sharedNotificationAudio) {
+    const audio = new Audio(NOTIFICATION_SOUND_SRC);
+    audio.preload = "auto";
+    audio.volume = 0.85;
+    sharedNotificationAudio = audio;
   }
 
-  return sharedAudioContext;
+  return sharedNotificationAudio;
 }
 
 function unlockNotificationAudio() {
-  const audioContext = getAudioContext();
-  if (!audioContext) return;
+  const audio = getNotificationAudio();
+  if (!audio) return;
 
-  if (audioContext.state === "suspended") {
-    void audioContext.resume().catch(() => {
-      // Ignore autoplay unlock failures.
-    });
+  // Priming play+pause unlocks autoplay after a user gesture.
+  const priming = audio.play();
+  if (priming) {
+    void priming
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {
+        // Ignore unlock failures until the next gesture.
+      });
   }
 }
 
@@ -62,60 +68,18 @@ function bindAudioUnlockOnce() {
   window.addEventListener("keydown", unlock, { once: true });
 }
 
-/** Soft two-note chime (C6 → E6) with a light overtone — less harsh than a single beep. */
 function playNotificationSound() {
-  const audioContext = getAudioContext();
-  if (!audioContext) return;
+  const audio = getNotificationAudio();
+  if (!audio) return;
 
   try {
-    if (audioContext.state === "suspended") {
-      void audioContext.resume();
-    }
-
-    const now = audioContext.currentTime;
-    const master = audioContext.createGain();
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-    master.connect(audioContext.destination);
-
-    const notes: Array<{ freq: number; start: number; duration: number; peak: number }> = [
-      { freq: 1046.5, start: 0, duration: 0.28, peak: 0.7 }, // C6
-      { freq: 1318.5, start: 0.12, duration: 0.36, peak: 0.85 }, // E6
-    ];
-
-    for (const note of notes) {
-      const osc = audioContext.createOscillator();
-      const overtone = audioContext.createOscillator();
-      const noteGain = audioContext.createGain();
-      const start = now + note.start;
-      const end = start + note.duration;
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(note.freq, start);
-
-      overtone.type = "triangle";
-      overtone.frequency.setValueAtTime(note.freq * 2, start);
-
-      noteGain.gain.setValueAtTime(0.0001, start);
-      noteGain.gain.exponentialRampToValueAtTime(note.peak, start + 0.03);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, end);
-
-      const overtoneGain = audioContext.createGain();
-      overtoneGain.gain.setValueAtTime(0.12, start);
-
-      osc.connect(noteGain);
-      overtone.connect(overtoneGain);
-      overtoneGain.connect(noteGain);
-      noteGain.connect(master);
-
-      osc.start(start);
-      overtone.start(start);
-      osc.stop(end + 0.02);
-      overtone.stop(end + 0.02);
-    }
+    audio.pause();
+    audio.currentTime = 0;
+    void audio.play().catch(() => {
+      // Ignore autoplay restrictions / missing asset errors.
+    });
   } catch {
-    // Ignore audio errors (browser autoplay restrictions, unsupported APIs, etc).
+    // Ignore audio playback errors.
   }
 }
 

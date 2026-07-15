@@ -20,6 +20,7 @@ import { LoginRequest, User, AuthState, SessionInfo } from "../services/auth/typ
 import { httpClient } from "../lib/api/http-client";
 import { sessionManager, sessionStorageManager } from "../lib/session/session-manager";
 import { showSuccessToast, showInfoToast, showErrorToast } from "../lib/toast";
+import { registerAdminClientDevice } from "../lib/register-admin-client-device";
 
 // Session configuration
 const SESSION_CONFIG = {
@@ -377,6 +378,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             sessionExpiresAt: expiresAt,
           });
 
+          void registerAdminClientDevice("admin_fe");
+
           // Start session checking
           sessionCheckIntervalRef.current = setInterval(checkSession, SESSION_CONFIG.activityCheckInterval);
         } else {
@@ -509,6 +512,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         sessionManager.broadcastEvent({ type: 'login', timestamp: Date.now() });
 
         showSuccessToast("Login successful");
+
+        void registerAdminClientDevice("admin_fe");
 
         // Start session checking
         sessionCheckIntervalRef.current = setInterval(checkSession, SESSION_CONFIG.activityCheckInterval);

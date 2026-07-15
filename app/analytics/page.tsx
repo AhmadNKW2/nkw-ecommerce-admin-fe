@@ -20,6 +20,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  CalendarRange,
   Globe2,
   MonitorSmartphone,
   MousePointerClick,
@@ -31,10 +32,25 @@ import { PageHeader } from "../src/components/common/PageHeader";
 import { EmptyState } from "../src/components/common/EmptyState";
 import { Card } from "../src/components/ui/card";
 import { Button } from "../src/components/ui/button";
-import { useAnalyticsOverview } from "../src/services/analytics/hooks/use-analytics";
+import { Input } from "../src/components/ui/input";
+import { Modal } from "../src/components/ui/modal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../src/components/ui/table";
+import {
+  useAnalyticsOverview,
+  useAnalyticsVisitor,
+  useAnalyticsVisitors,
+} from "../src/services/analytics/hooks/use-analytics";
 import type {
   AnalyticsKpi,
   AnalyticsNamedValue,
+  AnalyticsOverviewParams,
   AnalyticsRange,
 } from "../src/services/analytics/types/analytics.types";
 
@@ -53,6 +69,8 @@ const CHART_COLORS = [
   "#be123c",
   "#475569",
 ];
+
+type TabKey = "overview" | "visitors";
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -101,6 +119,12 @@ function formatShortDate(value: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
 
 function ChangeBadge({ changePercent }: { changePercent: number | null }) {
@@ -177,9 +201,71 @@ function RankedList({
 }
 
 export default function AnalyticsPage() {
-  const [range, setRange] = useState<AnalyticsRange>("28d");
-  const { data, isLoading, isError, error, refetch, isFetching } =
-    useAnalyticsOverview({ range });
+  const [tab, setTab] = useState<TabKey>("overview");
+  const [range, setRange] = useState<AnalyticsRange | "custom">("28d");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [visitorPage, setVisitorPage] = useState(1);
+  const [visitorSearch, setVisitorSearch] = useState("");
+  const [selectedVisitorId, setSelectedVisitorId] = useState<number | null>(null);
+
+  const overviewParams: AnalyticsOverviewParams = useMemo(() => {
+    if (range === "custom" && customStart && customEnd) {
+      return { startDate: customStart, endDate: customEnd };
+    }
+    if (range === "custom") {
+      return { range: "28d" };
+    }
+    return { range };
+  }, [range, customStart, customEnd]);
+
+  const visitorDateParams = useMemo(() => {
+    if (range === "custom" && customStart && customEnd) {
+      return { startDate: customStart, endDate: customEnd };
+    }
+    if (range !== "custom") {
+      const daysByRange: Record<AnalyticsRange, number> = {
+        "7d": 7,
+        "28d": 28,
+        "90d": 90,
+        "365d": 365,
+      };
+      const days = daysByRange[range];
+      const end = new Date();
+      const start = new Date();
+      start.setUTCDate(end.getUTCDate() - (days - 1));
+      const toYmd = (d: Date) => d.toISOString().slice(0, 10);
+      return { startDate: toYmd(start), endDate: toYmd(end) };
+    }
+    return {};
+  }, [range, customStart, customEnd]);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useAnalyticsOverview(overviewParams, { enabled: tab === "overview" });
+
+  const {
+    data: visitorsPayload,
+    isLoading: visitorsLoading,
+    refetch: refetchVisitors,
+    isFetching: visitorsFetching,
+  } = useAnalyticsVisitors(
+    {
+      page: visitorPage,
+      limit: 20,
+      search: visitorSearch || undefined,
+      ...visitorDateParams,
+    },
+    { enabled: tab === "visitors" },
+  );
+
+  const { data: visitorDetail, isLoading: visitorDetailLoading } =
+    useAnalyticsVisitor(selectedVisitorId);
 
   const headlineKpis = useMemo(
     () =>
@@ -208,19 +294,29 @@ export default function AnalyticsPage() {
 
   const chartData = data?.timeseries || [];
   const deviceData = data?.devices || [];
+  const visitors = visitorsPayload?.data || [];
+  const visitorsMeta = visitorsPayload?.meta || {
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+  };
+
+  const description =
+    range === "custom" && customStart && customEnd
+      ? `${customStart} → ${customEnd}`
+      : data
+        ? `${data.range.label} · property ${data.propertyId}`
+        : "Live GA4 traffic + first-party visitor journeys";
 
   return (
-    <div className="space-y-5">
+    <div className="admin-page">
       <PageHeader
         icon={<BarChart3 className="h-5 w-5 text-white" />}
         title="Google Analytics"
-        description={
-          data
-            ? `${data.range.label} · property ${data.propertyId}`
-            : "Live GA4 traffic, engagement, and acquisition"
-        }
+        description={description}
         extraActions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <div className="flex rounded-r1 border border-primary/15 bg-white p-0.5">
               {RANGES.map((item) => (
                 <button
@@ -236,181 +332,362 @@ export default function AnalyticsPage() {
                   {item.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setRange("custom")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors inline-flex items-center gap-1 ${
+                  range === "custom"
+                    ? "bg-primary text-white"
+                    : "text-gray-600 hover:bg-primary/5"
+                }`}
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+                Custom
+              </button>
             </div>
             <Button
               variant="outline"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={() => {
+                if (tab === "overview") refetch();
+                else refetchVisitors();
+              }}
+              disabled={tab === "overview" ? isFetching : visitorsFetching}
               className="gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  (tab === "overview" ? isFetching : visitorsFetching)
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
               Refresh
             </Button>
           </div>
         }
       />
 
-      {isLoading ? (
-        <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-28 rounded-r1 bg-white shadow-s1 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : null}
-
-      {isError ? (
-        <Card>
-          <EmptyState
-            icon={<BarChart3 />}
-            title="Couldn’t load Google Analytics"
-            description={
-              error instanceof Error
-                ? error.message
-                : "Check GA4 credentials and property access, then try again."
-            }
-          />
-          <div className="flex justify-center pb-6">
-            <Button onClick={() => refetch()} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Retry
-            </Button>
+      {range === "custom" ? (
+        <Card className="!gap-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[160px] flex-1">
+              <Input
+                type="date"
+                label="From"
+                value={customStart}
+                onChange={(e) => {
+                  setCustomStart(e.target.value);
+                  setVisitorPage(1);
+                }}
+              />
+            </div>
+            <div className="min-w-[160px] flex-1">
+              <Input
+                type="date"
+                label="To"
+                value={customEnd}
+                onChange={(e) => {
+                  setCustomEnd(e.target.value);
+                  setVisitorPage(1);
+                }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 pb-2">
+              Pick both dates to apply a custom range.
+            </p>
           </div>
         </Card>
       ) : null}
 
-      {!isLoading && !isError && data ? (
+      <div className="flex rounded-r1 border border-primary/15 bg-white p-0.5 w-fit">
+        <button
+          type="button"
+          onClick={() => setTab("overview")}
+          className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+            tab === "overview"
+              ? "bg-primary text-white"
+              : "text-gray-600 hover:bg-primary/5"
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("visitors")}
+          className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+            tab === "visitors"
+              ? "bg-primary text-white"
+              : "text-gray-600 hover:bg-primary/5"
+          }`}
+        >
+          Visitors
+        </button>
+      </div>
+
+      {tab === "overview" ? (
         <>
-          <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
-            {headlineKpis.map((kpi) => (
-              <Card key={kpi.key} className="!gap-2">
-                <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
-                <p className="text-2xl font-semibold text-gray-900 tracking-tight tabular-nums">
-                  {formatKpiValue(kpi)}
-                </p>
-                <ChangeBadge changePercent={kpi.changePercent} />
-              </Card>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-28 rounded-r1 bg-white shadow-s1 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : null}
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <Card className="xl:col-span-2 min-h-[360px]">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-r1 bg-primary/10 text-primary">
-                    <Activity className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      Traffic over time
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Users, sessions, and page views
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-[280px] w-full mt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="usersFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.28} />
-                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="sessionsFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0f766e" stopOpacity={0.22} />
-                        <stop offset="100%" stopColor="#0f766e" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={formatShortDate}
-                      tick={{ fontSize: 11, fill: "#6b7280" }}
-                      axisLine={false}
-                      tickLine={false}
-                      minTickGap={28}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "#6b7280" }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={40}
-                    />
-                    <Tooltip
-                      labelFormatter={(label) => formatShortDate(String(label))}
-                      contentStyle={{
-                        borderRadius: 12,
-                        border: "1px solid #e5e7eb",
-                        boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="activeUsers"
-                      name="Users"
-                      stroke="var(--color-primary)"
-                      fill="url(#usersFill)"
-                      strokeWidth={2}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="sessions"
-                      name="Sessions"
-                      stroke="#0f766e"
-                      fill="url(#sessionsFill)"
-                      strokeWidth={2}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="pageViews"
-                      name="Page views"
-                      stroke="#b45309"
-                      fill="transparent"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+          {isError ? (
+            <Card>
+              <EmptyState
+                icon={<BarChart3 />}
+                title="Couldn’t load Google Analytics"
+                description={
+                  error instanceof Error
+                    ? error.message
+                    : "Check GA4 credentials and property access, then try again."
+                }
+              />
+              <div className="flex justify-center pb-6">
+                <Button onClick={() => refetch()} className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Retry
+                </Button>
               </div>
             </Card>
+          ) : null}
 
-            <Card className="min-h-[360px]">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-r1 bg-primary/10 text-primary">
-                  <MonitorSmartphone className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Devices</h3>
-                  <p className="text-xs text-gray-500">Sessions by device</p>
-                </div>
+          {!isLoading && !isError && data ? (
+            <>
+              <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+                {headlineKpis.map((kpi) => (
+                  <Card key={kpi.key} className="!gap-2">
+                    <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
+                    <p className="text-2xl font-semibold text-gray-900 tracking-tight tabular-nums">
+                      {formatKpiValue(kpi)}
+                    </p>
+                    <ChangeBadge changePercent={kpi.changePercent} />
+                  </Card>
+                ))}
               </div>
 
-              {deviceData.length === 0 ? (
-                <p className="text-sm text-gray-500 py-16 text-center">No data yet</p>
-              ) : (
-                <>
-                  <div className="h-[200px]">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <Card className="xl:col-span-2 min-h-[360px]">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-r1 bg-primary/10 text-primary">
+                        <Activity className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          Traffic over time
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          Users, sessions, and page views
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="h-[280px] w-full mt-2">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={deviceData}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={55}
-                          outerRadius={80}
-                          paddingAngle={3}
-                        >
-                          {deviceData.map((_, index) => (
-                            <Cell
-                              key={index}
-                              fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="usersFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.28} />
+                            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
+                          </linearGradient>
+                          <linearGradient id="sessionsFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#0f766e" stopOpacity={0.22} />
+                            <stop offset="100%" stopColor="#0f766e" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={formatShortDate}
+                          tick={{ fontSize: 11, fill: "#6b7280" }}
+                          axisLine={false}
+                          tickLine={false}
+                          minTickGap={28}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "#6b7280" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={40}
+                        />
+                        <Tooltip
+                          labelFormatter={(label) => formatShortDate(String(label))}
+                          contentStyle={{
+                            borderRadius: 12,
+                            border: "1px solid #e5e7eb",
+                            boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="activeUsers"
+                          name="Users"
+                          stroke="var(--color-primary)"
+                          fill="url(#usersFill)"
+                          strokeWidth={2}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="sessions"
+                          name="Sessions"
+                          stroke="#0f766e"
+                          fill="url(#sessionsFill)"
+                          strokeWidth={2}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="pageViews"
+                          name="Page views"
+                          stroke="#b45309"
+                          fill="transparent"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                <Card className="min-h-[360px]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 rounded-r1 bg-primary/10 text-primary">
+                      <MonitorSmartphone className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Devices</h3>
+                      <p className="text-xs text-gray-500">Sessions by device</p>
+                    </div>
+                  </div>
+
+                  {deviceData.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-16 text-center">No data yet</p>
+                  ) : (
+                    <>
+                      <div className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={deviceData}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={55}
+                              outerRadius={80}
+                              paddingAngle={3}
+                            >
+                              {deviceData.map((_, index) => (
+                                <Cell
+                                  key={index}
+                                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) => formatNumber(Number(value))}
+                              contentStyle={{
+                                borderRadius: 12,
+                                border: "1px solid #e5e7eb",
+                              }}
                             />
-                          ))}
-                        </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <ul className="space-y-2 mt-2">
+                        {deviceData.map((item, index) => (
+                          <li
+                            key={item.name}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="inline-flex items-center gap-2 text-gray-700 capitalize">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    CHART_COLORS[index % CHART_COLORS.length],
+                                }}
+                              />
+                              {item.name}
+                            </span>
+                            <span className="font-semibold tabular-nums">
+                              {formatNumber(item.value)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {secondaryKpis.map((kpi) => (
+                  <Card key={kpi.key} className="!gap-1.5">
+                    <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
+                    <p className="text-xl font-semibold text-gray-900 tabular-nums">
+                      {formatKpiValue(kpi)}
+                    </p>
+                    <ChangeBadge changePercent={kpi.changePercent} />
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                <RankedList
+                  title="Top pages"
+                  icon={<Route className="h-4 w-4" />}
+                  items={data.topPages}
+                  valueLabel="By page views"
+                />
+                <RankedList
+                  title="Traffic sources"
+                  icon={<Users className="h-4 w-4" />}
+                  items={data.trafficSources}
+                  valueLabel="By sessions"
+                />
+                <RankedList
+                  title="Countries"
+                  icon={<Globe2 className="h-4 w-4" />}
+                  items={data.countries}
+                  valueLabel="By active users"
+                />
+              </div>
+
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-r1 bg-primary/10 text-primary">
+                    <MousePointerClick className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Top events</h3>
+                    <p className="text-xs text-gray-500">Most fired events in this period</p>
+                  </div>
+                </div>
+
+                {data.events.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-8 text-center">No events yet</p>
+                ) : (
+                  <div className="h-[280px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[...data.events].reverse()}
+                        layout="vertical"
+                        margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={140}
+                          tick={{ fontSize: 11, fill: "#374151" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
                         <Tooltip
                           formatter={(value) => formatNumber(Number(value))}
                           contentStyle={{
@@ -418,115 +695,210 @@ export default function AnalyticsPage() {
                             border: "1px solid #e5e7eb",
                           }}
                         />
-                      </PieChart>
+                        <Bar dataKey="value" name="Events" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <ul className="space-y-2 mt-2">
-                    {deviceData.map((item, index) => (
-                      <li
-                        key={item.name}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="inline-flex items-center gap-2 text-gray-700 capitalize">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                CHART_COLORS[index % CHART_COLORS.length],
-                            }}
-                          />
-                          {item.name}
-                        </span>
-                        <span className="font-semibold tabular-nums">
-                          {formatNumber(item.value)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {secondaryKpis.map((kpi) => (
-              <Card key={kpi.key} className="!gap-1.5">
-                <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
-                <p className="text-xl font-semibold text-gray-900 tabular-nums">
-                  {formatKpiValue(kpi)}
-                </p>
-                <ChangeBadge changePercent={kpi.changePercent} />
+                )}
               </Card>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            <RankedList
-              title="Top pages"
-              icon={<Route className="h-4 w-4" />}
-              items={data.topPages}
-              valueLabel="By page views"
-            />
-            <RankedList
-              title="Traffic sources"
-              icon={<Users className="h-4 w-4" />}
-              items={data.trafficSources}
-              valueLabel="By sessions"
-            />
-            <RankedList
-              title="Countries"
-              icon={<Globe2 className="h-4 w-4" />}
-              items={data.countries}
-              valueLabel="By active users"
-            />
-          </div>
-
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 rounded-r1 bg-primary/10 text-primary">
-                <MousePointerClick className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Top events</h3>
-                <p className="text-xs text-gray-500">Most fired events in this period</p>
-              </div>
-            </div>
-
-            {data.events.length === 0 ? (
-              <p className="text-sm text-gray-500 py-8 text-center">No events yet</p>
-            ) : (
-              <div className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[...data.events].reverse()}
-                    layout="vertical"
-                    margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={140}
-                      tick={{ fontSize: 11, fill: "#374151" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value) => formatNumber(Number(value))}
-                      contentStyle={{
-                        borderRadius: 12,
-                        border: "1px solid #e5e7eb",
-                      }}
-                    />
-                    <Bar dataKey="value" name="Events" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </Card>
+            </>
+          ) : null}
         </>
-      ) : null}
+      ) : (
+        <Card>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Visitors</h3>
+              <p className="text-xs text-gray-500">
+                Sequential client IDs (1, 2, 3…) with pages visited, time on site, and actions.
+                New journeys start collecting after this deploy.
+              </p>
+            </div>
+            <div className="w-full sm:w-72">
+              <Input
+                variant="search"
+                placeholder="Search by ID or path…"
+                value={visitorSearch}
+                onChange={(e) => {
+                  setVisitorSearch(e.target.value);
+                  setVisitorPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          {visitorsLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : visitors.length === 0 ? (
+            <EmptyState
+              icon={<Users />}
+              title="No visitors yet"
+              description="Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
+            />
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Last page</TableHead>
+                    <TableHead>Sessions</TableHead>
+                    <TableHead>Events</TableHead>
+                    <TableHead>Time on site</TableHead>
+                    <TableHead>Last seen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visitors.map((visitor) => (
+                    <TableRow
+                      key={visitor.id}
+                      className="cursor-pointer hover:bg-primary/5"
+                      onClick={() => setSelectedVisitorId(visitor.id)}
+                    >
+                      <TableCell className="font-semibold text-primary">
+                        #{visitor.id}
+                        {visitor.userId ? (
+                          <span className="ml-2 text-xs font-medium text-gray-500">
+                            user {visitor.userId}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="max-w-[220px] truncate" title={visitor.lastPath || ""}>
+                        {visitor.lastPath || "—"}
+                      </TableCell>
+                      <TableCell>{visitor.sessionCount}</TableCell>
+                      <TableCell>{visitor.eventCount}</TableCell>
+                      <TableCell>{formatDuration(visitor.totalDurationSeconds)}</TableCell>
+                      <TableCell>{formatDateTime(visitor.lastSeenAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="flex items-center justify-between gap-3 pt-4">
+                <p className="text-xs text-gray-500">
+                  {visitorsMeta.total} visitors · page {visitorsMeta.page} of{" "}
+                  {visitorsMeta.totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={visitorPage <= 1}
+                    onClick={() => setVisitorPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={visitorPage >= visitorsMeta.totalPages}
+                    onClick={() => setVisitorPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+
+      <Modal
+        isOpen={selectedVisitorId != null}
+        onClose={() => setSelectedVisitorId(null)}
+        contentClassName="max-w-3xl"
+      >
+        <div className="p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Client #{selectedVisitorId}
+            </h2>
+            <p className="text-sm text-gray-500">
+              Full journey on your website for this visitor.
+            </p>
+          </div>
+
+          {visitorDetailLoading || !visitorDetail ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 rounded-r1 bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-r1 bg-primary/5 p-3">
+                  <p className="text-xs text-gray-500">Time on site</p>
+                  <p className="font-semibold">
+                    {formatDuration(visitorDetail.totalDurationSeconds)}
+                  </p>
+                </div>
+                <div className="rounded-r1 bg-primary/5 p-3">
+                  <p className="text-xs text-gray-500">Sessions</p>
+                  <p className="font-semibold">{visitorDetail.sessionCount}</p>
+                </div>
+                <div className="rounded-r1 bg-primary/5 p-3">
+                  <p className="text-xs text-gray-500">Events</p>
+                  <p className="font-semibold">{visitorDetail.eventCount}</p>
+                </div>
+                <div className="rounded-r1 bg-primary/5 p-3">
+                  <p className="text-xs text-gray-500">Account</p>
+                  <p className="font-semibold">
+                    {visitorDetail.userId ? `User ${visitorDetail.userId}` : "Guest"}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Sessions</h3>
+                <ul className="space-y-2 max-h-40 overflow-y-auto">
+                  {visitorDetail.sessions.map((session) => (
+                    <li
+                      key={session.id}
+                      className="rounded-r1 border border-gray-100 px-3 py-2 text-sm"
+                    >
+                      <div className="flex justify-between gap-2">
+                        <span className="font-medium">Session #{session.id}</span>
+                        <span className="text-gray-500">
+                          {formatDuration(session.durationSeconds)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">
+                        {session.landingPath || "—"} → {session.exitPath || "—"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold mb-2">What they did</h3>
+                <ul className="space-y-2 max-h-72 overflow-y-auto">
+                  {visitorDetail.events.map((event) => (
+                    <li
+                      key={event.id}
+                      className="rounded-r1 border border-gray-100 px-3 py-2 text-sm"
+                    >
+                      <div className="flex justify-between gap-2">
+                        <span className="font-medium text-gray-900">{event.name}</span>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          {formatDateTime(event.occurredAt)}
+                        </span>
+                      </div>
+                      {event.path ? (
+                        <p className="text-xs text-gray-500 truncate mt-0.5">{event.path}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

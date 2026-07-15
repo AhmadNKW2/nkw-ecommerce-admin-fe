@@ -194,6 +194,10 @@ export const queryKeys = {
     all: ["analytics"] as const,
     overview: (params?: Record<string, any>) =>
       [...queryKeys.analytics.all, "overview", params] as const,
+    visitors: (params?: Record<string, any>) =>
+      [...queryKeys.analytics.all, "visitors", params] as const,
+    visitor: (id: number) =>
+      [...queryKeys.analytics.all, "visitor", id] as const,
   },
 
   // Settings

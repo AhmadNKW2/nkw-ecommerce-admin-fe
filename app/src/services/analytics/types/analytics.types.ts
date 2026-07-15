@@ -45,3 +45,48 @@ export type AnalyticsOverviewParams = {
   startDate?: string;
   endDate?: string;
 };
+
+export type AnalyticsVisitorListItem = {
+  id: number;
+  userId: number | null;
+  lastPath: string | null;
+  eventCount: number;
+  sessionCount: number;
+  totalDurationSeconds: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  userAgent: string | null;
+};
+
+export type AnalyticsVisitorEvent = {
+  id: number;
+  sessionId: number;
+  name: string;
+  path: string | null;
+  properties: Record<string, unknown> | null;
+  occurredAt: string;
+};
+
+export type AnalyticsVisitorSession = {
+  id: number;
+  landingPath: string | null;
+  exitPath: string | null;
+  eventCount: number;
+  pageViewCount: number;
+  durationSeconds: number;
+  startedAt: string;
+  lastSeenAt: string;
+};
+
+export type AnalyticsVisitorDetail = AnalyticsVisitorListItem & {
+  sessions: AnalyticsVisitorSession[];
+  events: AnalyticsVisitorEvent[];
+};
+
+export type AnalyticsVisitorsParams = {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+};

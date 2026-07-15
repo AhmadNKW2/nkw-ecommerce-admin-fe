@@ -13,10 +13,9 @@ import type {
 
 export const useOrders = (filters?: OrderFilters) => {
   return useQuery({
-    queryKey: [queryKeys.orders.all, JSON.stringify(filters)],
+    // Must stay under queryKeys.orders.all so SSE + mutations can invalidate with ["orders"].
+    queryKey: queryKeys.orders.list(filters),
     queryFn: () => orderService.listOrders(filters),
-    // The service now returns { data, meta } directly based on my implementation
-    // No select needed if the types match what we want
   });
 };
 
@@ -46,8 +45,8 @@ export const useUpdateOrderStatus = () => {
     mutationFn: ({ id, status }: { id: number; status: OrderStatus }) => 
       orderService.updateOrderStatus(id, status),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
       showSuccessToast("Order status updated successfully");
     },
   });
@@ -59,7 +58,7 @@ export const useCreateOrder = () => {
   return useMutation({
     mutationFn: (data: CreateOrderDto) => orderService.createOrder(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       showSuccessToast("Order created successfully");
     },
   });
@@ -71,7 +70,7 @@ export const useCreateOrderAdmin = () => {
   return useMutation({
     mutationFn: (data: AdminCreateOrderDto) => orderService.createOrderAdmin(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       showSuccessToast("Order created successfully");
     },
   });
@@ -84,8 +83,8 @@ export const useUpdateOrder = () => {
     mutationFn: ({ id, data }: { id: number; data: UpdateOrderDto }) =>
       orderService.updateOrder(id, data),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
       showSuccessToast("Order updated successfully");
     },
   });
@@ -97,7 +96,7 @@ export const useDeleteOrder = () => {
   return useMutation({
     mutationFn: (id: number) => orderService.deleteOrder(id),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.orders.all] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       queryClient.removeQueries({ queryKey: queryKeys.orders.detail(id) });
       showSuccessToast("Order deleted successfully");
     },

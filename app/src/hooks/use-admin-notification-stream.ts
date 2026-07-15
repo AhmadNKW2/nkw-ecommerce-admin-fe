@@ -62,6 +62,7 @@ function bindAudioUnlockOnce() {
   window.addEventListener("keydown", unlock, { once: true });
 }
 
+/** Soft two-note chime (C6 → E6) with a light overtone — less harsh than a single beep. */
 function playNotificationSound() {
   const audioContext = getAudioContext();
   if (!audioContext) return;
@@ -71,22 +72,48 @@ function playNotificationSound() {
       void audioContext.resume();
     }
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
     const now = audioContext.currentTime;
+    const master = audioContext.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    master.connect(audioContext.destination);
 
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, now);
-    oscillator.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
+    const notes: Array<{ freq: number; start: number; duration: number; peak: number }> = [
+      { freq: 1046.5, start: 0, duration: 0.28, peak: 0.7 }, // C6
+      { freq: 1318.5, start: 0.12, duration: 0.36, peak: 0.85 }, // E6
+    ];
 
-    gainNode.gain.setValueAtTime(0.0001, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.13, now + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    for (const note of notes) {
+      const osc = audioContext.createOscillator();
+      const overtone = audioContext.createOscillator();
+      const noteGain = audioContext.createGain();
+      const start = now + note.start;
+      const end = start + note.duration;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.26);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(note.freq, start);
+
+      overtone.type = "triangle";
+      overtone.frequency.setValueAtTime(note.freq * 2, start);
+
+      noteGain.gain.setValueAtTime(0.0001, start);
+      noteGain.gain.exponentialRampToValueAtTime(note.peak, start + 0.03);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+      const overtoneGain = audioContext.createGain();
+      overtoneGain.gain.setValueAtTime(0.12, start);
+
+      osc.connect(noteGain);
+      overtone.connect(overtoneGain);
+      overtoneGain.connect(noteGain);
+      noteGain.connect(master);
+
+      osc.start(start);
+      overtone.start(start);
+      osc.stop(end + 0.02);
+      overtone.stop(end + 0.02);
+    }
   } catch {
     // Ignore audio errors (browser autoplay restrictions, unsupported APIs, etc).
   }
@@ -109,6 +136,14 @@ function toastForEvent(type: AdminStreamEvent["type"], entityId?: number) {
   }
 }
 
+function refreshNotificationQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  // Keys must be ["orders"] / ["notes"] (not nested) so list queries match via prefix.
+  void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+  void queryClient.refetchQueries({ queryKey: queryKeys.orders.all, type: "active" });
+  void queryClient.refetchQueries({ queryKey: queryKeys.notes.all, type: "active" });
+}
+
 export function useAdminNotificationStream() {
   const queryClient = useQueryClient();
   const lastAlertAtRef = useRef(0);
@@ -125,8 +160,7 @@ export function useAdminNotificationStream() {
     });
 
     const triggerRefreshSoundAndToast = (payload: AdminStreamEvent) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+      refreshNotificationQueries(queryClient);
 
       const now = Date.now();
       if (now - lastAlertAtRef.current <= 700) return;
@@ -193,8 +227,7 @@ export function useAdminNotificationStream() {
         const now = Date.now();
         if (now - lastFallbackInvalidateAtRef.current < 10_000) return;
         lastFallbackInvalidateAtRef.current = now;
-        void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all, refetchType: "active" });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all, refetchType: "active" });
+        refreshNotificationQueries(queryClient);
       };
 
       invalidateBadgeQueries();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Truck } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Truck } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
 import { Card } from "../../src/components/ui/card";
@@ -12,8 +12,14 @@ import {
   useSeoSettings,
   useUpdateSeoSettings,
 } from "../../src/services/settings/hooks/use-settings";
-import { UpdateSeoSettingsDto } from "../../src/services/settings/types/settings.types";
+import type {
+  ShippingArrivalMode,
+  ShippingCutoffMode,
+  ShippingDeliveryRule,
+  UpdateSeoSettingsDto,
+} from "../../src/services/settings/types/settings.types";
 import type { NullableNumber } from "../../src/lib/nullable-number";
+import { showErrorToast } from "../../src/lib/toast";
 
 type ShippingFormState = {
   free_delivery_enabled: boolean;
@@ -21,41 +27,29 @@ type ShippingFormState = {
   delivery_fee: NullableNumber;
   shipping_rules_enabled: boolean;
   shipping_cutoff_hour: NullableNumber;
-  shipping_rule_1_when_en: string;
-  shipping_rule_1_when_ar: string;
-  shipping_rule_1_arrives_en: string;
-  shipping_rule_1_arrives_ar: string;
-  shipping_rule_2_when_en: string;
-  shipping_rule_2_when_ar: string;
-  shipping_rule_2_arrives_en: string;
-  shipping_rule_2_arrives_ar: string;
-  shipping_rule_3_when_en: string;
-  shipping_rule_3_when_ar: string;
-  shipping_rule_3_arrives_en: string;
-  shipping_rule_3_arrives_ar: string;
+  shipping_rules: ShippingDeliveryRule[];
 };
 
 const emptyFormState: ShippingFormState = {
   free_delivery_enabled: true,
   free_delivery_amount: null,
   delivery_fee: null,
-  shipping_rules_enabled: true,
+  shipping_rules_enabled: false,
   shipping_cutoff_hour: 14,
-  shipping_rule_1_when_en: "Order by {time} (Sun–Thu)",
-  shipping_rule_1_when_ar: "اطلب قبل {time} (الأحد–الخميس)",
-  shipping_rule_1_arrives_en: "Arrives tomorrow",
-  shipping_rule_1_arrives_ar: "يصل غداً",
-  shipping_rule_2_when_en: "Order after {time} (Sun–Wed)",
-  shipping_rule_2_when_ar: "اطلب بعد {time} (الأحد–الأربعاء)",
-  shipping_rule_2_arrives_en: "Arrives in 2 days",
-  shipping_rule_2_arrives_ar: "يصل خلال يومين",
-  shipping_rule_3_when_en: "Order Thu after cutoff, Fri, or Sat",
-  shipping_rule_3_when_ar: "اطلب بعد الموعد يوم الخميس أو الجمعة أو السبت",
-  shipping_rule_3_arrives_en: "Arrives Sunday",
-  shipping_rule_3_arrives_ar: "يصل يوم الأحد",
+  shipping_rules: [],
 };
 
 const CUTOFF_HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => hour);
+
+const WEEKDAYS: Array<{ value: number; label: string; short: string }> = [
+  { value: 0, label: "Sunday", short: "Sun" },
+  { value: 1, label: "Monday", short: "Mon" },
+  { value: 2, label: "Tuesday", short: "Tue" },
+  { value: 3, label: "Wednesday", short: "Wed" },
+  { value: 4, label: "Thursday", short: "Thu" },
+  { value: 5, label: "Friday", short: "Fri" },
+  { value: 6, label: "Saturday", short: "Sat" },
+];
 
 function formatHourLabel(hour: number) {
   const period = hour >= 12 ? "PM" : "AM";
@@ -63,58 +57,240 @@ function formatHourLabel(hour: number) {
   return `${display}:00 ${period} (Amman)`;
 }
 
-function ShippingRuleEditor({
-  title,
-  description,
-  whenEn,
-  whenAr,
-  arrivesEn,
-  arrivesAr,
+function createEmptyRule(): ShippingDeliveryRule {
+  return {
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    days: [],
+    cutoffMode: "before",
+    arrivalMode: "offset_days",
+    arrivalOffsetDays: 1,
+    arrivalWeekday: 0,
+  };
+}
+
+function normalizeRules(rules: unknown): ShippingDeliveryRule[] {
+  if (!Array.isArray(rules)) {
+    return [];
+  }
+
+  return rules
+    .map((rule): ShippingDeliveryRule | null => {
+      if (!rule || typeof rule !== "object") {
+        return null;
+      }
+
+      const record = rule as Record<string, unknown>;
+      const days = Array.isArray(record.days)
+        ? record.days
+            .map((day) => Number(day))
+            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+        : [];
+
+      const cutoffMode =
+        record.cutoffMode === "after" || record.cutoffMode === "any"
+          ? record.cutoffMode
+          : "before";
+      const arrivalMode =
+        record.arrivalMode === "next_weekday" ? "next_weekday" : "offset_days";
+      const arrivalOffsetDays = Math.min(
+        14,
+        Math.max(1, Math.trunc(Number(record.arrivalOffsetDays) || 1)),
+      );
+      const arrivalWeekday = Math.min(
+        6,
+        Math.max(0, Math.trunc(Number(record.arrivalWeekday) || 0)),
+      );
+
+      return {
+        id:
+          typeof record.id === "string" && record.id.trim().length > 0
+            ? record.id
+            : createEmptyRule().id,
+        days: [...new Set(days)].sort((a, b) => a - b),
+        cutoffMode,
+        arrivalMode,
+        arrivalOffsetDays,
+        arrivalWeekday,
+      };
+    })
+    .filter((rule): rule is ShippingDeliveryRule => rule != null);
+}
+
+function DayPicker({
+  selected,
   disabled,
   onChange,
 }: {
-  title: string;
-  description: string;
-  whenEn: string;
-  whenAr: string;
-  arrivesEn: string;
-  arrivesAr: string;
+  selected: number[];
   disabled: boolean;
-  onChange: (field: "when_en" | "when_ar" | "arrives_en" | "arrives_ar", value: string) => void;
+  onChange: (days: number[]) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {WEEKDAYS.map((day) => {
+        const active = selected.includes(day.value);
+        return (
+          <button
+            key={day.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              if (active) {
+                onChange(selected.filter((value) => value !== day.value));
+                return;
+              }
+              onChange([...selected, day.value].sort((a, b) => a - b));
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+              active
+                ? "bg-primary text-white"
+                : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-primary/10 hover:text-primary"
+            }`}
+            aria-pressed={active}
+            title={day.label}
+          >
+            {day.short}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ShippingRuleCard({
+  index,
+  rule,
+  disabled,
+  onChange,
+  onRemove,
+}: {
+  index: number;
+  rule: ShippingDeliveryRule;
+  disabled: boolean;
+  onChange: (rule: ShippingDeliveryRule) => void;
+  onRemove: () => void;
 }) {
   return (
     <div className="rounded-lg border border-primary/10 bg-gray-50 p-4">
-      <h3 className="font-medium">{title}</h3>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-medium">Rule {index + 1}</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            First matching rule wins. Storefront shows: order in Xh and Ym to get
+            it by the arrival date.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRemove}
+          disabled={disabled}
+          className="h-10 shrink-0 px-3 text-sm text-danger hover:bg-danger/10"
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" />
+          Remove
+        </Button>
+      </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Input
-          label="When (English)"
-          value={whenEn}
-          onChange={(event) => onChange("when_en", event.target.value)}
-          disabled={disabled}
-          placeholder="Use {time} for the cutoff clock time"
-        />
-        <Input
-          label="When (Arabic)"
-          value={whenAr}
-          onChange={(event) => onChange("when_ar", event.target.value)}
-          disabled={disabled}
-          dir="rtl"
-        />
-        <Input
-          label="Arrives (English)"
-          value={arrivesEn}
-          onChange={(event) => onChange("arrives_en", event.target.value)}
-          disabled={disabled}
-        />
-        <Input
-          label="Arrives (Arabic)"
-          value={arrivesAr}
-          onChange={(event) => onChange("arrives_ar", event.target.value)}
-          disabled={disabled}
-          dir="rtl"
-        />
+      <div className="mt-4 space-y-4">
+        <div>
+          <p className="mb-2 text-sm font-medium text-gray-700">Order days</p>
+          <DayPicker
+            selected={rule.days}
+            disabled={disabled}
+            onChange={(days) => onChange({ ...rule, days })}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Applies when
+            </label>
+            <select
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              value={rule.cutoffMode}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...rule,
+                  cutoffMode: event.target.value as ShippingCutoffMode,
+                })
+              }
+            >
+              <option value="before">Before cutoff</option>
+              <option value="after">After cutoff</option>
+              <option value="any">Any time</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Arrival type
+            </label>
+            <select
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              value={rule.arrivalMode}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...rule,
+                  arrivalMode: event.target.value as ShippingArrivalMode,
+                })
+              }
+            >
+              <option value="offset_days">In N calendar days</option>
+              <option value="next_weekday">Next weekday</option>
+            </select>
+          </div>
+
+          {rule.arrivalMode === "offset_days" ? (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Days until arrival
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={14}
+                value={rule.arrivalOffsetDays ?? 1}
+                onNumberChange={(value) =>
+                  onChange({
+                    ...rule,
+                    arrivalOffsetDays: value == null ? 1 : Math.trunc(value),
+                  })
+                }
+                disabled={disabled}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Arrives on
+              </label>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                value={rule.arrivalWeekday ?? 0}
+                disabled={disabled}
+                onChange={(event) =>
+                  onChange({
+                    ...rule,
+                    arrivalWeekday: Number.parseInt(event.target.value, 10),
+                  })
+                }
+              >
+                {WEEKDAYS.map((day) => (
+                  <option key={day.value} value={day.value}>
+                    {day.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -134,52 +310,65 @@ export default function ShippingSettingsPage() {
       free_delivery_enabled: data.free_delivery_enabled ?? true,
       free_delivery_amount: data.free_delivery_amount ?? null,
       delivery_fee: data.delivery_fee ?? null,
-      shipping_rules_enabled: data.shipping_rules_enabled ?? true,
+      shipping_rules_enabled: data.shipping_rules_enabled ?? false,
       shipping_cutoff_hour: data.shipping_cutoff_hour ?? 14,
-      shipping_rule_1_when_en: data.shipping_rule_1_when_en ?? emptyFormState.shipping_rule_1_when_en,
-      shipping_rule_1_when_ar: data.shipping_rule_1_when_ar ?? emptyFormState.shipping_rule_1_when_ar,
-      shipping_rule_1_arrives_en:
-        data.shipping_rule_1_arrives_en ?? emptyFormState.shipping_rule_1_arrives_en,
-      shipping_rule_1_arrives_ar:
-        data.shipping_rule_1_arrives_ar ?? emptyFormState.shipping_rule_1_arrives_ar,
-      shipping_rule_2_when_en: data.shipping_rule_2_when_en ?? emptyFormState.shipping_rule_2_when_en,
-      shipping_rule_2_when_ar: data.shipping_rule_2_when_ar ?? emptyFormState.shipping_rule_2_when_ar,
-      shipping_rule_2_arrives_en:
-        data.shipping_rule_2_arrives_en ?? emptyFormState.shipping_rule_2_arrives_en,
-      shipping_rule_2_arrives_ar:
-        data.shipping_rule_2_arrives_ar ?? emptyFormState.shipping_rule_2_arrives_ar,
-      shipping_rule_3_when_en: data.shipping_rule_3_when_en ?? emptyFormState.shipping_rule_3_when_en,
-      shipping_rule_3_when_ar: data.shipping_rule_3_when_ar ?? emptyFormState.shipping_rule_3_when_ar,
-      shipping_rule_3_arrives_en:
-        data.shipping_rule_3_arrives_en ?? emptyFormState.shipping_rule_3_arrives_en,
-      shipping_rule_3_arrives_ar:
-        data.shipping_rule_3_arrives_ar ?? emptyFormState.shipping_rule_3_arrives_ar,
+      shipping_rules: normalizeRules(data.shipping_rules),
     });
   }, [data]);
 
-  const setField = <K extends keyof ShippingFormState>(field: K, value: ShippingFormState[K]) => {
+  const setField = <K extends keyof ShippingFormState>(
+    field: K,
+    value: ShippingFormState[K],
+  ) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateRule = (index: number, rule: ShippingDeliveryRule) => {
+    setFormState((prev) => ({
+      ...prev,
+      shipping_rules: prev.shipping_rules.map((item, itemIndex) =>
+        itemIndex === index ? rule : item,
+      ),
+    }));
+  };
+
+  const removeRule = (index: number) => {
+    setFormState((prev) => ({
+      ...prev,
+      shipping_rules: prev.shipping_rules.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const addRule = () => {
+    setFormState((prev) => ({
+      ...prev,
+      shipping_rules: [...prev.shipping_rules, createEmptyRule()],
+    }));
+  };
+
   const handleSave = async () => {
+    const invalidRule = formState.shipping_rules.find((rule) => rule.days.length === 0);
+    if (invalidRule) {
+      showErrorToast("Each shipping rule must include at least one order day.");
+      return;
+    }
+
     const payload: UpdateSeoSettingsDto = {
       free_delivery_enabled: formState.free_delivery_enabled,
       free_delivery_amount: formState.free_delivery_amount,
       delivery_fee: formState.delivery_fee,
       shipping_rules_enabled: formState.shipping_rules_enabled,
       shipping_cutoff_hour: formState.shipping_cutoff_hour,
-      shipping_rule_1_when_en: formState.shipping_rule_1_when_en,
-      shipping_rule_1_when_ar: formState.shipping_rule_1_when_ar,
-      shipping_rule_1_arrives_en: formState.shipping_rule_1_arrives_en,
-      shipping_rule_1_arrives_ar: formState.shipping_rule_1_arrives_ar,
-      shipping_rule_2_when_en: formState.shipping_rule_2_when_en,
-      shipping_rule_2_when_ar: formState.shipping_rule_2_when_ar,
-      shipping_rule_2_arrives_en: formState.shipping_rule_2_arrives_en,
-      shipping_rule_2_arrives_ar: formState.shipping_rule_2_arrives_ar,
-      shipping_rule_3_when_en: formState.shipping_rule_3_when_en,
-      shipping_rule_3_when_ar: formState.shipping_rule_3_when_ar,
-      shipping_rule_3_arrives_en: formState.shipping_rule_3_arrives_en,
-      shipping_rule_3_arrives_ar: formState.shipping_rule_3_arrives_ar,
+      shipping_rules: formState.shipping_rules.map((rule) => ({
+        id: rule.id,
+        days: rule.days,
+        cutoffMode: rule.cutoffMode,
+        arrivalMode: rule.arrivalMode,
+        arrivalOffsetDays:
+          rule.arrivalMode === "offset_days" ? (rule.arrivalOffsetDays ?? 1) : undefined,
+        arrivalWeekday:
+          rule.arrivalMode === "next_weekday" ? (rule.arrivalWeekday ?? 0) : undefined,
+      })),
     };
 
     await updateSeoSettings.mutateAsync(payload);
@@ -204,7 +393,7 @@ export default function ShippingSettingsPage() {
               </div>
             </div>
             <h3 className="mt-4 text-xl font-bold">Error Loading Shipping Settings</h3>
-            <p className="mt-2 max-w-md mx-auto">
+            <p className="mt-2 mx-auto max-w-md">
               {error instanceof Error ? error.message : "An error occurred"}
             </p>
             <Button onClick={() => refetch()} className="mt-4">
@@ -221,7 +410,7 @@ export default function ShippingSettingsPage() {
       <PageHeader
         icon={<Truck />}
         title="Shipping Settings"
-        description="Configure delivery fees and the shipping times shown on product pages."
+        description="Configure delivery fees and dynamic shipping rules shown on product pages."
         action={{
           label: updateSeoSettings.isPending ? "Saving..." : "Save Settings",
           onClick: handleSave,
@@ -234,7 +423,8 @@ export default function ShippingSettingsPage() {
       <Card>
         <h2 className="text-lg font-semibold">Delivery Fees</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Control the standard delivery fee and free-delivery threshold used on the storefront.
+          Control the standard delivery fee and free-delivery threshold used on the
+          storefront.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -299,9 +489,12 @@ export default function ShippingSettingsPage() {
           <div>
             <h2 className="text-lg font-semibold">Shipping Rules</h2>
             <p className="mt-1 text-sm text-gray-500">
-              These times and arrival messages appear on every product details page. Use{" "}
-              <code className="rounded bg-gray-100 px-1">{"{time}"}</code> to insert the cutoff
-              clock time.
+              No rules are created by default. Add rules for the days and cutoff windows
+              you want. Customers see countdown copy like{" "}
+              <span className="font-medium text-gray-700">
+                Order in 18h and 5m to get it by Friday 17/07/2026
+              </span>
+              .
             </p>
           </div>
           <Toggle
@@ -330,67 +523,42 @@ export default function ShippingSettingsPage() {
             ))}
           </select>
           <p className="mt-1.5 text-xs text-gray-500">
-            Orders before this time (Sun–Thu) can still qualify for next-day delivery.
+            Used by before/after cutoff matching and the live countdown.
           </p>
         </div>
 
         <div className="mt-5 flex flex-col gap-4">
-          <ShippingRuleEditor
-            title="Rule 1 — Before cutoff"
-            description="Shown for orders placed before the daily cutoff."
-            whenEn={formState.shipping_rule_1_when_en}
-            whenAr={formState.shipping_rule_1_when_ar}
-            arrivesEn={formState.shipping_rule_1_arrives_en}
-            arrivesAr={formState.shipping_rule_1_arrives_ar}
-            disabled={busy || !formState.shipping_rules_enabled}
-            onChange={(field, value) => {
-              const map = {
-                when_en: "shipping_rule_1_when_en",
-                when_ar: "shipping_rule_1_when_ar",
-                arrives_en: "shipping_rule_1_arrives_en",
-                arrives_ar: "shipping_rule_1_arrives_ar",
-              } as const;
-              setField(map[field], value);
-            }}
-          />
+          {formState.shipping_rules.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center">
+              <p className="text-sm text-gray-600">No shipping rules yet.</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Add a rule to start showing delivery estimates on product pages.
+              </p>
+            </div>
+          ) : (
+            formState.shipping_rules.map((rule, index) => (
+              <ShippingRuleCard
+                key={rule.id}
+                index={index}
+                rule={rule}
+                disabled={busy || !formState.shipping_rules_enabled}
+                onChange={(next) => updateRule(index, next)}
+                onRemove={() => removeRule(index)}
+              />
+            ))
+          )}
+        </div>
 
-          <ShippingRuleEditor
-            title="Rule 2 — After cutoff"
-            description="Shown for orders placed after the daily cutoff on Sun–Wed."
-            whenEn={formState.shipping_rule_2_when_en}
-            whenAr={formState.shipping_rule_2_when_ar}
-            arrivesEn={formState.shipping_rule_2_arrives_en}
-            arrivesAr={formState.shipping_rule_2_arrives_ar}
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addRule}
             disabled={busy || !formState.shipping_rules_enabled}
-            onChange={(field, value) => {
-              const map = {
-                when_en: "shipping_rule_2_when_en",
-                when_ar: "shipping_rule_2_when_ar",
-                arrives_en: "shipping_rule_2_arrives_en",
-                arrives_ar: "shipping_rule_2_arrives_ar",
-              } as const;
-              setField(map[field], value);
-            }}
-          />
-
-          <ShippingRuleEditor
-            title="Rule 3 — Weekend / late Thursday"
-            description="Shown for Thursday after cutoff, Friday, and Saturday orders."
-            whenEn={formState.shipping_rule_3_when_en}
-            whenAr={formState.shipping_rule_3_when_ar}
-            arrivesEn={formState.shipping_rule_3_arrives_en}
-            arrivesAr={formState.shipping_rule_3_arrives_ar}
-            disabled={busy || !formState.shipping_rules_enabled}
-            onChange={(field, value) => {
-              const map = {
-                when_en: "shipping_rule_3_when_en",
-                when_ar: "shipping_rule_3_when_ar",
-                arrives_en: "shipping_rule_3_arrives_en",
-                arrives_ar: "shipping_rule_3_arrives_ar",
-              } as const;
-              setField(map[field], value);
-            }}
-          />
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add rule
+          </Button>
         </div>
       </Card>
     </div>

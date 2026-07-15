@@ -131,20 +131,9 @@ export function toCachedSeoSettings(stored: StoredSiteBranding): SeoSettings {
     free_delivery_amount: 50,
     delivery_fee: 2,
     low_stock_threshold: 10,
-    shipping_rules_enabled: true,
+    shipping_rules_enabled: false,
     shipping_cutoff_hour: 14,
-    shipping_rule_1_when_en: "Order by {time} (Sun–Thu)",
-    shipping_rule_1_when_ar: "اطلب قبل {time} (الأحد–الخميس)",
-    shipping_rule_1_arrives_en: "Arrives tomorrow",
-    shipping_rule_1_arrives_ar: "يصل غداً",
-    shipping_rule_2_when_en: "Order after {time} (Sun–Wed)",
-    shipping_rule_2_when_ar: "اطلب بعد {time} (الأحد–الأربعاء)",
-    shipping_rule_2_arrives_en: "Arrives in 2 days",
-    shipping_rule_2_arrives_ar: "يصل خلال يومين",
-    shipping_rule_3_when_en: "Order Thu after cutoff, Fri, or Sat",
-    shipping_rule_3_when_ar: "اطلب بعد الموعد يوم الخميس أو الجمعة أو السبت",
-    shipping_rule_3_arrives_en: "Arrives Sunday",
-    shipping_rule_3_arrives_ar: "يصل يوم الأحد",
+    shipping_rules: [],
   };
 }
 

@@ -1,3 +1,16 @@
+export type ShippingCutoffMode = "before" | "after" | "any";
+export type ShippingArrivalMode = "offset_days" | "next_weekday";
+
+/** Weekday: 0 = Sunday … 6 = Saturday. */
+export type ShippingDeliveryRule = {
+  id: string;
+  days: number[];
+  cutoffMode: ShippingCutoffMode;
+  arrivalMode: ShippingArrivalMode;
+  arrivalOffsetDays?: number;
+  arrivalWeekday?: number;
+};
+
 export interface SeoSettings {
   id: number;
   site_name_en: string;
@@ -31,18 +44,7 @@ export interface SeoSettings {
   low_stock_threshold: number;
   shipping_rules_enabled: boolean;
   shipping_cutoff_hour: number;
-  shipping_rule_1_when_en: string;
-  shipping_rule_1_when_ar: string;
-  shipping_rule_1_arrives_en: string;
-  shipping_rule_1_arrives_ar: string;
-  shipping_rule_2_when_en: string;
-  shipping_rule_2_when_ar: string;
-  shipping_rule_2_arrives_en: string;
-  shipping_rule_2_arrives_ar: string;
-  shipping_rule_3_when_en: string;
-  shipping_rule_3_when_ar: string;
-  shipping_rule_3_arrives_en: string;
-  shipping_rule_3_arrives_ar: string;
+  shipping_rules: ShippingDeliveryRule[];
   created_at?: string;
   updated_at?: string;
 }

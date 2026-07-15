@@ -1,5 +1,6 @@
 import { analyticsService } from "@/services/analytics/api/analytics.service";
 import { getOrCreateClientId } from "@/lib/admin-browser-key";
+import { resolveDeviceModelHint } from "@/lib/device-model";
 
 const ADMIN_MARKED_KEY = "ordonsooq_admin_marked";
 
@@ -7,7 +8,7 @@ let lastRegisteredKey: string | null = null;
 let lastRegisteredAt = 0;
 let inFlight: Promise<void> | null = null;
 
-const REREGISTER_MS = 2_000;
+const REREGISTER_MS = 60_000;
 
 export function resetAdminClientDeviceRegistration() {
   lastRegisteredKey = null;
@@ -39,10 +40,12 @@ export async function registerAdminClientDevice(
 
   inFlight = (async () => {
     try {
+      const deviceModel = await resolveDeviceModelHint();
       await analyticsService.registerAdminClient({
         browserKey: clientId,
         source,
         userAgent: navigator.userAgent.slice(0, 512),
+        ...(deviceModel ? { deviceModel } : {}),
       });
       window.localStorage.setItem(ADMIN_MARKED_KEY, "1");
       lastRegisteredKey = clientId;

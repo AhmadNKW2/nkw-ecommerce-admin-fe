@@ -33,22 +33,27 @@ class AnalyticsService {
     );
   }
 
-  async deleteVisitor(id: number): Promise<ApiResponse<{ success: boolean; id: number }>> {
-    return httpClient.delete<ApiResponse<{ success: boolean; id: number }>>(
-      `${this.endpoint}/visitors/${id}`,
-    );
+  async deleteVisitor(
+    id: number,
+  ): Promise<ApiResponse<{ success: boolean; id: number; browserKey?: string }>> {
+    return httpClient.delete<
+      ApiResponse<{ success: boolean; id: number; browserKey?: string }>
+    >(`${this.endpoint}/visitors/${id}`);
   }
 
   async registerAdminClient(payload: {
     browserKey: string;
     source?: string;
     userAgent?: string;
+    deviceModel?: string;
   }): Promise<
     ApiResponse<{
       id: number;
       browserKey: string;
       reused?: boolean;
       purgedVisitors: number;
+      deviceType?: string | null;
+      deviceModel?: string | null;
     }>
   > {
     return httpClient.post<
@@ -57,6 +62,8 @@ class AnalyticsService {
         browserKey: string;
         reused?: boolean;
         purgedVisitors: number;
+        deviceType?: string | null;
+        deviceModel?: string | null;
       }>
     >(`${this.endpoint}/admin-clients/register`, payload, {
       headers: { "x-skip-request-toast": "1" },

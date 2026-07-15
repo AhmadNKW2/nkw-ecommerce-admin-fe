@@ -56,6 +56,9 @@ export type AnalyticsVisitorListItem = {
   firstSeenAt: string;
   lastSeenAt: string;
   userAgent: string | null;
+  deviceType?: string | null;
+  deviceModel?: string | null;
+  deviceLabel?: string | null;
   isAdmin?: boolean;
   admin?: {
     userId: number;
@@ -64,6 +67,7 @@ export type AnalyticsVisitorListItem = {
     deviceId?: number | null;
     deviceName?: string | null;
     deviceType?: string | null;
+    deviceModel?: string | null;
     source?: string | null;
   } | null;
 };

@@ -924,7 +924,7 @@ export default function AnalyticsPage() {
               title={isAdminsTab ? "No admin clients yet" : "No visitors yet"}
               description={
                 isAdminsTab
-                  ? "Open the storefront while logged in as staff, or use the admin dashboard — client IDs register on refresh and page changes."
+                  ? "Open the storefront while logged in as staff — admin browsers appear here after they have real visit activity."
                   : "Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
               }
             />
@@ -935,13 +935,13 @@ export default function AnalyticsPage() {
                   <TableRow>
                     <TableHead>Client</TableHead>
                     {isAdminsTab ? <TableHead>Device name</TableHead> : null}
-                    {isAdminsTab ? <TableHead>Device</TableHead> : null}
+                    <TableHead>Device</TableHead>
                     {isAdminsTab ? <TableHead>Admin</TableHead> : null}
                     <TableHead>Last page</TableHead>
                     <TableHead>Sessions</TableHead>
                     <TableHead>Events</TableHead>
                     <TableHead>Time on site</TableHead>
-                    <TableHead>Last seen</TableHead>
+                    <TableHead>Last seen ↓</TableHead>
                     <TableHead className="w-[96px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -994,13 +994,25 @@ export default function AnalyticsPage() {
                           </p>
                         </TableCell>
                       ) : null}
-                      {isAdminsTab ? (
-                        <TableCell>
-                          <span className="text-sm text-gray-800">
-                            {visitor.admin?.deviceType || "Unknown"}
-                          </span>
-                        </TableCell>
-                      ) : null}
+                      <TableCell>
+                        <span className="text-sm text-gray-800">
+                          {visitor.deviceType ||
+                            visitor.admin?.deviceType ||
+                            "Unknown"}
+                        </span>
+                        {visitor.deviceModel || visitor.admin?.deviceModel ? (
+                          <p
+                            className="text-[11px] text-gray-500 mt-0.5 truncate max-w-[180px]"
+                            title={
+                              visitor.deviceModel ||
+                              visitor.admin?.deviceModel ||
+                              undefined
+                            }
+                          >
+                            {visitor.deviceModel || visitor.admin?.deviceModel}
+                          </p>
+                        ) : null}
+                      </TableCell>
                       {isAdminsTab ? (
                         <TableCell>
                           {visitor.admin ? (
@@ -1133,9 +1145,11 @@ export default function AnalyticsPage() {
                       {visitorDetail.admin.deviceName
                         ? ` · ${visitorDetail.admin.deviceName}`
                         : ""}
-                      {visitorDetail.admin.deviceType
-                        ? ` · ${visitorDetail.admin.deviceType}`
-                        : ""}
+                      {visitorDetail.deviceLabel
+                        ? ` · ${visitorDetail.deviceLabel}`
+                        : visitorDetail.admin.deviceType
+                          ? ` · ${visitorDetail.admin.deviceType}`
+                          : ""}
                     </p>
                   ) : null}
                 </div>
@@ -1149,6 +1163,17 @@ export default function AnalyticsPage() {
                 <div className="rounded-r1 border border-gray-100 px-3 py-2">
                   <p className="text-xs text-gray-500">Last seen</p>
                   <p className="font-medium">{formatDateTime(visitorDetail.lastSeenAt)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Last recorded action (matches session activity)
+                  </p>
+                </div>
+                <div className="rounded-r1 border border-gray-100 px-3 py-2 sm:col-span-2">
+                  <p className="text-xs text-gray-500">Device</p>
+                  <p className="font-medium">
+                    {visitorDetail.deviceLabel ||
+                      visitorDetail.deviceType ||
+                      "Unknown"}
+                  </p>
                 </div>
                 <div className="rounded-r1 border border-gray-100 px-3 py-2 sm:col-span-2">
                   <p className="text-xs text-gray-500">Last page</p>
@@ -1254,7 +1279,7 @@ export default function AnalyticsPage() {
         isLoading={deleteVisitor.isPending}
         title="Delete client?"
         itemName={visitorPendingDelete ? `Client #${visitorPendingDelete.id}` : undefined}
-        message="This permanently deletes this visitor’s sessions and events from first-party analytics. They may reappear as a new Client # if they browse again."
+        message="This permanently deletes this client’s sessions and events, and unregisters the admin device mark. They will not reappear until that browser browses the storefront again."
       />
 
       <Modal

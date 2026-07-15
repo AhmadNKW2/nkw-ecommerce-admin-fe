@@ -59,10 +59,15 @@ export const useDeleteAnalyticsVisitor = () => {
 
   return useMutation({
     mutationFn: (id: number) => analyticsService.deleteVisitor(id),
-    onSuccess: (_, id) => {
+    onSuccess: (response, id) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
       queryClient.removeQueries({ queryKey: queryKeys.analytics.visitor(id) });
-      showSuccessToast(`Client #${id} deleted`);
+      const browserKey = response?.data?.browserKey;
+      showSuccessToast(
+        browserKey
+          ? `Client #${id} deleted (device unregistered)`
+          : `Client #${id} deleted`,
+      );
     },
   });
 };

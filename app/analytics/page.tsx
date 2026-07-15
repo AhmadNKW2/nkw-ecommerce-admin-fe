@@ -842,9 +842,11 @@ export default function AnalyticsPage() {
             <p className="text-xs text-amber-800 mt-1 leading-relaxed">
               {isAdminsTab ? (
                 <>
-                  Lists browsers marked as admin devices (dashboard or storefront staff login).
-                  Each admin account can appear as multiple Client #s across devices/profiles.
-                  Name and email come from the admin user linked to that client id.
+                  Shows every browser registered as an admin device (dashboard or storefront while
+                  staff is logged in), with name and email. Admin dashboard and the public site use
+                  different domains, so they usually have <strong>different Client #s</strong> —
+                  both appear here after each is registered. Storefront clicks only attach to the
+                  storefront Client #.
                 </>
               ) : (
                 <>

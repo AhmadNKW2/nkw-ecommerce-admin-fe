@@ -842,11 +842,11 @@ export default function AnalyticsPage() {
             <p className="text-xs text-amber-800 mt-1 leading-relaxed">
               {isAdminsTab ? (
                 <>
-                  Shows every browser registered as an admin device (dashboard or storefront while
-                  staff is logged in), with name and email. Admin dashboard and the public site use
-                  different domains, so they usually have <strong>different Client #s</strong> —
-                  both appear here after each is registered. Storefront clicks only attach to the
-                  storefront Client #.
+                  Shows every browser registered as an admin device. Admin dashboard and the public
+                  site used to keep <strong>separate</strong> Client #s (different domains). They now
+                  share one id via cookie on *.ordonsooq.com — refresh admin, then browse the storefront
+                  so orders/clicks land on the same Client #. Older orders may still sit under a
+                  separate guest Client # in Visitors.
                 </>
               ) : (
                 <>

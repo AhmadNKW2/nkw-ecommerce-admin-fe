@@ -15,6 +15,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
 import { AdminHeader } from "./AdminHeader";
+import { RegisterAdminDashboardClient } from "../analytics/RegisterAdminDashboardClient";
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -64,6 +65,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh flex-col bg-primary/10">
+      <RegisterAdminDashboardClient />
       <AdminHeader
         siteName={siteName}
         siteLogo={siteLogo}

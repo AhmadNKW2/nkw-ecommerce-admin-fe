@@ -37,9 +37,21 @@ class AnalyticsService {
     browserKey: string;
     source?: string;
     userAgent?: string;
-  }): Promise<ApiResponse<{ id: number; browserKey: string; purgedVisitors: number }>> {
+  }): Promise<
+    ApiResponse<{
+      id: number;
+      browserKey: string;
+      reused?: boolean;
+      purgedVisitors: number;
+    }>
+  > {
     return httpClient.post<
-      ApiResponse<{ id: number; browserKey: string; purgedVisitors: number }>
+      ApiResponse<{
+        id: number;
+        browserKey: string;
+        reused?: boolean;
+        purgedVisitors: number;
+      }>
     >(`${this.endpoint}/admin-clients/register`, payload, {
       headers: { "x-skip-request-toast": "1" },
     });

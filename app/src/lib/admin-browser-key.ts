@@ -1,45 +1,26 @@
-const STORAGE_KEY = "ordonsooq_admin_browser_key";
-const COOKIE_NAME = "os_admin_client";
+/** Same client id key used by the storefront visitor tracker. */
+export const CLIENT_ID_STORAGE_KEY = "ordonsooq_browser_key";
 
-export function getAdminBrowserKey(): string {
+/** Read existing client id — does not create one. */
+export function peekClientId(): string {
   if (typeof window === "undefined") return "";
-
-  let id = window.localStorage.getItem(STORAGE_KEY);
-  if (!id) {
-    id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    window.localStorage.setItem(STORAGE_KEY, id);
-  }
-
-  return id;
+  return window.localStorage.getItem(CLIENT_ID_STORAGE_KEY)?.trim() || "";
 }
 
-/** Share marker with storefront on *.ordonsooq.com so admin browsing is ignored. */
-export function setAdminClientCookie(browserKey: string) {
-  if (typeof document === "undefined" || !browserKey) return;
+/**
+ * Get the single shared client id for this browser.
+ * Creates only if this browser has never had one (same as storefront).
+ */
+export function getOrCreateClientId(): string {
+  if (typeof window === "undefined") return "";
 
-  const maxAge = 60 * 60 * 24 * 400; // ~400 days
-  const host = window.location.hostname;
-  const parts = [
-    `${COOKIE_NAME}=${encodeURIComponent(browserKey)}`,
-    "path=/",
-    `max-age=${maxAge}`,
-    "SameSite=Lax",
-  ];
+  const existing = peekClientId();
+  if (existing) return existing;
 
-  if (host === "localhost" || host === "127.0.0.1") {
-    document.cookie = parts.join("; ");
-    return;
-  }
-
-  if (host.endsWith("ordonsooq.com")) {
-    parts.push("domain=.ordonsooq.com");
-    if (window.location.protocol === "https:") {
-      parts.push("Secure");
-    }
-  }
-
-  document.cookie = parts.join("; ");
+  const id =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
+  return id;
 }

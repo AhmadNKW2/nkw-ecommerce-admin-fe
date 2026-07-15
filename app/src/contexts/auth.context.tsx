@@ -20,7 +20,10 @@ import { LoginRequest, User, AuthState, SessionInfo } from "../services/auth/typ
 import { httpClient } from "../lib/api/http-client";
 import { sessionManager, sessionStorageManager } from "../lib/session/session-manager";
 import { showSuccessToast, showInfoToast, showErrorToast } from "../lib/toast";
-import { registerAdminClientDevice } from "../lib/register-admin-client-device";
+import {
+  registerAdminClientDevice,
+  resetAdminClientDeviceRegistration,
+} from "../lib/register-admin-client-device";
 
 // Session configuration
 const SESSION_CONFIG = {
@@ -210,6 +213,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {
+      resetAdminClientDeviceRegistration();
       sessionManager.clearSession(); // also removes auth_user from localStorage
       httpClient.removeAuthToken();
       sessionManager.broadcastEvent({ type: 'logout', timestamp: Date.now() });

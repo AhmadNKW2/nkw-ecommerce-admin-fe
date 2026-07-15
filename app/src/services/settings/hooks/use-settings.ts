@@ -62,7 +62,8 @@ export const useUpdateSeoSettings = () => {
       settingsService.updateSeoSettings(data),
     onSuccess: (response) => {
       writeStoredSiteBranding(response.data);
-      applyBrandThemeToDocument(resolveBrandTheme(response.data));
+      const branding = readStoredSiteBranding() ?? response.data;
+      applyBrandThemeToDocument(resolveBrandTheme(branding));
       queryClient.setQueryData(queryKeys.settings.seo(), response);
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast('SEO settings updated successfully');

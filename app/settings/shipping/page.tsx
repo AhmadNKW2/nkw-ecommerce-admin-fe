@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Plus, Trash2, Truck } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Plus, Trash2, Truck } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
 import { Card } from "../../src/components/ui/card";
 import { Input } from "../../src/components/ui/input";
 import { Button } from "../../src/components/ui/button";
 import { Toggle } from "../../src/components/ui/toggle";
+import {
+  DragHandle,
+  SortableList,
+  type DragHandleProps,
+} from "../../src/components/ui/sortable-list";
 import {
   useSeoSettings,
   useUpdateSeoSettings,
@@ -162,37 +167,75 @@ function DayPicker({
 
 function ShippingRuleCard({
   index,
+  total,
   rule,
   disabled,
+  dragHandleProps,
   onChange,
   onRemove,
+  onMoveUp,
+  onMoveDown,
 }: {
   index: number;
+  total: number;
   rule: ShippingDeliveryRule;
   disabled: boolean;
+  dragHandleProps?: DragHandleProps;
   onChange: (rule: ShippingDeliveryRule) => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   return (
     <div className="rounded-lg border border-primary/10 bg-gray-50 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-medium">Rule {index + 1}</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            First matching rule wins. Storefront shows: order in Xh and Ym to get
-            it by the arrival date.
-          </p>
+        <div className="flex min-w-0 items-start gap-2">
+          {dragHandleProps ? (
+            <DragHandle
+              dragHandleProps={dragHandleProps}
+              className={disabled ? "pointer-events-none opacity-40" : undefined}
+            />
+          ) : null}
+          <div className="min-w-0">
+            <h3 className="font-medium">Rule {index + 1}</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Drag to rearrange for viewing only. Order is saved, but does not
+              change delivery matching.
+            </p>
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRemove}
-          disabled={disabled}
-          className="h-10 shrink-0 px-3 text-sm text-danger hover:bg-danger/10"
-        >
-          <Trash2 className="mr-1.5 h-4 w-4" />
-          Remove
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onMoveUp}
+            disabled={disabled || index === 0}
+            className="h-10 px-3 text-sm"
+            aria-label="Move rule up"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onMoveDown}
+            disabled={disabled || index >= total - 1}
+            className="h-10 px-3 text-sm"
+            aria-label="Move rule down"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRemove}
+            disabled={disabled}
+            className="h-10 px-3 text-sm text-danger hover:bg-danger/10"
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Remove
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 space-y-4">
@@ -323,20 +366,41 @@ export default function ShippingSettingsPage() {
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
-  const updateRule = (index: number, rule: ShippingDeliveryRule) => {
+  const updateRule = (ruleId: string, rule: ShippingDeliveryRule) => {
     setFormState((prev) => ({
       ...prev,
-      shipping_rules: prev.shipping_rules.map((item, itemIndex) =>
-        itemIndex === index ? rule : item,
+      shipping_rules: prev.shipping_rules.map((item) =>
+        item.id === ruleId ? rule : item,
       ),
     }));
   };
 
-  const removeRule = (index: number) => {
+  const removeRule = (ruleId: string) => {
     setFormState((prev) => ({
       ...prev,
-      shipping_rules: prev.shipping_rules.filter((_, itemIndex) => itemIndex !== index),
+      shipping_rules: prev.shipping_rules.filter((item) => item.id !== ruleId),
     }));
+  };
+
+  const moveRule = (ruleId: string, direction: -1 | 1) => {
+    setFormState((prev) => {
+      const currentIndex = prev.shipping_rules.findIndex((item) => item.id === ruleId);
+      if (currentIndex < 0) {
+        return prev;
+      }
+      const nextIndex = currentIndex + direction;
+      if (nextIndex < 0 || nextIndex >= prev.shipping_rules.length) {
+        return prev;
+      }
+      const nextRules = [...prev.shipping_rules];
+      const [moved] = nextRules.splice(currentIndex, 1);
+      nextRules.splice(nextIndex, 0, moved);
+      return { ...prev, shipping_rules: nextRules };
+    });
+  };
+
+  const reorderRules = (rules: ShippingDeliveryRule[]) => {
+    setField("shipping_rules", rules);
   };
 
   const addRule = () => {
@@ -489,8 +553,8 @@ export default function ShippingSettingsPage() {
           <div>
             <h2 className="text-lg font-semibold">Shipping Rules</h2>
             <p className="mt-1 text-sm text-gray-500">
-              No rules are created by default. Add rules for the days and cutoff windows
-              you want. Customers see countdown copy like{" "}
+              No rules are created by default. Drag to sort how rules appear here
+              (saved order is display-only). Customers see countdown copy like{" "}
               <span className="font-medium text-gray-700">
                 Order in 18h and 5m to get it by Friday 17/07/2026
               </span>
@@ -527,7 +591,7 @@ export default function ShippingSettingsPage() {
           </p>
         </div>
 
-        <div className="mt-5 flex flex-col gap-4">
+        <div className="mt-5">
           {formState.shipping_rules.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center">
               <p className="text-sm text-gray-600">No shipping rules yet.</p>
@@ -536,16 +600,25 @@ export default function ShippingSettingsPage() {
               </p>
             </div>
           ) : (
-            formState.shipping_rules.map((rule, index) => (
-              <ShippingRuleCard
-                key={rule.id}
-                index={index}
-                rule={rule}
-                disabled={busy || !formState.shipping_rules_enabled}
-                onChange={(next) => updateRule(index, next)}
-                onRemove={() => removeRule(index)}
-              />
-            ))
+            <SortableList
+              items={formState.shipping_rules}
+              disabled={busy || !formState.shipping_rules_enabled}
+              onReorder={reorderRules}
+              className="flex flex-col gap-4"
+              renderItem={(rule, index, dragHandleProps) => (
+                <ShippingRuleCard
+                  index={index}
+                  total={formState.shipping_rules.length}
+                  rule={rule}
+                  disabled={busy || !formState.shipping_rules_enabled}
+                  dragHandleProps={dragHandleProps}
+                  onChange={(next) => updateRule(rule.id, next)}
+                  onRemove={() => removeRule(rule.id)}
+                  onMoveUp={() => moveRule(rule.id, -1)}
+                  onMoveDown={() => moveRule(rule.id, 1)}
+                />
+              )}
+            />
           )}
         </div>
 

@@ -2,6 +2,22 @@ import type { ProductStatus, ProductFilters } from "@/services/products/types/pr
 
 export const WORKFLOW_STATUSES: ProductStatus[] = ["active", "review", "updated"];
 
+/** Default statuses shown on the vendor-admin products list. */
+export const VENDOR_PORTAL_STATUSES: ProductStatus[] = [
+  "active",
+  "review",
+  "updated",
+  "vendor",
+];
+
+/** Default statuses shown on the store-admin products list. */
+export const STORE_PORTAL_STATUSES: ProductStatus[] = [
+  "active",
+  "review",
+  "updated",
+  "store",
+];
+
 export const NO_CATEGORY_FILTER_VALUE = "none";
 export const NO_VENDOR_FILTER_VALUE = "__no_vendor__";
 export const NO_BRAND_FILTER_VALUE = "__no_brand__";

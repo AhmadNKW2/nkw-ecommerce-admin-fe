@@ -48,6 +48,8 @@ export type AnalyticsOverviewParams = {
 
 export type AnalyticsVisitorListItem = {
   id: number;
+  /** Unique list row id when the same Client # appears for multiple admins. */
+  rowKey?: string;
   userId: number | null;
   lastPath: string | null;
   eventCount: number;

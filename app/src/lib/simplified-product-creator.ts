@@ -16,3 +16,12 @@ export function getSimplifiedProductStatus(
 ): "vendor" | "store" {
   return role === "store_admin" ? "store" : "vendor";
 }
+
+export function getSimplifiedProductListStatuses(
+  role?: UserRole,
+): Array<"active" | "review" | "updated" | "vendor" | "store"> {
+  if (role === "store_admin") {
+    return ["active", "review", "updated", "store"];
+  }
+  return ["active", "review", "updated", "vendor"];
+}

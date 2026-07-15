@@ -112,7 +112,8 @@ export default function ProductsPageClient() {
   }
 
   const sharedViewProps = {
-    showViewToggle: true as const,
+    // Vendor/store portal only has the list — hide the lone "List view" button.
+    showViewToggle: !isVendorPortalUser,
     showReviewViewToggle,
     showPricingViewToggle,
     showReferenceLinksViewToggle,

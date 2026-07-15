@@ -945,7 +945,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {visitorsLoading ? (
+          {visitorsLoading && visitors.length === 0 ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
@@ -957,12 +957,18 @@ export default function AnalyticsPage() {
               title={isAdminsTab ? "No admin clients yet" : "No visitors yet"}
               description={
                 isAdminsTab
-                  ? "All admin-registered browsers. Device name is your label; Device shows Desktop/Mobile/Tablet and phone model when the browser sends it."
+                  ? "Same admin can have many Client #s; same Client # can appear for many admins as separate rows."
                   : "Browse the storefront to generate journeys. Each browser becomes Client #1, #2, …"
               }
             />
           ) : (
-            <>
+            <div
+              className={
+                visitorsFetching && !visitorsLoading
+                  ? "opacity-70 transition-opacity"
+                  : "opacity-100 transition-opacity"
+              }
+            >
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1034,7 +1040,7 @@ export default function AnalyticsPage() {
                 <TableBody>
                   {visitors.map((visitor) => (
                     <TableRow
-                      key={visitor.id}
+                      key={visitor.rowKey || `v-${visitor.id}`}
                       className="cursor-pointer hover:bg-primary/5"
                       onClick={() => setSelectedVisitorId(visitor.id)}
                     >
@@ -1181,7 +1187,7 @@ export default function AnalyticsPage() {
                   </Button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </Card>
       ) : null}

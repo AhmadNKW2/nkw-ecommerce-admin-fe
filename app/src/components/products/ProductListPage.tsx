@@ -236,6 +236,7 @@ export function ProductListPage({
     vendorsEnabled,
     referenceLinksEnabled,
     createdByFilterEnabled,
+    isVendorPortalUser,
     vendorOptions,
     brandOptions,
     categoryOptions,
@@ -259,6 +260,10 @@ export function ProductListPage({
     handlePageChange,
     handlePageSizeChange,
   } = filters;
+
+  // Vendor portal users always see status (active/review/updated/vendor); full admins
+  // see it when the status workflow filter is enabled.
+  const showStatusColumn = showStatusFilter || isVendorPortalUser;
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -548,7 +553,7 @@ export function ProductListPage({
                         {product.categories?.[0] ? (
                           <Badge variant="default2">{product.categories[0].name_en}</Badge>
                         ) : null}
-                        {showStatusFilter ? (
+                        {showStatusColumn ? (
                           <Badge variant={getStatusVariant(product.status)}>
                             {getStatusLabel(product.status)}
                           </Badge>
@@ -683,7 +688,7 @@ export function ProductListPage({
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">Created At</TableHead>
               <TableHead width="10%">Created By</TableHead>
-              {showStatusFilter ? <TableHead width="7%">Status</TableHead> : null}
+              {showStatusColumn ? <TableHead width="7%">Status</TableHead> : null}
               <TableHead width="7%">Visibility</TableHead>
               <TableHead width="8%">Actions</TableHead>
             </TableRow>
@@ -863,7 +868,7 @@ export function ProductListPage({
                       <span className="text-gray-400">—</span>
                     )}
                   </TableCell>
-                  {showStatusFilter ? (
+                  {showStatusColumn ? (
                     <TableCell>
                       <Badge variant={getStatusVariant(product.status)}>
                         {getStatusLabel(product.status)}

@@ -56,6 +56,12 @@ export type AnalyticsVisitorListItem = {
   firstSeenAt: string;
   lastSeenAt: string;
   userAgent: string | null;
+  isAdmin?: boolean;
+  admin?: {
+    userId: number;
+    email: string;
+    name: string;
+  } | null;
 };
 
 export type AnalyticsVisitorEvent = {

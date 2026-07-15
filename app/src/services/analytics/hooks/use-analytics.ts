@@ -29,7 +29,13 @@ export const useAnalyticsVisitors = (
     queryFn: () => analyticsService.listVisitors(params),
     select: (response) => ({
       data: response.data || [],
-      meta: response.meta || { total: 0, page: 1, limit: 20, totalPages: 1 },
+      meta: response.meta || {
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+        showAdminVisitors: false,
+      },
     }),
     staleTime: 30_000,
     enabled: options?.enabled ?? true,

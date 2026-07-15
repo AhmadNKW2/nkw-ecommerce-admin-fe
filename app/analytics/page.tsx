@@ -371,7 +371,11 @@ export default function AnalyticsPage() {
     page: 1,
     limit: 20,
     totalPages: 1,
+    showAdminVisitors: false,
   };
+  const showAdminVisitors = Boolean(
+    (visitorsMeta as { showAdminVisitors?: boolean }).showAdminVisitors,
+  );
 
   const handleConfirmDeleteVisitor = async () => {
     if (!visitorPendingDelete) return;
@@ -828,12 +832,19 @@ export default function AnalyticsPage() {
               <h3 className="text-sm font-semibold text-gray-900">Visitors</h3>
               <p className="text-xs text-gray-500">
                 Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …).
+                {showAdminVisitors
+                  ? " Admin devices are visible with name and email (Settings → Feature Settings)."
+                  : " Admin devices are hidden (enable in Settings → Feature Settings → Show Admin Visitors)."}
               </p>
             </div>
             <div className="w-full sm:w-72">
               <Input
                 variant="search"
-                placeholder="Search by ID or path…"
+                placeholder={
+                  showAdminVisitors
+                    ? "Search by ID, path, admin email…"
+                    : "Search by ID or path…"
+                }
                 value={visitorSearch}
                 onChange={(e) => {
                   setVisitorSearch(e.target.value);
@@ -861,6 +872,7 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
+                    {showAdminVisitors ? <TableHead>Admin</TableHead> : null}
                     <TableHead>Last page</TableHead>
                     <TableHead>Sessions</TableHead>
                     <TableHead>Events</TableHead>
@@ -884,6 +896,22 @@ export default function AnalyticsPage() {
                           </span>
                         ) : null}
                       </TableCell>
+                      {showAdminVisitors ? (
+                        <TableCell>
+                          {visitor.admin ? (
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {visitor.admin.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {visitor.admin.email}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">Guest</span>
+                          )}
+                        </TableCell>
+                      ) : null}
                       <TableCell className="max-w-[220px] truncate" title={visitor.lastPath || ""}>
                         {visitor.lastPath || "—"}
                       </TableCell>
@@ -988,8 +1016,17 @@ export default function AnalyticsPage() {
                 <div className="rounded-r1 border border-gray-100 bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Account</p>
                   <p className="text-lg font-semibold">
-                    {visitorDetail.userId ? `Logged-in #${visitorDetail.userId}` : "Guest"}
+                    {visitorDetail.admin
+                      ? "Admin"
+                      : visitorDetail.userId
+                        ? `Logged-in #${visitorDetail.userId}`
+                        : "Guest"}
                   </p>
+                  {visitorDetail.admin ? (
+                    <p className="text-xs text-gray-600 mt-1 break-all">
+                      {visitorDetail.admin.name} · {visitorDetail.admin.email}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

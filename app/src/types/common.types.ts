@@ -28,6 +28,8 @@ export interface PaginationMeta {
   limit: number;
   total: number;
   totalPages: number;
+  /** Present on analytics visitors list when admins may be shown. */
+  showAdminVisitors?: boolean;
 }
 
 export interface PaginationParams {

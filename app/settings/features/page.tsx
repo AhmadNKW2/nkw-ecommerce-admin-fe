@@ -98,6 +98,12 @@ const platformModules: Array<{
       "Show the storefront welcome popup and the Site Popup editor in the sidebar.",
   },
   {
+    key: "show_admin_visitors_enabled",
+    label: "Show Admin Visitors",
+    description:
+      "When enabled, browsers marked as admin devices appear in Analytics → Visitors with the admin’s name and email. One admin account can have many client IDs (devices/profiles). When disabled, those clients are hidden.",
+  },
+  {
     key: "partners_enabled",
     label: "Partners",
     description:

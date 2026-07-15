@@ -31,6 +31,7 @@ const DEFAULT_TOGGLES: StoredFeatureToggles = {
   easy_purchase_enabled: false,
   cart_sidebar_button_enabled: true,
   popup_enabled: true,
+  show_admin_visitors_enabled: false,
   reference_link_visible_admin: true,
   meta_title_visible_admin: true,
   meta_description_visible_admin: true,

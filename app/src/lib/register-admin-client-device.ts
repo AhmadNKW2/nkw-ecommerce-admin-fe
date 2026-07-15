@@ -7,7 +7,7 @@ let lastRegisteredKey: string | null = null;
 let lastRegisteredAt = 0;
 let inFlight: Promise<void> | null = null;
 
-const REREGISTER_MS = 5 * 60 * 1000;
+const REREGISTER_MS = 2_000;
 
 export function resetAdminClientDeviceRegistration() {
   lastRegisteredKey = null;

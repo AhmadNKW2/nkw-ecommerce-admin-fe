@@ -1,23 +1,25 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth.context";
 import { registerAdminClientDevice } from "@/lib/register-admin-client-device";
 
 /**
- * While an admin is logged into the dashboard, keep this browser/device
- * registered in admin_client_devices (source: admin_fe).
+ * While an admin is logged into the dashboard, re-register this browser's
+ * client id on load/refresh and on every route change (source: admin_fe).
+ * Multiple devices/profiles for the same admin account are supported.
  */
 export function RegisterAdminDashboardClient() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const lastUserIdRef = useRef<number | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading || !isAuthenticated || !user?.id) return;
+    if (pathname === "/login") return;
 
-    lastUserIdRef.current = Number(user.id);
     void registerAdminClientDevice("admin_fe");
-  }, [isAuthenticated, isLoading, user?.id]);
+  }, [isAuthenticated, isLoading, user?.id, pathname]);
 
   return null;
 }

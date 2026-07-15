@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Route,
   Users,
+  Pencil,
 } from "lucide-react";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { EmptyState } from "../src/components/common/EmptyState";
@@ -50,6 +51,7 @@ import {
   useAnalyticsVisitor,
   useAnalyticsVisitors,
   useDeleteAnalyticsVisitor,
+  useRenameAdminClientDevice,
 } from "../src/services/analytics/hooks/use-analytics";
 import type {
   AnalyticsKpi,
@@ -255,6 +257,12 @@ export default function AnalyticsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [visitorPendingDelete, setVisitorPendingDelete] =
     useState<AnalyticsVisitorListItem | null>(null);
+  const [devicePendingRename, setDevicePendingRename] = useState<{
+    deviceId: number;
+    clientId: number;
+    currentName: string;
+  } | null>(null);
+  const [deviceNameDraft, setDeviceNameDraft] = useState("");
 
   const overviewParams: AnalyticsOverviewParams = useMemo(() => {
     if (range === "custom" && customStart && customEnd) {
@@ -315,6 +323,7 @@ export default function AnalyticsPage() {
   const { data: visitorDetail, isLoading: visitorDetailLoading } =
     useAnalyticsVisitor(selectedVisitorId);
   const deleteVisitor = useDeleteAnalyticsVisitor();
+  const renameAdminDevice = useRenameAdminClientDevice();
 
   useEffect(() => {
     if (!visitorDetail?.sessions.length) {
@@ -385,6 +394,22 @@ export default function AnalyticsPage() {
         setSelectedSessionId(null);
       }
       setVisitorPendingDelete(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleConfirmRenameDevice = async () => {
+    if (!devicePendingRename) return;
+    const name = deviceNameDraft.trim();
+    if (!name) return;
+    try {
+      await renameAdminDevice.mutateAsync({
+        deviceId: devicePendingRename.deviceId,
+        deviceName: name,
+      });
+      setDevicePendingRename(null);
+      setDeviceNameDraft("");
     } catch (e) {
       console.error(e);
     }
@@ -909,13 +934,15 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
+                    {isAdminsTab ? <TableHead>Device name</TableHead> : null}
+                    {isAdminsTab ? <TableHead>Device</TableHead> : null}
                     {isAdminsTab ? <TableHead>Admin</TableHead> : null}
                     <TableHead>Last page</TableHead>
                     <TableHead>Sessions</TableHead>
                     <TableHead>Events</TableHead>
                     <TableHead>Time on site</TableHead>
                     <TableHead>Last seen</TableHead>
-                    <TableHead className="w-[72px] text-right">Actions</TableHead>
+                    <TableHead className="w-[96px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -933,6 +960,47 @@ export default function AnalyticsPage() {
                           </span>
                         ) : null}
                       </TableCell>
+                      {isAdminsTab ? (
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm text-gray-900 truncate">
+                              {visitor.admin?.deviceName?.trim() || "Unnamed device"}
+                            </span>
+                            {visitor.admin?.deviceId ? (
+                              <button
+                                type="button"
+                                className="shrink-0 p-1 rounded-full text-gray-500 hover:bg-primary/10 hover:text-primary"
+                                title="Rename device"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDevicePendingRename({
+                                    deviceId: visitor.admin!.deviceId!,
+                                    clientId: visitor.id,
+                                    currentName: visitor.admin?.deviceName || "",
+                                  });
+                                  setDeviceNameDraft(visitor.admin?.deviceName || "");
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            ) : null}
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            {visitor.admin?.source === "storefront"
+                              ? "Storefront"
+                              : visitor.admin?.source === "admin_fe"
+                                ? "Admin panel"
+                                : visitor.admin?.source || ""}
+                          </p>
+                        </TableCell>
+                      ) : null}
+                      {isAdminsTab ? (
+                        <TableCell>
+                          <span className="text-sm text-gray-800">
+                            {visitor.admin?.deviceType || "Unknown"}
+                          </span>
+                        </TableCell>
+                      ) : null}
                       {isAdminsTab ? (
                         <TableCell>
                           {visitor.admin ? (
@@ -1062,6 +1130,12 @@ export default function AnalyticsPage() {
                   {visitorDetail.admin ? (
                     <p className="text-xs text-gray-600 mt-1 break-all">
                       {visitorDetail.admin.name} · {visitorDetail.admin.email}
+                      {visitorDetail.admin.deviceName
+                        ? ` · ${visitorDetail.admin.deviceName}`
+                        : ""}
+                      {visitorDetail.admin.deviceType
+                        ? ` · ${visitorDetail.admin.deviceType}`
+                        : ""}
                     </p>
                   ) : null}
                 </div>
@@ -1182,6 +1256,50 @@ export default function AnalyticsPage() {
         itemName={visitorPendingDelete ? `Client #${visitorPendingDelete.id}` : undefined}
         message="This permanently deletes this visitor’s sessions and events from first-party analytics. They may reappear as a new Client # if they browse again."
       />
+
+      <Modal
+        isOpen={!!devicePendingRename}
+        onClose={() => {
+          setDevicePendingRename(null);
+          setDeviceNameDraft("");
+        }}
+        className="!max-w-md w-full"
+        contentClassName="gap-4"
+      >
+        <div className="w-full space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Name this device</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Client #{devicePendingRename?.clientId} — e.g. “Office Chrome” or “Home laptop”.
+            </p>
+          </div>
+          <Input
+            label="Device name"
+            value={deviceNameDraft}
+            onChange={(e) => setDeviceNameDraft(e.target.value)}
+            placeholder="Office Chrome"
+            maxLength={120}
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDevicePendingRename(null);
+                setDeviceNameDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleConfirmRenameDevice()}
+              disabled={!deviceNameDraft.trim() || renameAdminDevice.isPending}
+            >
+              {renameAdminDevice.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

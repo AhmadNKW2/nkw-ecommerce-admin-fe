@@ -427,7 +427,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     if (items.length === 0) return "Add at least one product to the order.";
     if (!address.fullName?.trim()) return "Customer full name is required.";
     if (!address.phone?.trim()) return "Phone number is required.";
-    if (!address.city?.trim()) return "City is required.";
+    // Edit mode only collects street address; city is preserved from the existing order.
+    if (!isEditMode && !address.city?.trim()) return "City is required.";
     if (customerMode === "existing" && !customerId)
       return "Select a registered customer, or switch to guest checkout.";
     return null;
@@ -437,6 +438,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     ...address,
     // API requires street; easy-purchase orders may leave it blank in admin.
     street: address.street?.trim() || "Not provided",
+    // API requires city; edit form no longer collects it — keep existing or placeholder.
+    city: address.city?.trim() || "Not provided",
   });
 
   const handleSubmit = async () => {
@@ -874,52 +877,56 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             onChange={(e) => updateAddress("email", e.target.value)}
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Input
-              label="Street Address"
-              value={address.street || ""}
-              onChange={(e) => updateAddress("street", e.target.value)}
+        <div className="space-y-1">
+          <Input
+            label="Street Address"
+            value={address.street || ""}
+            onChange={(e) => updateAddress("street", e.target.value)}
+          />
+          {!address.street?.trim() && (
+            <p className="text-xs text-gray-400">
+              Easy-purchase orders may not have a street address collected at checkout.
+            </p>
+          )}
+        </div>
+        {!isEditMode && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="City"
+                value={address.city || ""}
+                onChange={(e) => updateAddress("city", e.target.value)}
+              />
+              <Input
+                label="Country"
+                value={address.country || ""}
+                onChange={(e) => updateAddress("country", e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Building"
+                value={address.building || ""}
+                onChange={(e) => updateAddress("building", e.target.value)}
+              />
+              <Input
+                label="Floor"
+                value={address.floor || ""}
+                onChange={(e) => updateAddress("floor", e.target.value)}
+              />
+              <Input
+                label="Apartment"
+                value={address.apartment || ""}
+                onChange={(e) => updateAddress("apartment", e.target.value)}
+              />
+            </div>
+            <Textarea
+              label="Delivery Notes"
+              value={address.notes || ""}
+              onChange={(e) => updateAddress("notes", e.target.value)}
             />
-            {!address.street?.trim() && (
-              <p className="text-xs text-gray-400">
-                Easy-purchase orders may not have a street address collected at checkout.
-              </p>
-            )}
-          </div>
-          <Input
-            label="City"
-            value={address.city || ""}
-            onChange={(e) => updateAddress("city", e.target.value)}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Input
-            label="Country"
-            value={address.country || ""}
-            onChange={(e) => updateAddress("country", e.target.value)}
-          />
-          <Input
-            label="Building"
-            value={address.building || ""}
-            onChange={(e) => updateAddress("building", e.target.value)}
-          />
-          <Input
-            label="Floor"
-            value={address.floor || ""}
-            onChange={(e) => updateAddress("floor", e.target.value)}
-          />
-          <Input
-            label="Apartment"
-            value={address.apartment || ""}
-            onChange={(e) => updateAddress("apartment", e.target.value)}
-          />
-        </div>
-        <Textarea
-          label="Delivery Notes"
-          value={address.notes || ""}
-          onChange={(e) => updateAddress("notes", e.target.value)}
-        />
+          </>
+        )}
       </Card>
 
     </div>

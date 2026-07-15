@@ -66,3 +66,16 @@ export const useDeleteAnalyticsVisitor = () => {
     },
   });
 };
+
+export const useRenameAdminClientDevice = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ deviceId, deviceName }: { deviceId: number; deviceName: string }) =>
+      analyticsService.renameAdminClientDevice(deviceId, deviceName),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+      showSuccessToast("Device name saved");
+    },
+  });
+};

@@ -61,6 +61,10 @@ export type AnalyticsVisitorListItem = {
     userId: number;
     email: string;
     name: string;
+    deviceId?: number | null;
+    deviceName?: string | null;
+    deviceType?: string | null;
+    source?: string | null;
   } | null;
 };
 

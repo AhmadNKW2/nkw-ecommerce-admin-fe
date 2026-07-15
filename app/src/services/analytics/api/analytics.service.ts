@@ -62,6 +62,31 @@ class AnalyticsService {
       headers: { "x-skip-request-toast": "1" },
     });
   }
+
+  async renameAdminClientDevice(
+    deviceId: number,
+    deviceName: string,
+  ): Promise<
+    ApiResponse<{
+      id: number;
+      browserKey: string;
+      deviceName: string;
+      deviceType: string | null;
+      source: string;
+    }>
+  > {
+    return httpClient.patch<
+      ApiResponse<{
+        id: number;
+        browserKey: string;
+        deviceName: string;
+        deviceType: string | null;
+        source: string;
+      }>
+    >(`${this.endpoint}/admin-clients/${deviceId}`, {
+      deviceName,
+    });
+  }
 }
 
 export const analyticsService = new AnalyticsService();

@@ -120,7 +120,7 @@ export const Modal: React.FC<ModalProps> = ({
         <IconButton
           onClick={onClose}
           variant="cancel"
-          className="absolute top-4 right-4 z-10 bg-white/50 hover:bg-gray-100 rounded-full"
+          className="absolute top-4 end-4 z-10 rounded-full bg-white/50 hover:bg-gray-100"
         />
 
         {/* Content Container */}

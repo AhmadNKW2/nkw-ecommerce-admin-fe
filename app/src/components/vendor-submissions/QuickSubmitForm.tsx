@@ -10,6 +10,7 @@ import { mediaService } from "@/services/media/api/media.service";
 import { showErrorToast } from "@/lib/toast";
 import { useCreateVendorSubmission } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
 import { useVendorLocale } from "@/contexts/vendor-locale.context";
+import { SubmitReviewConfirmModal } from "./SubmitReviewConfirmModal";
 
 type QuickSubmitFormProps = {
   onSuccess?: () => void;
@@ -34,8 +35,10 @@ export function QuickSubmitForm({
   const [stock, setStock] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const createSubmission = useCreateVendorSubmission({ silent: silentSuccess });
+  const isBusy = isUploading || createSubmission.isPending;
 
   const previews = useMemo(
     () =>
@@ -57,7 +60,7 @@ export function QuickSubmitForm({
       ? copy.costMustNotExceedPrice
       : undefined;
 
-  const canSubmit =
+  const isFormValid =
     title.trim().length > 0 &&
     description.trim().length > 0 &&
     cost !== "" &&
@@ -66,9 +69,9 @@ export function QuickSubmitForm({
     Number(price) >= 0 &&
     !costExceedsPrice &&
     stock !== "" &&
-    Number(stock) >= 0 &&
-    !isUploading &&
-    !createSubmission.isPending;
+    Number(stock) >= 0;
+
+  const canOpenConfirm = isFormValid && !isBusy;
 
   const resetForm = () => {
     setTitle("");
@@ -77,10 +80,16 @@ export function QuickSubmitForm({
     setPrice("");
     setStock("");
     setFiles([]);
+    setConfirmOpen(false);
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit || costExceedsPrice) return;
+  const openConfirm = () => {
+    if (!canOpenConfirm) return;
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!isFormValid || isBusy) return;
 
     try {
       let media: { media_id: number; is_primary?: boolean; sort_order?: number }[] =
@@ -105,138 +114,159 @@ export function QuickSubmitForm({
       resetForm();
       onSuccess?.();
     } catch (error) {
-      showErrorToast(
-        (error as Error)?.message || copy.submitFailed,
-      );
+      showErrorToast((error as Error)?.message || copy.submitFailed);
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <Card
-      className="!gap-4 !p-3 sm:!p-4 md:!p-5"
-      dir={isRtl ? "rtl" : "ltr"}
-    >
-      {!hideHeading ? (
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
-            {copy.createProduct}
-          </h2>
-          <p className="mt-0.5 text-sm text-gray-500">{copy.formSubtitle}</p>
-        </div>
-      ) : null}
+    <>
+      <Card
+        className="!gap-4 !p-3 sm:!p-4 md:!p-5"
+        dir={isRtl ? "rtl" : "ltr"}
+      >
+        {!hideHeading ? (
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+              {copy.createProduct}
+            </h2>
+            <p className="mt-0.5 text-sm text-gray-500">{copy.formSubtitle}</p>
+          </div>
+        ) : null}
 
-      <div className="flex min-w-0 flex-col gap-4">
-        <Input
-          label={copy.productTitle}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          isRtl={isRtl}
-        />
-        <Textarea
-          label={copy.description}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          minRows={4}
-          isRtl={isRtl}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4">
           <Input
-            label={copy.cost}
-            type="number"
-            inputMode="decimal"
-            value={cost}
-            onChange={(e) => setCost(e.target.value)}
-            isRtl={isRtl}
-            error={costError}
-          />
-          <Input
-            label={copy.salePrice}
-            type="number"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            label={copy.productTitle}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             isRtl={isRtl}
           />
-          <Input
-            label={copy.stockQty}
-            type="number"
-            inputMode="numeric"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
+          <Textarea
+            label={copy.description}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            minRows={4}
             isRtl={isRtl}
           />
-        </div>
-
-        <div className="min-w-0">
-          <label className="inline-flex h-13 min-w-13 w-full cursor-pointer items-center justify-center gap-2 rounded-r1 border border-primary2 px-5 text-[16px] font-medium text-primary2 transition-all hover:bg-primary2 hover:text-white sm:w-auto">
-            <Upload className="h-5 w-5 shrink-0" />
-            <span>{copy.addImages}</span>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files) {
-                  setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-                }
-              }}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Input
+              label={copy.cost}
+              type="number"
+              inputMode="decimal"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              isRtl={isRtl}
+              error={costError}
             />
-          </label>
+            <Input
+              label={copy.salePrice}
+              type="number"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              isRtl={isRtl}
+            />
+            <Input
+              label={copy.stockQty}
+              type="number"
+              inputMode="numeric"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              isRtl={isRtl}
+            />
+          </div>
 
-          {previews.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2 sm:gap-3">
-              {previews.map((preview, index) => (
-                <div
-                  key={preview.url}
-                  className="relative h-20 w-20 overflow-hidden rounded border border-secondary bg-white sm:h-24 sm:w-24"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={preview.url}
-                    alt={preview.name}
-                    className="h-full w-full object-contain"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFiles((prev) => prev.filter((_, i) => i !== index))
-                    }
-                    className="absolute top-1 start-1 rounded-full bg-black/60 p-1 text-white"
-                    aria-label={`Remove ${preview.name}`}
+          <div className="min-w-0">
+            <label className="inline-flex h-13 min-w-13 w-full cursor-pointer items-center justify-center gap-2 rounded-r1 border border-primary2 px-5 text-[16px] font-medium text-primary2 transition-all hover:bg-primary2 hover:text-white sm:w-auto">
+              <Upload className="h-5 w-5 shrink-0" />
+              <span>{copy.addImages}</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    setFiles((prev) => [
+                      ...prev,
+                      ...Array.from(e.target.files!),
+                    ]);
+                  }
+                }}
+              />
+            </label>
+
+            {previews.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2 sm:gap-3">
+                {previews.map((preview, index) => (
+                  <div
+                    key={preview.url}
+                    className="relative h-20 w-20 overflow-hidden rounded border border-secondary bg-white sm:h-24 sm:w-24"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preview.url}
+                      alt={preview.name}
+                      className="h-full w-full object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFiles((prev) =>
+                          prev.filter((_, i) => i !== index),
+                        )
+                      }
+                      className="absolute top-1 start-1 rounded-full bg-black/60 p-1 text-white"
+                      aria-label={`Remove ${preview.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-start">
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            color="var(--color-primary)"
-            className="w-full sm:w-auto"
-          >
-            {createSubmission.isPending || isUploading
-              ? copy.submitting
-              : copy.submit}
-          </Button>
-          {onCancel ? (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-start">
             <Button
-              variant="outline"
-              onClick={onCancel}
+              onClick={openConfirm}
+              disabled={!canOpenConfirm}
+              color="var(--color-primary)"
               className="w-full sm:w-auto"
             >
-              {copy.cancel}
+              {copy.submit}
             </Button>
-          ) : null}
+            {onCancel ? (
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                disabled={isBusy}
+                className="w-full sm:w-auto"
+              >
+                {copy.cancel}
+              </Button>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <SubmitReviewConfirmModal
+        isOpen={confirmOpen}
+        isSubmitting={isBusy}
+        preview={{
+          title: title.trim(),
+          description: description.trim(),
+          cost,
+          price,
+          stock,
+          images: previews,
+        }}
+        onConfirm={handleConfirmSubmit}
+        onCancel={() => {
+          if (!isBusy) setConfirmOpen(false);
+        }}
+      />
+    </>
   );
 }

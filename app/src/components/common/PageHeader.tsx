@@ -54,7 +54,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         </Button>
       )}
       {action && (
-        <Button onClick={action.onClick} disabled={action.disabled}>
+        <Button
+          onClick={action.onClick}
+          disabled={action.disabled}
+          className="!h-10 !px-3 !text-sm sm:!h-13 sm:!px-5 sm:!text-[16px]"
+        >
           {action.label}
         </Button>
       )}

@@ -1,8 +1,16 @@
 import { httpClient } from "../../../lib/api/http-client";
 import type { ApiResponse, PaginatedApiResponse } from "../../../types/common.types";
 import type {
+  AnalyticsDateCoverage,
+  AnalyticsDateCoverageScope,
   AnalyticsOverview,
   AnalyticsOverviewParams,
+  AnalyticsPopularProduct,
+  AnalyticsPopularProductsMeta,
+  AnalyticsPopularProductsParams,
+  AnalyticsSearchQueriesMeta,
+  AnalyticsSearchQueriesParams,
+  AnalyticsSearchQuery,
   AnalyticsVisitorDetail,
   AnalyticsVisitorListItem,
   AnalyticsVisitorsParams,
@@ -24,6 +32,25 @@ class AnalyticsService {
     return httpClient.get<PaginatedApiResponse<AnalyticsVisitorListItem>>(
       `${this.endpoint}/visitors`,
       params,
+    );
+  }
+
+  async listPopularProducts(params?: AnalyticsPopularProductsParams) {
+    return httpClient.get<
+      PaginatedApiResponse<AnalyticsPopularProduct, AnalyticsPopularProductsMeta>
+    >(`${this.endpoint}/popular-products`, params);
+  }
+
+  async listSearchQueries(params?: AnalyticsSearchQueriesParams) {
+    return httpClient.get<
+      PaginatedApiResponse<AnalyticsSearchQuery, AnalyticsSearchQueriesMeta>
+    >(`${this.endpoint}/search-queries`, params);
+  }
+
+  async getDateCoverage(scope: AnalyticsDateCoverageScope) {
+    return httpClient.get<{ success: boolean; data: AnalyticsDateCoverage }>(
+      `${this.endpoint}/date-coverage`,
+      { scope },
     );
   }
 

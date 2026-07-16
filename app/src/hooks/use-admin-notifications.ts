@@ -116,7 +116,7 @@ export function useAdminNotifications(): AdminNotificationState {
         description: `${catalogRequestsCount} brand/category request${
           catalogRequestsCount === 1 ? "" : "s"
         } awaiting approval`,
-        href: "/catalog-requests",
+        href: "/product-submissions?tab=brands",
         count: catalogRequestsCount,
         tone: "warning",
       });
@@ -143,7 +143,7 @@ export function useAdminNotifications(): AdminNotificationState {
     () => ({
       "/orders": pendingOrdersCount,
       "/notes": notesCount,
-      "/catalog-requests": catalogRequestsCount,
+      "/product-submissions": catalogRequestsCount,
     }),
     [notesCount, pendingOrdersCount, catalogRequestsCount],
   );

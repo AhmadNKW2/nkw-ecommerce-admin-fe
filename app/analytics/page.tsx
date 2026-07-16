@@ -25,8 +25,10 @@ import {
   Globe2,
   MonitorSmartphone,
   MousePointerClick,
+  Package,
   RefreshCw,
   Route,
+  Search,
   Users,
   Pencil,
 } from "lucide-react";
@@ -47,26 +49,35 @@ import {
   TableRow,
 } from "../src/components/ui/table";
 import {
+  useAnalyticsDateCoverage,
   useAnalyticsOverview,
+  useAnalyticsPopularProducts,
+  useAnalyticsSearchQueries,
   useAnalyticsVisitor,
   useAnalyticsVisitors,
   useDeleteAnalyticsVisitor,
   useRenameAdminClientDevice,
 } from "../src/services/analytics/hooks/use-analytics";
 import type {
+  AnalyticsDateCoverageScope,
   AnalyticsKpi,
   AnalyticsNamedValue,
   AnalyticsOverviewParams,
+  AnalyticsPopularProductsMeta,
   AnalyticsRange,
+  AnalyticsSearchQueriesMeta,
   AnalyticsVisitorListItem,
 } from "../src/services/analytics/types/analytics.types";
 import { PAGINATION } from "../src/lib/constants";
 
-const RANGES: Array<{ value: AnalyticsRange; label: string }> = [
-  { value: "7d", label: "7 days" },
-  { value: "28d", label: "28 days" },
-  { value: "90d", label: "90 days" },
-  { value: "365d", label: "12 months" },
+const FALLBACK_RANGES: Array<{ key: AnalyticsRange; label: string; days: number }> = [
+  { key: "1d", label: "Today", days: 1 },
+  { key: "2d", label: "2 days", days: 2 },
+  { key: "3d", label: "3 days", days: 3 },
+  { key: "7d", label: "7 days", days: 7 },
+  { key: "28d", label: "28 days", days: 28 },
+  { key: "90d", label: "90 days", days: 90 },
+  { key: "365d", label: "12 months", days: 365 },
 ];
 
 const CHART_COLORS = [
@@ -78,7 +89,7 @@ const CHART_COLORS = [
   "#475569",
 ];
 
-type TabKey = "overview" | "visitors" | "admins";
+type TabKey = "overview" | "products" | "search" | "visitors" | "admins";
 
 type VisitorSortKey =
   | "lastPath"
@@ -89,6 +100,17 @@ type VisitorSortKey =
   | "lastSeen"
   | "deviceName"
   | "admin";
+
+type ProductSortKey = "views" | "sessions" | "clientIds" | "clicks";
+type SearchSortKey = "views" | "sessions" | "clientIds";
+
+function tabCoverageScope(tab: TabKey): AnalyticsDateCoverageScope {
+  if (tab === "products") return "products";
+  if (tab === "search") return "search";
+  if (tab === "visitors") return "visitors";
+  if (tab === "admins") return "admins";
+  return "overview";
+}
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -267,6 +289,18 @@ export default function AnalyticsPage() {
   const [visitorSearch, setVisitorSearch] = useState("");
   const [visitorSortBy, setVisitorSortBy] = useState<VisitorSortKey>("lastSeen");
   const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");
+  const [productPage, setProductPage] = useState<number>(PAGINATION.defaultPage);
+  const [productPageSize, setProductPageSize] = useState<number>(PAGINATION.defaultPageSize);
+  const [productSearch, setProductSearch] = useState("");
+  const [productSortBy, setProductSortBy] = useState<ProductSortKey>("views");
+  const [productSortOrder, setProductSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchPage, setSearchPage] = useState<number>(PAGINATION.defaultPage);
+  const [searchPageSize, setSearchPageSize] = useState<number>(PAGINATION.defaultPageSize);
+  const [searchSearch, setSearchSearch] = useState("");
+  const [searchSortBy, setSearchSortBy] = useState<SearchSortKey>("views");
+  const [searchSortOrder, setSearchSortOrder] = useState<"asc" | "desc">("desc");
+  const [includeAdminTraffic, setIncludeAdminTraffic] = useState(false);
+  const [rangeAutoApplied, setRangeAutoApplied] = useState(false);
   const [selectedVisitorId, setSelectedVisitorId] = useState<number | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [visitorPendingDelete, setVisitorPendingDelete] =
@@ -288,18 +322,65 @@ export default function AnalyticsPage() {
     return { range };
   }, [range, customStart, customEnd]);
 
+  const coverageScope = tabCoverageScope(tab);
+  const { data: dateCoverage } = useAnalyticsDateCoverage(coverageScope);
+
+  const adminToggleLocked = tab === "visitors" || tab === "admins";
+  const effectiveIncludeAdmin =
+    tab === "admins" ? true : tab === "visitors" ? false : includeAdminTraffic;
+
+  useEffect(() => {
+    if (tab === "visitors" && includeAdminTraffic) {
+      setIncludeAdminTraffic(false);
+    }
+    if (tab === "admins" && !includeAdminTraffic) {
+      setIncludeAdminTraffic(true);
+    }
+  }, [tab, includeAdminTraffic]);
+
+  const availableRangePills = useMemo(() => {
+    if (dateCoverage?.pills?.length) {
+      return dateCoverage.pills.map((pill) => ({
+        value: pill.key,
+        label: pill.label,
+        days: pill.days,
+      }));
+    }
+    // While coverage loads / empty: only show the shortest pill (never invent 28d/90d).
+    return FALLBACK_RANGES.filter((pill) => pill.key === "1d").map((pill) => ({
+      value: pill.key,
+      label: pill.label,
+      days: pill.days,
+    }));
+  }, [dateCoverage]);
+
+  useEffect(() => {
+    if (range === "custom") return;
+    if (!dateCoverage?.pills?.length) return;
+    const keys = new Set(dateCoverage.pills.map((p) => p.key));
+    if (keys.has(range as AnalyticsRange)) {
+      setRangeAutoApplied(false);
+      return;
+    }
+    const next = dateCoverage.suggested || dateCoverage.pills[0]?.key;
+    if (next && next !== range) {
+      setRange(next);
+      setRangeAutoApplied(true);
+      setProductPage(1);
+      setSearchPage(1);
+      setVisitorPage(1);
+    }
+  }, [dateCoverage, range, tab]);
+
   const visitorDateParams = useMemo(() => {
     if (range === "custom" && customStart && customEnd) {
       return { startDate: customStart, endDate: customEnd };
     }
     if (range !== "custom") {
-      const daysByRange: Record<AnalyticsRange, number> = {
-        "7d": 7,
-        "28d": 28,
-        "90d": 90,
-        "365d": 365,
-      };
-      const days = daysByRange[range];
+      const daysByRange: Record<string, number> = Object.fromEntries(
+        FALLBACK_RANGES.map((item) => [item.key, item.days]),
+      );
+      const days = daysByRange[range] || 28;
       const end = new Date();
       const start = new Date();
       start.setUTCDate(end.getUTCDate() - (days - 1));
@@ -331,9 +412,45 @@ export default function AnalyticsPage() {
       audience: tab === "admins" ? "admins" : "visitors",
       sortBy: visitorSortBy,
       sortOrder: visitorSortOrder,
-      ...(tab === "admins" ? {} : visitorDateParams),
+      ...visitorDateParams,
     },
     { enabled: tab === "visitors" || tab === "admins" },
+  );
+
+  const {
+    data: productsPayload,
+    isLoading: productsLoading,
+    refetch: refetchProducts,
+    isFetching: productsFetching,
+  } = useAnalyticsPopularProducts(
+    {
+      page: productPage,
+      limit: productPageSize,
+      search: productSearch || undefined,
+      includeAdmin: effectiveIncludeAdmin ? 1 : 0,
+      sortBy: productSortBy,
+      sortOrder: productSortOrder,
+      ...visitorDateParams,
+    },
+    { enabled: tab === "products" || tab === "overview" },
+  );
+
+  const {
+    data: searchPayload,
+    isLoading: searchLoading,
+    refetch: refetchSearch,
+    isFetching: searchFetching,
+  } = useAnalyticsSearchQueries(
+    {
+      page: searchPage,
+      limit: searchPageSize,
+      search: searchSearch || undefined,
+      includeAdmin: effectiveIncludeAdmin ? 1 : 0,
+      sortBy: searchSortBy,
+      sortOrder: searchSortOrder,
+      ...visitorDateParams,
+    },
+    { enabled: tab === "search" },
   );
 
   const { data: visitorDetail, isLoading: visitorDetailLoading } =
@@ -398,12 +515,41 @@ export default function AnalyticsPage() {
     limit: visitorPageSize,
     totalPages: 1,
   };
+  const popularProducts = productsPayload?.data || [];
+  const productsMeta: AnalyticsPopularProductsMeta = productsPayload?.meta || {
+    total: 0,
+    page: productPage,
+    limit: productPageSize,
+    totalPages: 1,
+  };
+  const searchQueries = searchPayload?.data || [];
+  const searchMeta: AnalyticsSearchQueriesMeta = searchPayload?.meta || {
+    total: 0,
+    page: searchPage,
+    limit: searchPageSize,
+    totalPages: 1,
+  };
   const isAdminsTab = tab === "admins";
   const isClientsTab = tab === "visitors" || tab === "admins";
+  const productAdminContribution = productsMeta.adminContribution;
+  const productToggleHasEffect = Boolean(productsMeta.toggleHasEffect);
+  const productViewsSource = productsMeta.viewsSource || "first_party";
+  const searchAdminContribution = searchMeta.adminContribution;
+  const searchToggleHasEffect = Boolean(searchMeta.toggleHasEffect);
 
   const visitorCurrentSort = {
     key: visitorSortBy,
     order: visitorSortOrder,
+  };
+
+  const productCurrentSort = {
+    key: productSortBy,
+    order: productSortOrder,
+  };
+
+  const searchCurrentSort = {
+    key: searchSortBy,
+    order: searchSortOrder,
   };
 
   const handleVisitorSort = (key: string) => {
@@ -415,6 +561,28 @@ export default function AnalyticsPage() {
       setVisitorSortOrder(sortKey === "lastPath" || sortKey === "deviceName" || sortKey === "admin" ? "asc" : "desc");
     }
     setVisitorPage(1);
+  };
+
+  const handleProductSort = (key: string) => {
+    const sortKey = key as ProductSortKey;
+    if (productSortBy === sortKey) {
+      setProductSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setProductSortBy(sortKey);
+      setProductSortOrder("desc");
+    }
+    setProductPage(1);
+  };
+
+  const handleSearchSort = (key: string) => {
+    const sortKey = key as SearchSortKey;
+    if (searchSortBy === sortKey) {
+      setSearchSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSearchSortBy(sortKey);
+      setSearchSortOrder("desc");
+    }
+    setSearchPage(1);
   };
 
   const handleConfirmDeleteVisitor = async () => {
@@ -462,12 +630,63 @@ export default function AnalyticsPage() {
         description={description}
         extraActions={
           <div className="flex flex-wrap items-center gap-2 justify-end">
+            <div
+              className={`flex rounded-r1 border border-primary/15 bg-white p-0.5 ${
+                adminToggleLocked ? "opacity-70" : ""
+              }`}
+              title={
+                tab === "visitors"
+                  ? "Visitors is always without admin"
+                  : tab === "admins"
+                    ? "Admins is always admin devices only"
+                    : undefined
+              }
+            >
+              <button
+                type="button"
+                disabled={adminToggleLocked}
+                onClick={() => {
+                  setIncludeAdminTraffic(false);
+                  setProductPage(1);
+                  setSearchPage(1);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors disabled:cursor-not-allowed ${
+                  !effectiveIncludeAdmin
+                    ? "bg-primary text-white"
+                    : "text-gray-600 hover:bg-primary/5"
+                }`}
+              >
+                Without admin
+              </button>
+              <button
+                type="button"
+                disabled={adminToggleLocked}
+                onClick={() => {
+                  setIncludeAdminTraffic(true);
+                  setProductPage(1);
+                  setSearchPage(1);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors disabled:cursor-not-allowed ${
+                  effectiveIncludeAdmin
+                    ? "bg-primary text-white"
+                    : "text-gray-600 hover:bg-primary/5"
+                }`}
+              >
+                With admin
+              </button>
+            </div>
             <div className="flex rounded-r1 border border-primary/15 bg-white p-0.5">
-              {RANGES.map((item) => (
+              {availableRangePills.map((item) => (
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => setRange(item.value)}
+                  onClick={() => {
+                    setRange(item.value);
+                    setRangeAutoApplied(false);
+                    setProductPage(1);
+                    setSearchPage(1);
+                    setVisitorPage(1);
+                  }}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
                     range === item.value
                       ? "bg-primary text-white"
@@ -479,7 +698,10 @@ export default function AnalyticsPage() {
               ))}
               <button
                 type="button"
-                onClick={() => setRange("custom")}
+                onClick={() => {
+                  setRange("custom");
+                  setRangeAutoApplied(false);
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors inline-flex items-center gap-1 ${
                   range === "custom"
                     ? "bg-primary text-white"
@@ -493,15 +715,35 @@ export default function AnalyticsPage() {
             <Button
               variant="outline"
               onClick={() => {
-                if (tab === "overview") refetch();
+                if (tab === "overview") {
+                  refetch();
+                  refetchProducts();
+                } else if (tab === "products") refetchProducts();
+                else if (tab === "search") refetchSearch();
                 else refetchVisitors();
               }}
-              disabled={tab === "overview" ? isFetching : visitorsFetching}
+              disabled={
+                tab === "overview"
+                  ? isFetching || productsFetching
+                  : tab === "products"
+                    ? productsFetching
+                    : tab === "search"
+                      ? searchFetching
+                      : visitorsFetching
+              }
               className="gap-2"
             >
               <RefreshCw
                 className={`h-4 w-4 ${
-                  (tab === "overview" ? isFetching : visitorsFetching)
+                  (
+                    tab === "overview"
+                      ? isFetching || productsFetching
+                      : tab === "products"
+                        ? productsFetching
+                        : tab === "search"
+                          ? searchFetching
+                          : visitorsFetching
+                  )
                     ? "animate-spin"
                     : ""
                 }`}
@@ -511,6 +753,16 @@ export default function AnalyticsPage() {
           </div>
         }
       />
+
+      {rangeAutoApplied && range !== "custom" ? (
+        <div className="rounded-r1 border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          No data for the previous date range on this tab — switched to{" "}
+          <strong>
+            {availableRangePills.find((p) => p.value === range)?.label || range}
+          </strong>
+          . Empty longer ranges are hidden.
+        </div>
+      ) : null}
 
       {range === "custom" ? (
         <Card className="!gap-3">
@@ -523,6 +775,8 @@ export default function AnalyticsPage() {
                 onChange={(e) => {
                   setCustomStart(e.target.value);
                   setVisitorPage(1);
+                  setProductPage(1);
+                  setSearchPage(1);
                 }}
               />
             </div>
@@ -534,6 +788,8 @@ export default function AnalyticsPage() {
                 onChange={(e) => {
                   setCustomEnd(e.target.value);
                   setVisitorPage(1);
+                  setProductPage(1);
+                  setSearchPage(1);
                 }}
               />
             </div>
@@ -559,9 +815,40 @@ export default function AnalyticsPage() {
         <button
           type="button"
           onClick={() => {
+            setTab("products");
+            setProductPage(1);
+            setRangeAutoApplied(false);
+          }}
+          className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+            tab === "products"
+              ? "bg-primary text-white"
+              : "text-gray-600 hover:bg-primary/5"
+          }`}
+        >
+          Products
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("search");
+            setSearchPage(1);
+            setRangeAutoApplied(false);
+          }}
+          className={`px-4 py-2 text-sm font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+            tab === "search"
+              ? "bg-primary text-white"
+              : "text-gray-600 hover:bg-primary/5"
+          }`}
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setTab("visitors");
             setVisitorPage(1);
             setVisitorSearch("");
+            setRangeAutoApplied(false);
             if (visitorSortBy === "deviceName" || visitorSortBy === "admin") {
               setVisitorSortBy("lastSeen");
               setVisitorSortOrder("desc");
@@ -889,9 +1176,458 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </Card>
+
+              <Card>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-r1 bg-primary/10 text-primary">
+                      <Package className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Most popular products
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Views / sessions / clicks from your database ·{" "}
+                        {effectiveIncludeAdmin ? "with admin" : "without admin"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => {
+                      setTab("products");
+                      setProductPage(1);
+                    }}
+                  >
+                    View all
+                  </Button>
+                </div>
+
+                {productsLoading && popularProducts.length === 0 ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-10 rounded-r1 bg-gray-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : popularProducts.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-8 text-center">
+                    No product traffic in this range yet
+                  </p>
+                ) : (
+                  <div
+                    className={
+                      productsFetching && !productsLoading
+                        ? "opacity-70 transition-opacity"
+                        : "opacity-100 transition-opacity"
+                    }
+                  >
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead
+                            sortable
+                            sortKey="views"
+                            currentSort={productCurrentSort}
+                            onSort={handleProductSort}
+                          >
+                            Views
+                          </TableHead>
+                          <TableHead
+                            sortable
+                            sortKey="sessions"
+                            currentSort={productCurrentSort}
+                            onSort={handleProductSort}
+                          >
+                            Sessions
+                          </TableHead>
+                          <TableHead
+                            sortable
+                            sortKey="clientIds"
+                            currentSort={productCurrentSort}
+                            onSort={handleProductSort}
+                          >
+                            Client IDs
+                          </TableHead>
+                          <TableHead
+                            sortable
+                            sortKey="clicks"
+                            currentSort={productCurrentSort}
+                            onSort={handleProductSort}
+                          >
+                            Clicks
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {popularProducts.slice(0, 10).map((item) => (
+                          <TableRow
+                            key={`overview-${item.productId ?? "slug"}-${item.slug ?? item.name}`}
+                          >
+                            <TableCell>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {item.name}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {item.productId != null ? `#${item.productId}` : "—"}
+                                  {item.slug ? ` · ${item.slug}` : ""}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="tabular-nums font-medium">
+                              {formatNumber(item.views)}
+                            </TableCell>
+                            <TableCell className="tabular-nums">
+                              {formatNumber(item.sessions)}
+                            </TableCell>
+                            <TableCell className="tabular-nums font-medium">
+                              {formatNumber(item.clientIds)}
+                            </TableCell>
+                            <TableCell className="tabular-nums">
+                              {formatNumber(item.clicks)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </Card>
             </>
           ) : null}
         </>
+      ) : tab === "products" ? (
+        <Card>
+          <div className="rounded-r1 border border-sky-200 bg-sky-50 px-4 py-3 mb-4">
+            <p className="text-sm font-semibold text-sky-900">
+              Most popular products
+            </p>
+            <p className="text-xs text-sky-800 mt-1 leading-relaxed">
+              <strong>Views, sessions, Client IDs, and clicks</strong> come from your database and
+              respect the admin toggle. Sort by views or sessions to see With/Without admin differ.
+            </p>
+          </div>
+
+          <div
+            className={`rounded-r1 border px-4 py-3 mb-4 ${
+              productToggleHasEffect
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <p
+              className={`text-xs leading-relaxed ${
+                productToggleHasEffect ? "text-emerald-900" : "text-amber-900"
+              }`}
+            >
+              {productToggleHasEffect ? (
+                <>
+                  Admin product traffic in this range:{" "}
+                  <strong>{formatNumber(productAdminContribution?.adminViews || 0)}</strong> DB
+                  views,{" "}
+                  <strong>{formatNumber(productAdminContribution?.adminClicks || 0)}</strong>{" "}
+                  clicks from{" "}
+                  <strong>{formatNumber(productAdminContribution?.adminDevices || 0)}</strong>{" "}
+                  admin device(s). Toggle With/Without admin — totals and rows should change.
+                </>
+              ) : (
+                <>
+                  With admin and Without admin look the same because{" "}
+                  <strong>no admin-marked browser</strong> viewed or clicked products in this range.
+                  Log into admin, then browse products on the storefront with the same browser
+                  (shared Client #), then refresh.
+                </>
+              )}
+            </p>
+          </div>
+
+          {productsMeta.totals ? (
+            <p className="text-xs text-gray-500 mb-3">
+              Current filter totals:{" "}
+              <strong>{formatNumber(productsMeta.totals.views)}</strong> views ·{" "}
+              <strong>{formatNumber(productsMeta.totals.sessions)}</strong> sessions ·{" "}
+              <strong>{formatNumber(productsMeta.totals.clicks)}</strong> clicks ·
+              includeAdmin=
+              {String(productsMeta.includeAdmin)}
+            </p>
+          ) : null}
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Popular products</h3>
+              <p className="text-xs text-gray-500">
+                Sort by views, sessions, or client IDs. Admin filter uses the header toggle.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                variant="search"
+                placeholder="Search product name or slug…"
+                value={productSearch}
+                onChange={(e) => {
+                  setProductSearch(e.target.value);
+                  setProductPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          {productsLoading && popularProducts.length === 0 ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : popularProducts.length === 0 ? (
+            <EmptyState
+              icon={<Package />}
+              title="No product traffic yet"
+              description="Open product pages or click product cards on the storefront to populate this list."
+            />
+          ) : (
+            <div
+              className={
+                productsFetching && !productsLoading
+                  ? "opacity-70 transition-opacity"
+                  : "opacity-100 transition-opacity"
+              }
+            >
+              <Table
+                pagination={{
+                  currentPage: productsMeta.page,
+                  totalPages: productsMeta.totalPages,
+                  pageSize: productsMeta.limit,
+                  totalItems: productsMeta.total,
+                  hasNextPage: productsMeta.page < productsMeta.totalPages,
+                  hasPreviousPage: productsMeta.page > 1,
+                }}
+                onPageChange={setProductPage}
+                onPageSizeChange={(size) => {
+                  setProductPageSize(size);
+                  setProductPage(1);
+                }}
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="views"
+                      currentSort={productCurrentSort}
+                      onSort={handleProductSort}
+                    >
+                      Views
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="sessions"
+                      currentSort={productCurrentSort}
+                      onSort={handleProductSort}
+                    >
+                      Sessions
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="clientIds"
+                      currentSort={productCurrentSort}
+                      onSort={handleProductSort}
+                    >
+                      Client IDs
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="clicks"
+                      currentSort={productCurrentSort}
+                      onSort={handleProductSort}
+                    >
+                      Clicks
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {popularProducts.map((item) => (
+                    <TableRow
+                      key={`${item.productId ?? "slug"}-${item.slug ?? item.name}`}
+                    >
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {item.productId != null ? `#${item.productId}` : "—"}
+                            {item.slug ? ` · ${item.slug}` : ""}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular-nums font-medium">
+                        {formatNumber(item.views)}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatNumber(item.sessions)}
+                      </TableCell>
+                      <TableCell className="tabular-nums font-medium">
+                        {formatNumber(item.clientIds)}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatNumber(item.clicks)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
+      ) : tab === "search" ? (
+        <Card>
+          <div className="rounded-r1 border border-sky-200 bg-sky-50 px-4 py-3 mb-4">
+            <p className="text-sm font-semibold text-sky-900">Most searched queries</p>
+            <p className="text-xs text-sky-800 mt-1 leading-relaxed">
+              Built from first-party <strong>Searched:</strong> events. Sort by searches (views),
+              sessions, or unique Client IDs. Admin toggle excludes staff browsers marked in the
+              Admins tab.
+            </p>
+          </div>
+
+          <div
+            className={`rounded-r1 border px-4 py-3 mb-4 ${
+              searchToggleHasEffect
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <p
+              className={`text-xs leading-relaxed ${
+                searchToggleHasEffect ? "text-emerald-900" : "text-amber-900"
+              }`}
+            >
+              {searchToggleHasEffect ? (
+                <>
+                  Admin search traffic in this range:{" "}
+                  <strong>{formatNumber(searchAdminContribution?.adminSearches || 0)}</strong>{" "}
+                  searches from{" "}
+                  <strong>{formatNumber(searchAdminContribution?.adminDevices || 0)}</strong> admin
+                  device(s). Toggle With/Without admin to include or exclude them.
+                </>
+              ) : (
+                <>
+                  With admin and Without admin look the same because no admin-marked browser searched
+                  in this range yet.
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Search queries</h3>
+              <p className="text-xs text-gray-500">
+                {includeAdminTraffic ? "Including admin traffic" : "Excluding admin traffic"}
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                variant="search"
+                placeholder="Filter queries…"
+                value={searchSearch}
+                onChange={(e) => {
+                  setSearchSearch(e.target.value);
+                  setSearchPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          {searchLoading && searchQueries.length === 0 ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : searchQueries.length === 0 ? (
+            <EmptyState
+              icon={<Search />}
+              title="No searches yet"
+              description="Submit searches from the storefront search bar to populate this list."
+            />
+          ) : (
+            <div
+              className={
+                searchFetching && !searchLoading
+                  ? "opacity-70 transition-opacity"
+                  : "opacity-100 transition-opacity"
+              }
+            >
+              <Table
+                pagination={{
+                  currentPage: searchMeta.page,
+                  totalPages: searchMeta.totalPages,
+                  pageSize: searchMeta.limit,
+                  totalItems: searchMeta.total,
+                  hasNextPage: searchMeta.page < searchMeta.totalPages,
+                  hasPreviousPage: searchMeta.page > 1,
+                }}
+                onPageChange={setSearchPage}
+                onPageSizeChange={(size) => {
+                  setSearchPageSize(size);
+                  setSearchPage(1);
+                }}
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Query</TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="views"
+                      currentSort={searchCurrentSort}
+                      onSort={handleSearchSort}
+                    >
+                      Searches
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="sessions"
+                      currentSort={searchCurrentSort}
+                      onSort={handleSearchSort}
+                    >
+                      Sessions
+                    </TableHead>
+                    <TableHead
+                      sortable
+                      sortKey="clientIds"
+                      currentSort={searchCurrentSort}
+                      onSort={handleSearchSort}
+                    >
+                      Client IDs
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {searchQueries.map((item) => (
+                    <TableRow key={item.query}>
+                      <TableCell>
+                        <p className="text-sm font-semibold text-gray-900">{item.query}</p>
+                      </TableCell>
+                      <TableCell className="tabular-nums font-medium">
+                        {formatNumber(item.views)}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatNumber(item.sessions)}
+                      </TableCell>
+                      <TableCell className="tabular-nums font-medium">
+                        {formatNumber(item.clientIds)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
       ) : isClientsTab ? (
         <Card>
           <div className="rounded-r1 border border-amber-200 bg-amber-50 px-4 py-3 mb-4">

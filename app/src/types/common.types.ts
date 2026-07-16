@@ -10,9 +10,9 @@ export interface ApiResponse<T> {
 }
 
 // Backend returns data as array with meta directly
-export interface PaginatedApiResponse<T> {
+export interface PaginatedApiResponse<T, M extends PaginationMeta = PaginationMeta> {
   data: T[];
-  meta: PaginationMeta;
+  meta: M;
   message?: string;
   success: boolean;
   time?: string;

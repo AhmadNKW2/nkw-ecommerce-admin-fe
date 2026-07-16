@@ -49,6 +49,16 @@ export default function CreateProductPage() {
   const { data: attributesData, isLoading: attributesLoading } = useAttributes();
   const { data: specificationsData, isLoading: specificationsLoading } = useSpecifications();
 
+  React.useEffect(() => {
+    if (simplifiedMode) {
+      router.replace("/products?create=1");
+    }
+  }, [simplifiedMode, router]);
+
+  if (simplifiedMode) {
+    return null;
+  }
+
   // Transform backend data to frontend format
   const categories = categoriesData || [];
 

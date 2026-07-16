@@ -38,6 +38,17 @@ import {
 import { Pagination } from "@/components/ui/pagination";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
+import { useAuth } from "@/contexts/auth.context";
+import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
+import { QuickSubmitForm } from "@/components/vendor-submissions/QuickSubmitForm";
+import { VendorPendingSubmissionCard } from "@/components/vendor-submissions/VendorPendingSubmissionCard";
+import { useVendorSubmissions } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
+import type { VendorSubmission } from "@/services/vendor-submissions/types/vendor-submission.types";
+import {
+  SUBMISSION_STATUS_LABELS,
+  SUBMISSION_STATUS_SHORT_LABELS,
+  submissionStatusVariant,
+} from "@/components/vendor-submissions/submission-status";
 
 interface ProductListPageProps {
   title: string;
@@ -55,6 +66,8 @@ interface ProductListPageProps {
   initialStatus?: ProductStatus;
   initialVisible?: boolean;
   onStatusCleared?: () => void;
+  /** Vendor portal: open Quick Submit form on mount (e.g. ?create=1). */
+  initialShowQuickSubmit?: boolean;
 }
 
 const formatPriceValue = (value: number) => {
@@ -208,8 +221,14 @@ export function ProductListPage({
   initialStatus,
   initialVisible,
   onStatusCleared,
+  initialShowQuickSubmit = false,
 }: ProductListPageProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const [showQuickSubmit, setShowQuickSubmit] = useState(
+    Boolean(initialShowQuickSubmit && isVendorPortalUser),
+  );
   const { isEnabled } = useResolvedFeatureToggles();
   const ratingsEnabled = isEnabled("ratings_enabled");
   const { setShowOverlay } = useLoading();
@@ -289,9 +308,55 @@ export function ProductListPage({
   const products = data?.data.data || [];
   const isProductsLoading = isLoading || isAwaitingSearchResults;
 
+  const {
+    data: submissionsData,
+    refetch: refetchSubmissions,
+    isLoading: isSubmissionsLoading,
+  } = useVendorSubmissions(
+      { page: 1, limit: 100 },
+      {
+        enabled: isVendorPortalUser,
+        refetchInterval: isVendorPortalUser ? 15000 : undefined,
+      },
+    );
+  const pendingSubmissions = (
+    (submissionsData?.data ?? []) as VendorSubmission[]
+  ).filter((submission) => submission.status !== "materialized");
+  const isVendorListLoading =
+    isProductsLoading || (isVendorPortalUser && isSubmissionsLoading);
+  const hasVendorPending = isVendorPortalUser && pendingSubmissions.length > 0;
+  const hasListContent =
+    products.length > 0 || (isVendorPortalUser && pendingSubmissions.length > 0);
+
   useEffect(() => {
-    setShowOverlay(isProductsLoading || isFetching);
-  }, [isProductsLoading, isFetching, setShowOverlay]);
+    if (initialShowQuickSubmit && isVendorPortalUser) {
+      setShowQuickSubmit(true);
+    }
+  }, [initialShowQuickSubmit, isVendorPortalUser]);
+
+  useEffect(() => {
+    if (!showQuickSubmit || !isVendorPortalUser) return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById("vendor-quick-submit")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [showQuickSubmit, isVendorPortalUser]);
+
+  useEffect(() => {
+    setShowOverlay(
+      isProductsLoading ||
+        isFetching ||
+        (isVendorPortalUser && isSubmissionsLoading),
+    );
+  }, [
+    isProductsLoading,
+    isFetching,
+    isVendorPortalUser,
+    isSubmissionsLoading,
+    setShowOverlay,
+  ]);
 
   useEffect(() => {
     if (!isProductsLoading && products.length > 0) {
@@ -340,6 +405,10 @@ export function ProductListPage({
   };
 
   const handleCreateNew = () => {
+    if (isVendorPortalUser) {
+      setShowQuickSubmit(true);
+      return;
+    }
     router.push("/products/create");
   };
 
@@ -444,6 +513,7 @@ export function ProductListPage({
         title={title}
         description={description}
         onCreate={handleCreateNew}
+        showCreate={!(isVendorPortalUser && showQuickSubmit)}
         showViewToggle={showViewToggle}
         showReviewViewToggle={showReviewViewToggle}
         showPricingViewToggle={showPricingViewToggle}
@@ -456,6 +526,20 @@ export function ProductListPage({
         }
       />
 
+      {isVendorPortalUser && showQuickSubmit ? (
+        <div id="vendor-quick-submit" className="scroll-mt-4">
+          <QuickSubmitForm
+            onCancel={() => setShowQuickSubmit(false)}
+            onSuccess={() => {
+              setShowQuickSubmit(false);
+              void refetchSubmissions();
+              void refetch();
+            }}
+          />
+        </div>
+      ) : null}
+
+      {!isVendorPortalUser ? (
       <ProductFiltersPanel
         visible={products.length > 0 || hasActiveFilters}
         hasActiveFilters={hasActiveFilters}
@@ -494,20 +578,51 @@ export function ProductListPage({
         onMinPriceChange={setMinPrice}
         onMaxPriceChange={setMaxPrice}
       />
+      ) : null}
 
-      {!isProductsLoading && products.length === 0 ? (
+      {!isVendorListLoading &&
+      !hasListContent &&
+      !(isVendorPortalUser && showQuickSubmit) ? (
         <EmptyState
           icon={<Package />}
           title="No products found"
           description={
             fixedStatus
               ? `No products with status \"${fixedStatus}\" were found`
-              : "Try adjusting your filters or add new products"
+              : isVendorPortalUser
+                ? "Click Create to submit a new product for review"
+                : "Try adjusting your filters or add new products"
           }
         />
-      ) : !isProductsLoading && (
+      ) : !isVendorListLoading && hasListContent ? (
         <>
           <div className="flex w-full min-w-0 flex-col gap-3 lg:hidden">
+            {hasVendorPending ? (
+              <>
+                <h2 className="px-0.5 text-sm font-semibold text-gray-600">
+                  Pending review
+                </h2>
+                {pendingSubmissions.map((submission) => {
+                  const createdAtParts = getCreatedAtParts(submission.created_at);
+                  return (
+                    <VendorPendingSubmissionCard
+                      key={`submission-${submission.id}`}
+                      submission={submission}
+                      createdAtLabel={
+                        createdAtParts
+                          ? `${createdAtParts.date} · ${createdAtParts.time}`
+                          : null
+                      }
+                    />
+                  );
+                })}
+              </>
+            ) : null}
+            {products.length > 0 && hasVendorPending ? (
+              <h2 className="mt-1 px-0.5 text-sm font-semibold text-gray-600">
+                Your products
+              </h2>
+            ) : null}
             {products.map((product) => {
               const imageUrl = getProductImageUrl(product);
               const displayPrice = getProductDisplayPrice(product);
@@ -522,17 +637,18 @@ export function ProductListPage({
               return (
                 <Card
                   key={product.id}
-                  className="!p-4"
+                  className="!gap-3 !p-3 sm:!p-4"
                   id={`product-row-${product.id}`}
                 >
                   <div className="flex gap-3">
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-primary/10">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-primary/10 sm:h-16 sm:w-16">
                       {imageUrl ? (
                         <Image
                           src={imageUrl}
                           alt={product.name_en || ""}
                           fill
                           className="object-cover"
+                          sizes="64px"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
@@ -543,28 +659,46 @@ export function ProductListPage({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-gray-900">{product.name_en}</p>
                       {product.name_ar ? (
-                        <p className="truncate text-sm text-gray-500">{product.name_ar}</p>
+                        <p className="truncate text-sm text-gray-500" dir="rtl">
+                          {product.name_ar}
+                        </p>
                       ) : null}
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1">
                         {product.categories?.[0] ? (
-                          <Badge variant="default2">{product.categories[0].name_en}</Badge>
+                          <Badge
+                            variant="default2"
+                            className="!max-w-full !px-2 !py-0.5 text-[10px] sm:text-xs"
+                          >
+                            <span className="truncate">
+                              {product.categories[0].name_en}
+                            </span>
+                          </Badge>
                         ) : null}
-                        {showStatusFilter ? (
-                          <Badge variant={getStatusVariant(product.status)}>
+                        {showStatusFilter || isVendorPortalUser ? (
+                          <Badge
+                            variant={getStatusVariant(product.status)}
+                            className="!px-2 !py-0.5 text-[10px] sm:text-xs"
+                          >
                             {getStatusLabel(product.status)}
                           </Badge>
                         ) : null}
-                        <Badge variant={isOutOfStock ? "danger" : "success"}>
+                        <Badge
+                          variant={isOutOfStock ? "danger" : "success"}
+                          className="!px-2 !py-0.5 text-[10px] sm:text-xs"
+                        >
                           {isOutOfStock ? "Out of Stock" : "In Stock"}
                         </Badge>
-                        <Badge variant={getVisibilityVariant(product.visible ?? product.is_active)}>
+                        <Badge
+                          variant={getVisibilityVariant(product.visible ?? product.is_active)}
+                          className="!px-2 !py-0.5 text-[10px] sm:text-xs"
+                        >
                           {getVisibilityLabel(product.visible ?? product.is_active)}
                         </Badge>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     <div>
                       <p className="text-xs text-gray-500">Brand</p>
                       <p className="truncate font-medium">{product.brand?.name_en || "—"}</p>
@@ -602,7 +736,7 @@ export function ProductListPage({
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-primary/10 pt-3">
+                  <div className="flex flex-wrap gap-2 border-t border-primary/10 pt-3">
                     {referenceLinksEnabled ? (
                       <IconButton
                         variant="external"
@@ -636,7 +770,7 @@ export function ProductListPage({
             })}
           </div>
 
-          {data?.data.pagination ? (
+          {data?.data.pagination && products.length > 0 ? (
             <div className="w-full lg:hidden">
               <Pagination
                 pagination={{
@@ -684,12 +818,122 @@ export function ProductListPage({
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">Created At</TableHead>
               <TableHead width="10%">Created By</TableHead>
-              {showStatusFilter ? <TableHead width="7%">Status</TableHead> : null}
+              {showStatusFilter || isVendorPortalUser ? (
+                <TableHead width="7%">Status</TableHead>
+              ) : null}
               <TableHead width="7%">Visibility</TableHead>
               <TableHead width="8%">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isVendorPortalUser &&
+              pendingSubmissions.map((submission) => {
+                const imageUrl =
+                  submission.media?.find((m) => m.is_primary)?.media?.url ||
+                  submission.media?.[0]?.media?.url;
+                return (
+                  <TableRow
+                    key={`submission-${submission.id}`}
+                    id={`submission-row-${submission.id}`}
+                  >
+                    <TableCell className="font-mono text-sm text-gray-500">
+                      S-{submission.id}
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-14 w-14 relative rounded-lg overflow-hidden bg-primary/10 border border-primary/20">
+                        {imageUrl ? (
+                          <Image
+                            src={imageUrl}
+                            alt={submission.title}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-5 w-5 text-primary" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="flex flex-col">
+                        <span className="truncate" title={submission.title}>
+                          {submission.title}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {SUBMISSION_STATUS_LABELS[submission.status]}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">—</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">—</span>
+                    </TableCell>
+                    {vendorsEnabled && (
+                      <TableCell>
+                        <span className="text-gray-400">—</span>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{submission.price}</span>
+                        {submission.sale_price != null ? (
+                          <span className="text-xs text-gray-500">
+                            sale {submission.sale_price}
+                          </span>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={submission.stock > 0 ? "success" : "danger"}>
+                        {submission.stock > 0 ? "In Stock" : "Out of Stock"}
+                      </Badge>
+                    </TableCell>
+                    {ratingsEnabled && (
+                      <TableCell>
+                        <span className="text-gray-400">—</span>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      {(() => {
+                        const createdAtParts = getCreatedAtParts(
+                          submission.created_at,
+                        );
+                        if (!createdAtParts) {
+                          return <span className="text-gray-400">—</span>;
+                        }
+                        return (
+                          <div className="flex flex-col leading-tight">
+                            <span>{createdAtParts.date}</span>
+                            <span className="text-xs text-gray-500">
+                              {createdAtParts.time}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">—</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="warning">Without approval</Badge>
+                        <Badge variant={submissionStatusVariant(submission.status)}>
+                          {SUBMISSION_STATUS_SHORT_LABELS[submission.status]}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="danger">Hidden</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-400">Pending review</span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             {products.map((product) => {
               const imageUrl = getProductImageUrl(product);
               const displayPrice = getProductDisplayPrice(product);
@@ -862,7 +1106,7 @@ export function ProductListPage({
                       <span className="text-gray-400">—</span>
                     )}
                   </TableCell>
-                  {showStatusFilter ? (
+                  {showStatusFilter || isVendorPortalUser ? (
                     <TableCell>
                       <Badge variant={getStatusVariant(product.status)}>
                         {getStatusLabel(product.status)}
@@ -932,7 +1176,7 @@ export function ProductListPage({
         </Table>
           </div>
         </>
-      )}
+      ) : null}
 
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}

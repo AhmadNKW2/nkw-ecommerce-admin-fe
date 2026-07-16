@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductListPage } from "../src/components/products/ProductListPage";
 import { ProductReviewWorkspace } from "../src/components/products/ProductReviewWorkspace";
@@ -21,6 +22,17 @@ export default function ProductsPageClient() {
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
   const { canEditProductPricing } = useAdminAccess();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const [openVendorQuickSubmit] = useState(
+    () => searchParams.get("create") === "1",
+  );
+
+  useEffect(() => {
+    if (!isVendorPortalUser || searchParams.get("create") !== "1") return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    const query = params.toString();
+    router.replace(query ? `/products?${query}` : "/products");
+  }, [isVendorPortalUser, router, searchParams]);
 
   const productStatusEnabled = isEnabled("product_status_enabled");
   const pricingViewEnabled = isEnabled("pricing_view_enabled");
@@ -169,6 +181,7 @@ export default function ProductsPageClient() {
       initialStatus={initialStatus}
       initialVisible={initialVisible}
       onStatusCleared={handleStatusCleared}
+      initialShowQuickSubmit={isVendorPortalUser && openVendorQuickSubmit}
     />
   );
 }

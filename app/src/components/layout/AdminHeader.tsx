@@ -58,12 +58,12 @@ export function AdminHeader({
   return (
     <header className="sticky top-0 z-30 flex min-h-18 shrink-0 items-stretch border-b border-b1 bg-[#ffffff]">
       {/* Branding — width tracks the sidebar */}
-      <div
-        className={cn(
-          "relative flex shrink-0 items-center gap-3 border-r border-b1 px-3 transition-[width] duration-300 ease-in-out sm:px-4",
-          showCollapsed ? "lg:w-18 lg:justify-center lg:px-2" : "lg:w-70",
-        )}
-      >
+        <div
+          className={cn(
+            "relative flex shrink-0 items-center gap-2 border-r border-b1 px-2 transition-[width] duration-300 ease-in-out sm:gap-3 sm:px-4",
+            showCollapsed ? "lg:w-18 lg:justify-center lg:px-2" : "lg:w-70",
+          )}
+        >
         <button
           type="button"
           onClick={onMenuClick}
@@ -75,18 +75,27 @@ export function AdminHeader({
 
         <div
           className={cn(
-            "shrink-0 [&>div]:h-11 [&>div]:w-11 [&_img]:h-11 [&_img]:w-11",
+            "shrink-0 [&>div]:h-9 [&>div]:w-9 [&_img]:h-9 [&_img]:w-9 sm:[&>div]:h-11 sm:[&>div]:w-11 sm:[&_img]:h-11 sm:[&_img]:w-11",
             showCollapsed && "lg:mx-auto",
           )}
         >
           <AdminLogo src={siteLogo} pending={isBrandingPending} alt={siteName} />
         </div>
 
-        <div className={cn("min-w-0", showCollapsed && "lg:hidden")}>
+        <div
+          className={cn(
+            "min-w-0",
+            showCollapsed && "lg:hidden",
+            // Vendor mobile: keep only menu + logo so Create/title fit.
+            isVendorPortalUser && "hidden sm:block",
+          )}
+        >
           <h1 className="truncate text-sm font-bold leading-snug text-gray-900 sm:text-base">
             {siteName}
           </h1>
-          <p className="truncate text-xs leading-snug text-gray-500">Admin Dashboard</p>
+          <p className="truncate text-xs leading-snug text-gray-500">
+            {isVendorPortalUser ? "Vendor portal" : "Admin Dashboard"}
+          </p>
         </div>
 
         {!isMobile && (

@@ -1,4 +1,11 @@
-export type AnalyticsRange = "7d" | "28d" | "90d" | "365d";
+export type AnalyticsRange =
+  | "1d"
+  | "2d"
+  | "3d"
+  | "7d"
+  | "28d"
+  | "90d"
+  | "365d";
 
 export type AnalyticsNamedValue = {
   name: string;
@@ -116,4 +123,107 @@ export type AnalyticsVisitorsParams = {
     | "deviceName"
     | "admin";
   sortOrder?: "asc" | "desc";
+};
+
+export type AnalyticsPopularProduct = {
+  productId: number | null;
+  slug: string | null;
+  name: string;
+  nameAr: string | null;
+  views: number;
+  sessions: number;
+  clicks: number;
+  clientIds: number;
+  viewsSource?: "ga4" | "first_party";
+};
+
+export type AnalyticsPopularProductsMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  includeAdmin?: boolean;
+  sortBy?: string;
+  sortOrder?: string;
+  viewsSource?: "ga4" | "first_party" | string;
+  totals?: {
+    views: number;
+    sessions: number;
+    clicks: number;
+  };
+  adminContribution?: {
+    adminViews: number;
+    adminClicks: number;
+    adminDevices: number;
+  };
+  toggleHasEffect?: boolean;
+};
+
+export type AnalyticsPopularProductsParams = {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  /** 1 = with admin, 0 = without (avoids boolean query-string bugs) */
+  includeAdmin?: boolean | 0 | 1;
+  sortBy?: "views" | "sessions" | "clientIds" | "clicks";
+  sortOrder?: "asc" | "desc";
+};
+
+export type AnalyticsSearchQuery = {
+  query: string;
+  views: number;
+  sessions: number;
+  clientIds: number;
+};
+
+export type AnalyticsSearchQueriesMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  includeAdmin?: boolean;
+  sortBy?: string;
+  sortOrder?: string;
+  adminContribution?: {
+    adminSearches: number;
+    adminClientIds: number;
+    adminDevices: number;
+  };
+  toggleHasEffect?: boolean;
+};
+
+export type AnalyticsSearchQueriesParams = {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  /** 1 = with admin, 0 = without */
+  includeAdmin?: boolean | 0 | 1;
+  sortBy?: "views" | "sessions" | "clientIds";
+  sortOrder?: "asc" | "desc";
+};
+
+export type AnalyticsDateCoverageScope =
+  | "overview"
+  | "products"
+  | "search"
+  | "visitors"
+  | "admins";
+
+export type AnalyticsDateCoveragePill = {
+  key: AnalyticsRange;
+  label: string;
+  days: number;
+  hasData: boolean;
+};
+
+export type AnalyticsDateCoverage = {
+  scope: AnalyticsDateCoverageScope;
+  earliestAt: string | null;
+  latestAt: string | null;
+  pills: AnalyticsDateCoveragePill[];
+  suggested: AnalyticsRange | null;
 };

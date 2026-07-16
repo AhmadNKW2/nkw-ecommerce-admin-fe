@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/auth.context";
 import { useAdminNotifications } from "@/hooks/use-admin-notifications";
 import { useAdminNotificationStream } from "@/hooks/use-admin-notification-stream";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
+import { useVendorLocale } from "@/contexts/vendor-locale.context";
 import { cn } from "@/lib/utils";
 
 export const ADMIN_PAGE_HEADER_SLOT_ID = "admin-page-header-slot";
@@ -30,6 +31,7 @@ export function AdminHeader({
   const pathname = usePathname();
   const { user } = useAuth();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const { copy } = useVendorLocale();
   const { isCollapsed, toggleCollapsed, isMobile, isMobileOpen, setMobileOpen } =
     useSidebar();
   const showCollapsed = isCollapsed && !isMobile;
@@ -58,13 +60,13 @@ export function AdminHeader({
 
   return (
     <header className="sticky top-0 z-30 flex min-h-18 shrink-0 items-stretch border-b border-b1 bg-[#ffffff]">
-      {/* Branding — width tracks the sidebar */}
-        <div
-          className={cn(
-            "relative flex shrink-0 items-center gap-2 border-r border-b1 px-2 transition-[width] duration-300 ease-in-out sm:gap-3 sm:px-4",
-            showCollapsed ? "lg:w-18 lg:justify-center lg:px-2" : "lg:w-70",
-          )}
-        >
+      {/* Branding — width tracks the sidebar; mirrors in RTL */}
+      <div
+        className={cn(
+          "relative flex shrink-0 items-center gap-2 border-e border-b1 px-2 transition-[width] duration-300 ease-in-out sm:gap-3 sm:px-4",
+          showCollapsed ? "lg:w-18 lg:justify-center lg:px-2" : "lg:w-70",
+        )}
+      >
         <button
           type="button"
           onClick={() => {
@@ -83,8 +85,8 @@ export function AdminHeader({
 
         <div
           className={cn(
-            "shrink-0 [&>div]:h-9 [&>div]:w-9 [&_img]:h-9 [&_img]:w-9 sm:[&>div]:h-11 sm:[&>div]:w-11 sm:[&_img]:h-11 sm:[&_img]:w-11",
-            showCollapsed && "lg:mx-auto",
+            "shrink-0 transition-all duration-300 ease-in-out [&>div]:h-9 [&>div]:w-9 [&_img]:h-9 [&_img]:w-9 sm:[&>div]:h-11 sm:[&>div]:w-11 sm:[&_img]:h-11 sm:[&_img]:w-11",
+            showCollapsed && "lg:mx-auto lg:[&>div]:h-10 lg:[&>div]:w-10 lg:[&_img]:h-10 lg:[&_img]:w-10",
           )}
         >
           <AdminLogo src={siteLogo} pending={isBrandingPending} alt={siteName} />
@@ -92,9 +94,10 @@ export function AdminHeader({
 
         <div
           className={cn(
-            "min-w-0",
-            showCollapsed && "lg:hidden",
-            // Vendor mobile: keep only menu + logo so Create/title fit.
+            "min-w-0 overflow-hidden transition-all duration-300 ease-in-out",
+            showCollapsed
+              ? "max-w-0 opacity-0"
+              : "max-w-56 flex-1 opacity-100",
             isVendorPortalUser && "hidden sm:block",
           )}
         >
@@ -102,7 +105,7 @@ export function AdminHeader({
             {siteName}
           </h1>
           <p className="truncate text-xs leading-snug text-gray-500">
-            {isVendorPortalUser ? "Vendor portal" : "Admin Dashboard"}
+            {isVendorPortalUser ? copy.vendorPortal : "Admin Dashboard"}
           </p>
         </div>
 
@@ -113,7 +116,7 @@ export function AdminHeader({
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             className="
-              absolute -right-3.5 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2
+              absolute -end-3.5 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2
               items-center justify-center rounded-full shrink-0
               bg-white text-primary
               shadow-[0_2px_8px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.06)]
@@ -126,7 +129,7 @@ export function AdminHeader({
               size={15}
               strokeWidth={2.5}
               className={cn(
-                "transition-transform duration-300 ease-in-out",
+                "transition-transform duration-300 ease-in-out rtl:-scale-x-100",
                 isCollapsed ? "rotate-180" : "rotate-0",
               )}
             />
@@ -140,27 +143,27 @@ export function AdminHeader({
         className="flex min-w-0 flex-1 items-center px-3 sm:px-4 lg:px-6"
       />
 
-      {/* Actions — notifications are platform-admin only */}
+      {/* Notifications — platform-admin only */}
       {!isVendorPortalUser ? (
-        <div className="flex items-center justify-end pr-3 sm:pr-4 lg:pr-6">
+        <div className="flex items-center justify-end pe-3 sm:pe-4 lg:pe-6">
           <div className="relative" ref={panelRef}>
             <button
               type="button"
               onClick={() => setIsOpen((open) => !open)}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-r2 border border-b1 bg-white text-primary transition-colors hover:bg-primary/10"
+              className="relative inline-flex h-13 w-13 min-w-13 items-center justify-center rounded-r1 border border-b1 bg-white text-primary transition-colors hover:bg-primary/10"
               aria-label="Open notifications"
               aria-expanded={isOpen}
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold leading-none text-white">
+                <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold leading-none text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               ) : null}
             </button>
 
             {isOpen ? (
-              <div className="absolute right-0 z-40 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-r1 border border-b1 bg-white shadow-s1">
+              <div className="absolute end-0 z-40 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-r1 border border-b1 bg-white shadow-s1">
                 <div className="flex items-center justify-between border-b border-b1 px-4 py-3">
                   <p className="text-sm font-semibold text-gray-900">Notifications</p>
                   <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">

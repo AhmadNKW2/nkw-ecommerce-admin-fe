@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useAuth } from '../../contexts/auth.context';
+import { useVendorLocale } from '../../contexts/vendor-locale.context';
 import type { SidebarRole } from './sidebar.config';
 import { sidebarConfig } from './sidebar.config';
 import { useResolvedFeatureToggles } from '../../hooks/use-resolved-feature-toggles';
@@ -13,6 +14,7 @@ import { passesAdminAccessCheck as checkAdminAccess } from '../../lib/admin-acce
 import { useSidebarCustomization } from '../../hooks/use-sidebar-customization';
 import type { ResolvedSidebarGroup } from '../../hooks/use-sidebar-customization';
 import { useAdminNotifications } from '../../hooks/use-admin-notifications';
+import { VendorLocaleToggle } from '../vendor-portal/VendorLocaleToggle';
 
 import {
   SidebarContent,
@@ -59,6 +61,7 @@ interface AppSidebarProps {
 
 function AppSidebarInner({ groups, footer }: AppSidebarProps) {
   const { logout, user } = useAuth();
+  const { copy, isVendorPortal } = useVendorLocale();
   const { isCollapsed, isMobile } = useSidebar();
   const showCollapsed = isCollapsed && !isMobile;
   const userRole = user?.role;
@@ -67,13 +70,37 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
   const { applyLayoutToGroups, layoutVersion } = useSidebarCustomization();
   const { navBadges } = useAdminNotifications();
 
-  const customizedGroups = useMemo(
-    () =>
-      applyLayoutToGroups(
-        (groups ?? sidebarConfig.groups) as Parameters<typeof applyLayoutToGroups>[0],
-      ),
-    [applyLayoutToGroups, groups, layoutVersion],
-  );
+  const customizedGroups = useMemo(() => {
+    const resolved = applyLayoutToGroups(
+      (groups ?? sidebarConfig.groups) as Parameters<typeof applyLayoutToGroups>[0],
+    );
+
+    // Same admin sidebar structure; only translate visible product labels for vendor AR/EN.
+    if (!isVendorPortal) return resolved;
+
+    return resolved.map((group) => {
+      const isProductsGroup =
+        group.label.toLowerCase() === 'products' ||
+        group.links.some((link) => link.href === '/products');
+
+      return {
+        ...group,
+        label: isProductsGroup ? copy.productsGroup : group.label,
+        links: group.links.map((link) =>
+          link.href === '/products'
+            ? { ...link, label: copy.products }
+            : link,
+        ),
+      };
+    });
+  }, [
+    applyLayoutToGroups,
+    copy.products,
+    copy.productsGroup,
+    groups,
+    isVendorPortal,
+    layoutVersion,
+  ]);
 
   const passesRoleCheck = (link: SidebarLinkItem): boolean => {
     if (!link.roles) return true;
@@ -106,7 +133,7 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
     passesAdminAccessCheck(link);
 
   const userDisplayName = user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+    ? [user.firstName, user.lastName].filter(Boolean).join(' ')
     : undefined;
 
   const handleLogout = async () => {
@@ -163,6 +190,16 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
 
       {footer && (
         <SidebarFooter>
+          {isVendorPortal && !showCollapsed ? (
+            <div className="mb-3">
+              <VendorLocaleToggle className="w-full [&>button]:flex-1" />
+            </div>
+          ) : null}
+          {isVendorPortal && showCollapsed ? (
+            <div className="mb-3 flex justify-center">
+              <VendorLocaleToggle compact />
+            </div>
+          ) : null}
           <div
             className={`flex items-center gap-3 sm:gap-5 ${showCollapsed ? 'justify-center' : ''}`}
           >
@@ -190,12 +227,12 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
             {!showCollapsed && (
               <button
                 onClick={handleLogout}
-                className="rounded-r1 p-2.5 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
-                title="Logout"
-                aria-label="Logout"
+                className="inline-flex h-13 w-13 min-w-13 items-center justify-center rounded-r1 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
+                title={isVendorPortal ? copy.logout : 'Logout'}
+                aria-label={isVendorPortal ? copy.logout : 'Logout'}
               >
                 <svg
-                  className="h-5 w-5"
+                  className="h-5 w-5 rtl:-scale-x-100"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

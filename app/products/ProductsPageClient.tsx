@@ -10,6 +10,7 @@ import { useAuth } from "../src/contexts/auth.context";
 import { useAdminAccess } from "../src/hooks/use-admin-access";
 import { useResolvedFeatureToggles } from "../src/hooks/use-resolved-feature-toggles";
 import { isSimplifiedProductCreator } from "../src/lib/simplified-product-creator";
+import { useVendorLocale } from "../src/contexts/vendor-locale.context";
 import type { ProductStatus } from "../src/services/products/types/product.types";
 import type { ProductsViewMode } from "../src/components/products/ProductsPageHeader";
 
@@ -22,6 +23,7 @@ export default function ProductsPageClient() {
   const { isResolved, isEnabled } = useResolvedFeatureToggles();
   const { canEditProductPricing } = useAdminAccess();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const { copy } = useVendorLocale();
   useEffect(() => {
     if (!isVendorPortalUser || searchParams.get("create") !== "1") return;
     router.replace("/products/create");
@@ -167,8 +169,12 @@ export default function ProductsPageClient() {
 
   return (
     <ProductListPage
-      title="Products"
-      description="Manage your product inventory"
+      title={isVendorPortalUser ? copy.products : "Products"}
+      description={
+        isVendorPortalUser
+          ? copy.productsDescription
+          : "Manage your product inventory"
+      }
       storageKey="products"
       {...sharedViewProps}
       initialStatus={initialStatus}

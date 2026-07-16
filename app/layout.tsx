@@ -6,6 +6,7 @@ import "nprogress/nprogress.css";
 import { QueryProvider } from "./src/providers/query-provider";
 import { LoadingProvider } from "./src/providers/loading-provider";
 import { AuthProvider } from "./src/contexts/auth.context";
+import { VendorLocaleProvider } from "./src/contexts/vendor-locale.context";
 import { JobTrackerProvider } from "./src/providers/job-tracker-provider";
 import { AppShell } from "./src/components/layout/AppShell";
 import { FaviconManager } from "./src/components/layout/FaviconManager";
@@ -64,9 +65,11 @@ export default function RootLayout({
           {process.env.NODE_ENV !== "production" ? <DevSsrApiLogReset /> : null}
           <LoadingProvider>
             <AuthProvider>
-              <JobTrackerProvider>
-                <AppShell>{children}</AppShell>
-              </JobTrackerProvider>
+              <VendorLocaleProvider>
+                <JobTrackerProvider>
+                  <AppShell>{children}</AppShell>
+                </JobTrackerProvider>
+              </VendorLocaleProvider>
             </AuthProvider>
           </LoadingProvider>
           <ToastContainer

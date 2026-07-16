@@ -34,7 +34,7 @@ const PaginationButton: React.FC<PaginationButtonProps> = ({ onClick, disabled, 
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-8 h-8 p-1 flex justify-center items-center rounded-r1 border border-primary2 text-primary2 hover:bg-primary2 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all duaration-300"
+    className="inline-flex h-13 w-13 min-w-13 items-center justify-center rounded-r1 border border-primary2 text-primary2 transition-all duration-300 hover:bg-primary2 hover:text-white disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent"
     title={title}
   >
     {icon}
@@ -177,7 +177,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-1">
             {pages.map((page, index) =>
               page === '...' ? (
-                <span key={`ellipsis-${index}`} className="w-8 h-8 flex items-center justify-center text-primary2 select-none">…</span>
+                <span key={`ellipsis-${index}`} className="inline-flex h-13 w-13 min-w-13 items-center justify-center text-primary2 select-none">…</span>
               ) : (
                 <PageNumber
                   key={`page-${page}`}

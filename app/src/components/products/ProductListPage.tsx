@@ -39,6 +39,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { useAuth } from "@/contexts/auth.context";
+import { useVendorLocale } from "@/contexts/vendor-locale.context";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { VendorPendingSubmissionCard } from "@/components/vendor-submissions/VendorPendingSubmissionCard";
 import { useVendorSubmissions } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
@@ -230,6 +231,7 @@ export function ProductListPage({
   const router = useRouter();
   const { user } = useAuth();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const { copy, isRtl } = useVendorLocale();
   const { isEnabled } = useResolvedFeatureToggles();
   const ratingsEnabled = isEnabled("ratings_enabled") && !isVendorPortalUser;
   const showStatusColumn = (showStatusFilter || isVendorPortalUser) && !isVendorPortalUser;
@@ -416,7 +418,17 @@ export function ProductListPage({
   };
 
   const getVisibilityLabel = (visible?: boolean) => {
+    if (isVendorPortalUser) {
+      return visible ? copy.visible : copy.hidden;
+    }
     return visible ? "Visible" : "Hidden";
+  };
+
+  const stockLabel = (inStock: boolean) => {
+    if (isVendorPortalUser) {
+      return inStock ? copy.inStock : copy.outOfStock;
+    }
+    return inStock ? "In Stock" : "Out of Stock";
   };
 
   const formatCategoryName = (name: string | undefined) => {
@@ -482,7 +494,10 @@ export function ProductListPage({
 
   if (isError) {
     return (
-      <div className="admin-state-page">
+      <div
+        className="admin-state-page"
+        dir={isVendorPortalUser ? (isRtl ? "rtl" : "ltr") : undefined}
+      >
         <div className="mx-auto">
           <Card>
             <div className="p-12 text-center">
@@ -491,9 +506,13 @@ export function ProductListPage({
                   <AlertCircle className="h-8 w-8 text-danger" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold ">Error Loading Products</h3>
+              <h3 className="text-xl font-bold ">
+                {isVendorPortalUser ? copy.errorLoading : "Error Loading Products"}
+              </h3>
               <p className=" max-w-md mx-auto">{error.message}</p>
-              <Button onClick={() => refetch()}>Try Again</Button>
+              <Button onClick={() => refetch()}>
+                {isVendorPortalUser ? copy.tryAgain : "Try Again"}
+              </Button>
             </div>
           </Card>
         </div>
@@ -502,11 +521,15 @@ export function ProductListPage({
   }
 
   return (
-    <div className="admin-page">
+    <div
+      className="admin-page"
+      dir={isVendorPortalUser ? (isRtl ? "rtl" : "ltr") : undefined}
+    >
       <ProductsPageHeader
         title={title}
         description={description}
         onCreate={handleCreateNew}
+        createLabel={isVendorPortalUser ? copy.create : "Create"}
         showCreate
         showViewToggle={showViewToggle}
         showReviewViewToggle={showReviewViewToggle}
@@ -564,12 +587,12 @@ export function ProductListPage({
       {!isVendorListLoading && !hasListContent ? (
         <EmptyState
           icon={<Package />}
-          title="No products found"
+          title={isVendorPortalUser ? copy.noProducts : "No products found"}
           description={
             fixedStatus
               ? `No products with status \"${fixedStatus}\" were found`
               : isVendorPortalUser
-                ? "Click Create to submit a new product for review"
+                ? copy.noProductsHint
                 : "Try adjusting your filters or add new products"
           }
         />
@@ -579,7 +602,7 @@ export function ProductListPage({
             {hasVendorPending ? (
               <>
                 <h2 className="px-0.5 text-sm font-semibold text-gray-600">
-                  Pending review
+                  {copy.pendingReview}
                 </h2>
                 {pendingSubmissions.map((submission) => {
                   const createdAtParts = getCreatedAtParts(submission.created_at);
@@ -599,7 +622,7 @@ export function ProductListPage({
             ) : null}
             {products.length > 0 && hasVendorPending ? (
               <h2 className="mt-1 px-0.5 text-sm font-semibold text-gray-600">
-                Your products
+                {copy.yourProducts}
               </h2>
             ) : null}
             {products.map((product) => {
@@ -670,7 +693,7 @@ export function ProductListPage({
                           variant={isOutOfStock ? "danger" : "success"}
                           className="!px-2 !py-0.5 text-[10px] sm:text-xs"
                         >
-                          {isOutOfStock ? "Out of Stock" : "In Stock"}
+                          {stockLabel(!isOutOfStock)}
                         </Badge>
                         <Badge
                           variant={getVisibilityVariant(product.visible ?? product.is_active)}
@@ -684,12 +707,16 @@ export function ProductListPage({
 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     <div>
-                      <p className="text-xs text-gray-500">Brand</p>
+                      <p className="text-xs text-gray-500">
+                        {isVendorPortalUser ? copy.brand : "Brand"}
+                      </p>
                       <p className="truncate font-medium">{product.brand?.name_en || "—"}</p>
                     </div>
                     {vendorsEnabled ? (
                       <div>
-                        <p className="text-xs text-gray-500">Vendor</p>
+                        <p className="text-xs text-gray-500">
+                          {isVendorPortalUser ? copy.vendor : "Vendor"}
+                        </p>
                         <p className="truncate font-medium">
                           {product.vendor?.name_en || product.vendor?.name || "—"}
                         </p>
@@ -698,11 +725,11 @@ export function ProductListPage({
                     {isVendorPortalUser ? (
                       <>
                         <div>
-                          <p className="text-xs text-gray-500">Cost</p>
+                          <p className="text-xs text-gray-500">{copy.cost}</p>
                           <p className="font-semibold">{costAndPrice?.cost ?? "—"}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Price</p>
+                          <p className="text-xs text-gray-500">{copy.price}</p>
                           <p className="font-semibold">{costAndPrice?.price ?? "—"}</p>
                         </div>
                       </>
@@ -725,7 +752,9 @@ export function ProductListPage({
                     ) : null}
                     {createdAtParts ? (
                       <div className="col-span-2">
-                        <p className="text-xs text-gray-500">Created</p>
+                        <p className="text-xs text-gray-500">
+                          {isVendorPortalUser ? copy.created : "Created"}
+                        </p>
                         <p className="text-sm">
                           {createdAtParts.date} · {createdAtParts.time}
                         </p>
@@ -739,14 +768,18 @@ export function ProductListPage({
                         variant="external"
                         disabled={!normalizeExternalUrl(product.reference_link)}
                         onClick={() => openReferenceLink(product.reference_link)}
-                        title="Open reference link"
+                        title={
+                          isVendorPortalUser
+                            ? copy.openReference
+                            : "Open reference link"
+                        }
                       />
                     ) : null}
                     <IconButton
                       variant="view"
                       disabled={!product.slug}
                       onClick={() => handlePreview(product.slug)}
-                      title="Preview product"
+                      title={isVendorPortalUser ? copy.preview : "Preview product"}
                     />
                     <IconButton
                       variant="edit"
@@ -754,12 +787,18 @@ export function ProductListPage({
                       onClick={() => {
                         sessionStorage.setItem("highlighted_product_id", product.id.toString());
                       }}
-                      title="Edit product"
+                      title={isVendorPortalUser ? copy.edit : "Edit product"}
                     />
                     <IconButton
                       variant="delete"
                       onClick={() => handleDeleteClick(product)}
-                      title={isReviewProduct(product) ? "Delete product permanently" : "Delete product"}
+                      title={
+                        isVendorPortalUser
+                          ? copy.delete
+                          : isReviewProduct(product)
+                            ? "Delete product permanently"
+                            : "Delete product"
+                      }
                     />
                   </div>
                 </Card>
@@ -787,30 +826,50 @@ export function ProductListPage({
           <TableHeader>
             <TableRow isHeader>
               <TableHead width="4%">#</TableHead>
-              <TableHead width="6%">Image</TableHead>
-              <TableHead width="11%">Product Name</TableHead>
-              <TableHead width="8%">Category</TableHead>
-              <TableHead width="11%">Brand</TableHead>
-              {vendorsEnabled && <TableHead width="11%">Vendor</TableHead>}
+              <TableHead width="6%">
+                {isVendorPortalUser ? copy.image : "Image"}
+              </TableHead>
+              <TableHead width="11%">
+                {isVendorPortalUser ? copy.productName : "Product Name"}
+              </TableHead>
+              <TableHead width="8%">
+                {isVendorPortalUser ? copy.category : "Category"}
+              </TableHead>
+              <TableHead width="11%">
+                {isVendorPortalUser ? copy.brand : "Brand"}
+              </TableHead>
+              {vendorsEnabled && (
+                <TableHead width="11%">
+                  {isVendorPortalUser ? copy.vendor : "Vendor"}
+                </TableHead>
+              )}
               {isVendorPortalUser ? (
                 <>
-                  <TableHead width="6%">Cost</TableHead>
-                  <TableHead width="6%">Price</TableHead>
+                  <TableHead width="6%">{copy.cost}</TableHead>
+                  <TableHead width="6%">{copy.price}</TableHead>
                 </>
               ) : (
                 <TableHead width="5%">Price</TableHead>
               )}
-              <TableHead width="7%">Stock</TableHead>
+              <TableHead width="7%">
+                {isVendorPortalUser ? copy.stock : "Stock"}
+              </TableHead>
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
-              <TableHead width="7%">Created At</TableHead>
+              <TableHead width="7%">
+                {isVendorPortalUser ? copy.createdAt : "Created At"}
+              </TableHead>
               {showCreatedByColumn ? (
                 <TableHead width="10%">Created By</TableHead>
               ) : null}
               {showStatusColumn ? (
                 <TableHead width="7%">Status</TableHead>
               ) : null}
-              <TableHead width="7%">Visibility</TableHead>
-              <TableHead width="8%">Actions</TableHead>
+              <TableHead width="7%">
+                {isVendorPortalUser ? copy.visibility : "Visibility"}
+              </TableHead>
+              <TableHead width="8%">
+                {isVendorPortalUser ? copy.actions : "Actions"}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -878,7 +937,7 @@ export function ProductListPage({
                     </TableCell>
                     <TableCell>
                       <Badge variant={submission.stock > 0 ? "success" : "danger"}>
-                        {submission.stock > 0 ? "In Stock" : "Out of Stock"}
+                        {stockLabel(submission.stock > 0)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -900,10 +959,12 @@ export function ProductListPage({
                       })()}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="danger">Hidden</Badge>
+                      <Badge variant="danger">{copy.hidden}</Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-gray-400">Pending review</span>
+                      <span className="text-sm text-gray-400">
+                        {copy.pendingReview}
+                      </span>
                     </TableCell>
                   </TableRow>
                 );
@@ -1045,7 +1106,7 @@ export function ProductListPage({
 
                       return (
                         <Badge variant={isOutOfStock ? "danger" : "success"}>
-                          {isOutOfStock ? "Out of Stock" : "In Stock"}
+                          {stockLabel(!isOutOfStock)}
                         </Badge>
                       );
                     })()}
@@ -1132,7 +1193,9 @@ export function ProductListPage({
                         }}
                         title={
                           normalizeExternalUrl(product.reference_link)
-                            ? "Open reference link"
+                            ? isVendorPortalUser
+                              ? copy.openReference
+                              : "Open reference link"
                             : "No reference link"
                         }
                       />
@@ -1144,7 +1207,13 @@ export function ProductListPage({
                           event.stopPropagation();
                           handlePreview(product.slug);
                         }}
-                        title={product.slug ? "Preview product" : "Preview unavailable"}
+                        title={
+                          product.slug
+                            ? isVendorPortalUser
+                              ? copy.preview
+                              : "Preview product"
+                            : "Preview unavailable"
+                        }
                       />
                       <IconButton
                         variant="edit"
@@ -1153,7 +1222,7 @@ export function ProductListPage({
                           event.stopPropagation();
                           sessionStorage.setItem("highlighted_product_id", product.id.toString());
                         }}
-                        title="Edit product"
+                        title={isVendorPortalUser ? copy.edit : "Edit product"}
                       />
                       <IconButton
                         variant="delete"
@@ -1161,7 +1230,13 @@ export function ProductListPage({
                           event.stopPropagation();
                           handleDeleteClick(product);
                         }}
-                        title={isReviewProduct(product) ? "Delete product permanently" : "Delete product"}
+                        title={
+                          isVendorPortalUser
+                            ? copy.delete
+                            : isReviewProduct(product)
+                              ? "Delete product permanently"
+                              : "Delete product"
+                        }
                       />
                     </div>
                   </TableCell>

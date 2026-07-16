@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useVendorLocale } from "@/contexts/vendor-locale.context";
 import type { VendorSubmission } from "@/services/vendor-submissions/types/vendor-submission.types";
 
 type VendorPendingSubmissionCardProps = {
@@ -15,6 +16,7 @@ export function VendorPendingSubmissionCard({
   submission,
   createdAtLabel,
 }: VendorPendingSubmissionCardProps) {
+  const { copy } = useVendorLocale();
   const imageUrl =
     submission.media?.find((m) => m.is_primary)?.media?.url ||
     submission.media?.[0]?.media?.url;
@@ -51,7 +53,7 @@ export function VendorPendingSubmissionCard({
               variant="danger"
               className="!px-2 !py-0.5 text-[10px] sm:text-xs"
             >
-              Hidden
+              {copy.hidden}
             </Badge>
           </div>
         </div>
@@ -59,33 +61,33 @@ export function VendorPendingSubmissionCard({
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
         <div className="min-w-0">
-          <p className="text-xs text-gray-500">Cost</p>
+          <p className="text-xs text-gray-500">{copy.cost}</p>
           <p className="font-semibold tabular-nums">
             {submission.sale_price != null ? submission.sale_price : "—"}
           </p>
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-gray-500">Price</p>
+          <p className="text-xs text-gray-500">{copy.price}</p>
           <p className="font-semibold tabular-nums">{submission.price}</p>
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-gray-500">Stock</p>
+          <p className="text-xs text-gray-500">{copy.stock}</p>
           <Badge
             variant={inStock ? "success" : "danger"}
             className="!mt-0.5 !px-2 !py-0.5 text-[10px] sm:text-xs"
           >
-            {inStock ? "In Stock" : "Out of Stock"}
+            {inStock ? copy.inStock : copy.outOfStock}
           </Badge>
         </div>
         {createdAtLabel ? (
           <div className="min-w-0">
-            <p className="text-xs text-gray-500">Created</p>
+            <p className="text-xs text-gray-500">{copy.created}</p>
             <p className="text-sm text-gray-700">{createdAtLabel}</p>
           </div>
         ) : null}
         <div className="col-span-2">
-          <p className="text-xs text-gray-500">Actions</p>
-          <p className="text-sm text-gray-500">Pending review</p>
+          <p className="text-xs text-gray-500">{copy.actions}</p>
+          <p className="text-sm text-gray-500">{copy.pendingReview}</p>
         </div>
       </div>
     </Card>

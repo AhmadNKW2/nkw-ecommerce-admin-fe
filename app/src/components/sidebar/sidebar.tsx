@@ -5,6 +5,9 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronLeft, X } from 'lucide-react';
+import { AdminLogo } from '../common/AdminLogo';
+import { useVendorLocale } from '../../contexts/vendor-locale.context';
+import { useVendorPortalBranding } from '../../hooks/use-vendor-portal-branding';
 
 // ---------- Context ----------
 
@@ -87,6 +90,12 @@ interface SidebarPanelProps {
 
 export function SidebarPanel({ children }: SidebarPanelProps) {
   const { isCollapsed, isMobile, isMobileOpen, setMobileOpen } = useSidebar();
+  const { isRtl, isVendorPortal, copy } = useVendorLocale();
+  const {
+    displayName: siteName,
+    logo: siteLogo,
+    isBrandingPending,
+  } = useVendorPortalBranding();
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -104,6 +113,7 @@ export function SidebarPanel({ children }: SidebarPanelProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isMobile, isMobileOpen, setMobileOpen]);
 
+  // Identical admin sidebar chrome for vendor and platform admin.
   if (!isMobile) {
     return (
       <aside
@@ -121,6 +131,10 @@ export function SidebarPanel({ children }: SidebarPanelProps) {
   if (!portalTarget) {
     return null;
   }
+
+  // Same admin drawer. Vendor AR opens from the right; EN/admin from the left.
+  const openFromRight = isRtl;
+  const closedTransform = openFromRight ? 'translate-x-full' : '-translate-x-full';
 
   return createPortal(
     <div aria-hidden={!isMobileOpen}>
@@ -140,21 +154,39 @@ export function SidebarPanel({ children }: SidebarPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
+        dir={isRtl ? 'rtl' : 'ltr'}
         className={`
-          fixed inset-y-0 left-0 z-[70] flex w-[min(20rem,88vw)] flex-col
+          fixed inset-y-0 z-[70] flex w-[min(20rem,88vw)] flex-col
           bg-white shadow-2xl
           transition-transform duration-300 ease-out
           pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${openFromRight ? 'right-0' : 'left-0'}
+          ${isMobileOpen ? 'translate-x-0' : closedTransform}
         `}
       >
-        <div className="flex items-center justify-between border-b border-b1 px-4 py-3">
-          <p className="text-sm font-semibold text-gray-900">Menu</p>
+        <div className="flex items-center justify-between gap-3 border-b border-b1 px-4 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="shrink-0 [&>div]:h-11 [&>div]:w-11 [&_img]:h-11 [&_img]:w-11">
+              <AdminLogo
+                src={siteLogo}
+                pending={isBrandingPending}
+                alt={siteName}
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-gray-900 sm:text-base">
+                {siteName || 'OrdonSooq'}
+              </p>
+              <p className="truncate text-xs text-gray-500">
+                {isVendorPortal ? copy.vendorPortal : 'Admin Dashboard'}
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
             aria-label="Close navigation menu"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10"
+            className="inline-flex h-13 w-13 min-w-13 shrink-0 items-center justify-center rounded-r1 text-primary transition-colors hover:bg-primary/10"
           >
             <X className="h-5 w-5" />
           </button>
@@ -187,7 +219,7 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
       <div
         className={`
           flex min-w-0 items-center transition-all duration-300 ease-in-out
-          ${isCollapsed && !isMobile ? 'justify-center' : 'flex-1 gap-3 pr-6'}
+          ${isCollapsed && !isMobile ? 'justify-center' : 'flex-1 gap-3 pe-6'}
         `}
       >
         {logo ? (
@@ -219,7 +251,7 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className="
-            absolute -right-3.5 top-13 -translate-y-1/2 z-20
+            absolute -end-3.5 top-13 -translate-y-1/2 z-20
             flex items-center justify-center
             w-7 h-7 rounded-full shrink-0
             bg-white text-primary
@@ -234,7 +266,7 @@ export function SidebarHeader({ logo, children }: SidebarHeaderProps) {
             size={15}
             strokeWidth={2.5}
             className={`
-              transition-transform duration-300 ease-in-out
+              transition-transform duration-300 ease-in-out rtl:-scale-x-100
               ${isCollapsed ? 'rotate-180' : 'rotate-0'}
             `}
           />
@@ -317,7 +349,7 @@ export function SidebarGroup({
               <span className="uppercase tracking-wide">{label}</span>
             </div>
             <svg
-              className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -362,6 +394,7 @@ export function SidebarLink({
   onClick,
 }: SidebarLinkProps) {
   const pathname = usePathname();
+  const { isRtl } = useVendorLocale();
   const { isCollapsed, isMobile, setMobileOpen } = useSidebar();
   const showCollapsed = isCollapsed && !isMobile;
   const isActive = exact
@@ -374,7 +407,11 @@ export function SidebarLink({
   const handleMouseEnter = () => {
     if (!showCollapsed || !linkRef.current) return;
     const rect = linkRef.current.getBoundingClientRect();
-    setTooltipPos({ x: rect.right + 10, y: rect.top + rect.height / 2 });
+    // Vendor AR places the sidebar on the right — tooltip opens toward content.
+    setTooltipPos({
+      x: isRtl ? rect.left - 10 : rect.right + 10,
+      y: rect.top + rect.height / 2,
+    });
   };
 
   const handleMouseLeave = () => setTooltipPos(null);
@@ -449,19 +486,19 @@ export function SidebarLink({
         createPortal(
           <div
             role="tooltip"
-            style={{ top: tooltipPos.y, left: tooltipPos.x }}
+            style={{
+              top: tooltipPos.y,
+              left: tooltipPos.x,
+              transform: isRtl
+                ? 'translate(-100%, -50%)'
+                : 'translateY(-50%)',
+            }}
             className="
-              fixed z-9999 -translate-y-1/2 pointer-events-none
+              fixed z-9999 pointer-events-none
               flex items-center
-              animate-in fade-in slide-in-from-left-2 duration-150
+              animate-in fade-in duration-150
             "
           >
-            <span className="
-              w-0 h-0
-              border-t-[5px] border-t-transparent
-              border-b-[5px] border-b-transparent
-              border-r-[6px] border-r-gray-800
-            " />
             <span className="
               whitespace-nowrap px-3 py-1.5
               bg-gray-800 text-white text-xs font-medium
@@ -469,7 +506,7 @@ export function SidebarLink({
             ">
               {label}
               {badge !== undefined && (
-                <span className="ml-2 px-1.5 py-0.5 bg-primary rounded-full text-white text-[10px] font-semibold">
+                <span className="ms-2 px-1.5 py-0.5 bg-primary rounded-full text-white text-[10px] font-semibold">
                   {badge}
                 </span>
               )}

@@ -41,7 +41,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   }, []);
 
   const actions = hasActions && (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 rtl:justify-start">
       {extraActions}
       {cancelAction && (
         <Button
@@ -54,11 +54,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         </Button>
       )}
       {action && (
-        <Button
-          onClick={action.onClick}
-          disabled={action.disabled}
-          className="!h-10 !px-3 !text-sm sm:!h-13 sm:!px-5 sm:!text-[16px]"
-        >
+        <Button onClick={action.onClick} disabled={action.disabled}>
           {action.label}
         </Button>
       )}

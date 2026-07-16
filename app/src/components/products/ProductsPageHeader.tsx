@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { ArrowRightLeft, Coins, LayoutGrid, Link2, List, Package } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ interface ProductsPageHeaderProps {
   title: string;
   description: string;
   onCreate: () => void;
+  createLabel?: string;
   showViewToggle?: boolean;
   showReviewViewToggle?: boolean;
   showPricingViewToggle?: boolean;
@@ -19,12 +21,14 @@ interface ProductsPageHeaderProps {
   onViewModeChange?: (mode: ProductsViewMode) => void;
   showStatusFilter?: boolean;
   onBulkStatusClick?: () => void;
+  extraActions?: React.ReactNode;
 }
 
 export function ProductsPageHeader({
   title,
   description,
   onCreate,
+  createLabel = "Create",
   showViewToggle = false,
   showReviewViewToggle = true,
   showPricingViewToggle = false,
@@ -34,24 +38,25 @@ export function ProductsPageHeader({
   onViewModeChange,
   showStatusFilter = false,
   onBulkStatusClick,
+  extraActions,
 }: ProductsPageHeaderProps) {
   return (
     <PageHeader
       icon={<Package />}
       title={title}
       description={description}
-      action={showCreate ? { label: "Create", onClick: onCreate } : undefined}
+      action={showCreate ? { label: createLabel, onClick: onCreate } : undefined}
       extraActions={
         <>
+          {extraActions}
           {showViewToggle && onViewModeChange ? (
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant={viewMode === "list" ? "solid" : "outline"}
                 color="var(--color-primary2)"
                 onClick={() => onViewModeChange("list")}
-                className="rounded-full px-3 py-1.5 text-sm"
               >
-                <List className="mr-1.5 inline h-4 w-4" />
+                <List className="me-1.5 inline h-4 w-4" />
                 List view
               </Button>
               {showReviewViewToggle ? (
@@ -59,9 +64,8 @@ export function ProductsPageHeader({
                   variant={viewMode === "review" ? "solid" : "outline"}
                   color="var(--color-primary2)"
                   onClick={() => onViewModeChange("review")}
-                  className="rounded-full px-3 py-1.5 text-sm"
                 >
-                  <LayoutGrid className="mr-1.5 inline h-4 w-4" />
+                  <LayoutGrid className="me-1.5 inline h-4 w-4" />
                   Review view
                 </Button>
               ) : null}
@@ -70,9 +74,8 @@ export function ProductsPageHeader({
                   variant={viewMode === "pricing" ? "solid" : "outline"}
                   color="var(--color-primary2)"
                   onClick={() => onViewModeChange("pricing")}
-                  className="rounded-full px-3 py-1.5 text-sm"
                 >
-                  <Coins className="mr-1.5 inline h-4 w-4" />
+                  <Coins className="me-1.5 inline h-4 w-4" />
                   Pricing view
                 </Button>
               ) : null}
@@ -81,9 +84,8 @@ export function ProductsPageHeader({
                   variant={viewMode === "reference-links" ? "solid" : "outline"}
                   color="var(--color-primary2)"
                   onClick={() => onViewModeChange("reference-links")}
-                  className="rounded-full px-3 py-1.5 text-sm"
                 >
-                  <Link2 className="mr-1.5 inline h-4 w-4" />
+                  <Link2 className="me-1.5 inline h-4 w-4" />
                   Reference links
                 </Button>
               ) : null}
@@ -94,9 +96,8 @@ export function ProductsPageHeader({
               variant="outline"
               color="var(--color-primary2)"
               onClick={onBulkStatusClick}
-              className="rounded-full px-4"
             >
-              <ArrowRightLeft className="mr-2 inline h-4 w-4" />
+              <ArrowRightLeft className="me-2 inline h-4 w-4" />
               Bulk change status
             </Button>
           ) : null}

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Check, X, LogOut, RotateCcw, ExternalLink } from 'lucide-react';
+import { BUTTON_SQUARE_CLASS } from './button';
 
 interface IconButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement | HTMLDivElement | HTMLAnchorElement>;
@@ -35,7 +36,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   };
 
   const { icon: Icon, styles } = variantConfig[variant];
-  const baseClassName = `z-10 p-2 rounded-full inline-flex items-center justify-center transition-all duaration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${styles} ${className}`;
+  const baseClassName = `z-10 ${BUTTON_SQUARE_CLASS} rounded-r1 inline-flex items-center justify-center transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${styles} ${className}`;
 
   if (href && !disabled) {
     return (
@@ -45,7 +46,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         title={title}
         className={baseClassName}
       >
-        <Icon className="w-4 h-4" />
+        <Icon className="w-5 h-5" />
       </Link>
     );
   }
@@ -66,7 +67,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
         aria-disabled={disabled}
         className={`${baseClassName} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        <Icon className="w-4 h-4" />
+        <Icon className="w-5 h-5" />
       </div>
     );
   }
@@ -78,7 +79,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
       title={title}
       className={baseClassName}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="w-5 h-5" />
     </button>
   );
 };

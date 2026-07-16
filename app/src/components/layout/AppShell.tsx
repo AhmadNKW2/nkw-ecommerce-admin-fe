@@ -14,9 +14,11 @@ import { fetchFeatureToggles } from "../../services/settings/hooks/use-settings"
 import { queryKeys } from "../../lib/query-keys";
 import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
+import { useVendorPortalBranding } from "../../hooks/use-vendor-portal-branding";
 import { AdminHeader } from "./AdminHeader";
 import { RegisterAdminDashboardClient } from "../analytics/RegisterAdminDashboardClient";
 import { isAuthRoute } from "../../lib/auth-routes";
+import { useVendorLocale } from "../../contexts/vendor-locale.context";
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,12 +27,16 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   const mainRef = useRef<HTMLElement>(null);
   const { showOverlay } = useLoading();
   const { setMobileOpen } = useSidebar();
+  const { isRtl, isVendorPortal } = useVendorLocale();
+  const { dashboardTitle } = useResolvedSiteBranding();
   const {
-    dashboardTitle,
-    siteName,
-    siteLogo,
+    logo: headerLogo,
+    displayName,
     isBrandingPending,
-  } = useResolvedSiteBranding();
+  } = useVendorPortalBranding();
+
+  // Vendor AR → full RTL (sidebar right, headers/groups mirrored). EN/admin → LTR.
+  const shellDir = isVendorPortal && isRtl ? "rtl" : "ltr";
 
   useEffect(() => {
     setMobileOpen(false);
@@ -65,11 +71,11 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   return (
-    <div className="flex h-dvh flex-col bg-primary/10">
+    <div className="flex h-dvh flex-col bg-primary/10" dir={shellDir}>
       <RegisterAdminDashboardClient />
       <AdminHeader
-        siteName={siteName}
-        siteLogo={siteLogo}
+        siteName={displayName}
+        siteLogo={headerLogo}
         isBrandingPending={isBrandingPending}
         onMenuClick={() => setMobileOpen(true)}
       />

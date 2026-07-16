@@ -9,53 +9,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { mediaService } from "@/services/media/api/media.service";
 import { showErrorToast } from "@/lib/toast";
 import { useCreateVendorSubmission } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
-
-type FormLang = "ar" | "en";
+import { useVendorLocale } from "@/contexts/vendor-locale.context";
 
 type QuickSubmitFormProps = {
   onSuccess?: () => void;
   onCancel?: () => void;
   /** When true, skip success toasts (vendor portal has no notifications). */
   silentSuccess?: boolean;
+  /** Hide card title when the page already has a PageHeader. */
+  hideHeading?: boolean;
 };
-
-const COPY = {
-  ar: {
-    title: "إنشاء منتج",
-    subtitle: "العنوان، الوصف، التكلفة، السعر، المخزون، وصور اختيارية.",
-    productTitle: "عنوان المنتج",
-    description: "الوصف",
-    cost: "التكلفة",
-    price: "السعر",
-    stock: "كمية المخزون",
-    addImages: "إضافة صور",
-    cancel: "إلغاء",
-    submit: "إرسال للمراجعة",
-    submitting: "جاري الإرسال...",
-    costMustBeValid: "التكلفة يجب أن تكون أكبر من أو تساوي صفر",
-  },
-  en: {
-    title: "Create Product",
-    subtitle: "Title, description, cost, price, stock, and optional images.",
-    productTitle: "Product title",
-    description: "Description",
-    cost: "Cost",
-    price: "Price",
-    stock: "Stock quantity",
-    addImages: "Add images",
-    cancel: "Cancel",
-    submit: "Submit for review",
-    submitting: "Submitting...",
-    costMustBeValid: "Cost must be ≥ 0",
-  },
-} as const;
 
 export function QuickSubmitForm({
   onSuccess,
   onCancel,
   silentSuccess = true,
+  hideHeading = false,
 }: QuickSubmitFormProps) {
-  const [lang, setLang] = useState<FormLang>("ar");
+  const { copy, isRtl } = useVendorLocale();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
@@ -65,13 +36,26 @@ export function QuickSubmitForm({
   const [isUploading, setIsUploading] = useState(false);
 
   const createSubmission = useCreateVendorSubmission({ silent: silentSuccess });
-  const copy = COPY[lang];
 
   const previews = useMemo(
     () =>
       files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
     [files],
   );
+
+  const costIsNegative = cost !== "" && Number(cost) < 0;
+  const costExceedsPrice =
+    cost !== "" &&
+    price !== "" &&
+    !Number.isNaN(Number(cost)) &&
+    !Number.isNaN(Number(price)) &&
+    Number(cost) > Number(price);
+
+  const costError = costIsNegative
+    ? copy.costMustBeValid
+    : costExceedsPrice
+      ? copy.costMustNotExceedPrice
+      : undefined;
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -80,6 +64,7 @@ export function QuickSubmitForm({
     Number(cost) >= 0 &&
     price !== "" &&
     Number(price) >= 0 &&
+    !costExceedsPrice &&
     stock !== "" &&
     Number(stock) >= 0 &&
     !isUploading &&
@@ -95,7 +80,8 @@ export function QuickSubmitForm({
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || costExceedsPrice) return;
+
     try {
       let media: { media_id: number; is_primary?: boolean; sort_order?: number }[] =
         [];
@@ -120,7 +106,7 @@ export function QuickSubmitForm({
       onSuccess?.();
     } catch (error) {
       showErrorToast(
-        (error as Error)?.message || "Failed to submit product.",
+        (error as Error)?.message || copy.submitFailed,
       );
     } finally {
       setIsUploading(false);
@@ -128,55 +114,33 @@ export function QuickSubmitForm({
   };
 
   return (
-    <Card className="!gap-4 !p-3 sm:!p-4 md:!p-5" dir="rtl">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <Card
+      className="!gap-4 !p-3 sm:!p-4 md:!p-5"
+      dir={isRtl ? "rtl" : "ltr"}
+    >
+      {!hideHeading ? (
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
-            {copy.title}
+            {copy.createProduct}
           </h2>
-          <p className="mt-0.5 text-sm text-gray-500">{copy.subtitle}</p>
+          <p className="mt-0.5 text-sm text-gray-500">{copy.formSubtitle}</p>
         </div>
-        <div className="flex shrink-0 gap-1 self-start rounded-r1 border border-primary2/30 p-1">
-          <button
-            type="button"
-            onClick={() => setLang("ar")}
-            className={`rounded-r1 px-3 py-1.5 text-sm font-semibold transition-colors ${
-              lang === "ar"
-                ? "bg-primary2 text-white"
-                : "text-primary2 hover:bg-primary2/10"
-            }`}
-          >
-            AR
-          </button>
-          <button
-            type="button"
-            onClick={() => setLang("en")}
-            className={`rounded-r1 px-3 py-1.5 text-sm font-semibold transition-colors ${
-              lang === "en"
-                ? "bg-primary2 text-white"
-                : "text-primary2 hover:bg-primary2/10"
-            }`}
-          >
-            EN
-          </button>
-        </div>
-      </div>
+      ) : null}
 
       <div className="flex min-w-0 flex-col gap-4">
         <Input
           label={copy.productTitle}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          isRtl
+          isRtl={isRtl}
         />
         <Textarea
           label={copy.description}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           minRows={4}
-          isRtl
+          isRtl={isRtl}
         />
-        {/* In RTL, first grid item appears on the right: Cost → Price → Stock */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Input
             label={copy.cost}
@@ -184,31 +148,29 @@ export function QuickSubmitForm({
             inputMode="decimal"
             value={cost}
             onChange={(e) => setCost(e.target.value)}
-            isRtl
-            error={
-              cost !== "" && Number(cost) < 0 ? copy.costMustBeValid : undefined
-            }
+            isRtl={isRtl}
+            error={costError}
           />
           <Input
-            label={copy.price}
+            label={copy.salePrice}
             type="number"
             inputMode="decimal"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            isRtl
+            isRtl={isRtl}
           />
           <Input
-            label={copy.stock}
+            label={copy.stockQty}
             type="number"
             inputMode="numeric"
             value={stock}
             onChange={(e) => setStock(e.target.value)}
-            isRtl
+            isRtl={isRtl}
           />
         </div>
 
         <div className="min-w-0">
-          <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-r1 border border-primary2 px-4 text-primary2 transition-all hover:bg-primary2 hover:text-white sm:h-13 sm:w-fit">
+          <label className="inline-flex h-13 min-w-13 w-full cursor-pointer items-center justify-center gap-2 rounded-r1 border border-primary2 px-5 text-[16px] font-medium text-primary2 transition-all hover:bg-primary2 hover:text-white sm:w-auto">
             <Upload className="h-5 w-5 shrink-0" />
             <span>{copy.addImages}</span>
             <input
@@ -242,10 +204,10 @@ export function QuickSubmitForm({
                     onClick={() =>
                       setFiles((prev) => prev.filter((_, i) => i !== index))
                     }
-                    className="absolute top-1 left-1 rounded-full bg-black/60 p-0.5 text-white"
+                    className="absolute top-1 start-1 rounded-full bg-black/60 p-1 text-white"
                     aria-label={`Remove ${preview.name}`}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
@@ -258,7 +220,7 @@ export function QuickSubmitForm({
             onClick={handleSubmit}
             disabled={!canSubmit}
             color="var(--color-primary)"
-            className="w-full !h-11 !whitespace-normal sm:w-auto sm:!h-13 sm:!whitespace-nowrap"
+            className="w-full sm:w-auto"
           >
             {createSubmission.isPending || isUploading
               ? copy.submitting
@@ -268,7 +230,7 @@ export function QuickSubmitForm({
             <Button
               variant="outline"
               onClick={onCancel}
-              className="w-full !h-11 sm:w-auto sm:!h-13"
+              className="w-full sm:w-auto"
             >
               {copy.cancel}
             </Button>

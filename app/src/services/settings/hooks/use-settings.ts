@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../../lib/query-keys';
 import { QUERY_CONFIG } from '../../../lib/constants';
@@ -5,11 +6,13 @@ import {
   readStoredFeatureToggles,
   toFeatureToggles,
   writeStoredFeatureToggles,
+  type StoredFeatureToggles,
 } from '../../../lib/feature-toggles-cache';
 import {
   readStoredSiteBranding,
   toCachedSeoSettings,
   writeStoredSiteBranding,
+  type StoredSiteBranding,
 } from '../../../lib/site-branding-cache';
 import { applyBrandThemeToDocument, resolveBrandTheme } from '../../../lib/brand-theme';
 import { showErrorToast, showSuccessToast } from '../../../lib/toast';
@@ -27,6 +30,21 @@ import {
   UpdateSitePopupSettingsDto,
 } from '../types/settings.types';
 
+/**
+ * localStorage is unavailable on the server. Reading it during the first client
+ * render causes hydration mismatches (e.g. AdminLogo skeleton vs image).
+ * Only apply cached placeholders after mount.
+ */
+function useClientStoredValue<T>(read: () => T | undefined): T | undefined {
+  const [value, setValue] = useState<T | undefined>(undefined);
+
+  useEffect(() => {
+    setValue(read());
+  }, [read]);
+
+  return value;
+}
+
 export async function fetchSeoSettings() {
   const response = await settingsService.getSeoSettings();
   writeStoredSiteBranding(response.data);
@@ -34,7 +52,9 @@ export async function fetchSeoSettings() {
 }
 
 export const useSeoSettings = (options?: { enabled?: boolean }) => {
-  const storedBranding = readStoredSiteBranding();
+  const storedBranding = useClientStoredValue<StoredSiteBranding>(
+    readStoredSiteBranding,
+  );
 
   return useQuery({
     queryKey: queryKeys.settings.seo(),
@@ -85,7 +105,9 @@ export async function fetchFeatureToggles() {
 export const fetchProductFieldToggles = fetchFeatureToggles;
 
 export const useFeatureToggles = (options?: { enabled?: boolean }) => {
-  const storedToggles = readStoredFeatureToggles();
+  const storedToggles = useClientStoredValue<StoredFeatureToggles>(
+    readStoredFeatureToggles,
+  );
 
   return useQuery({
     queryKey: queryKeys.settings.features(),

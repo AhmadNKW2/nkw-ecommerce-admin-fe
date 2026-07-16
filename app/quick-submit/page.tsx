@@ -30,6 +30,7 @@ const STATUS_LABELS: Record<VendorSubmissionStatus, string> = {
   awaiting_brand: "Awaiting brand approval",
   awaiting_category: "Awaiting category approval",
   awaiting_category_specs: "Awaiting category setup",
+  awaiting_specs_approval: "Awaiting specs approval",
   ready: "Ready",
   materialized: "Published to catalog",
   rejected: "Rejected",

@@ -4,6 +4,7 @@ export type VendorSubmissionStatus =
   | "awaiting_brand"
   | "awaiting_category"
   | "awaiting_category_specs"
+  | "awaiting_specs_approval"
   | "ready"
   | "materialized"
   | "rejected"
@@ -81,6 +82,7 @@ export interface VendorSubmission {
   resolved_category_id: number | null;
   brand_request_id: number | null;
   category_request_id: number | null;
+  specs_request_id: number | null;
   product_id: number | null;
   error: string | null;
   media?: SubmissionMediaItem[];
@@ -104,7 +106,7 @@ export interface ListVendorSubmissionsParams {
   vendor_id?: number;
 }
 
-export type CatalogRequestType = "brand" | "category";
+export type CatalogRequestType = "brand" | "category" | "specs";
 export type CatalogRequestStatus = "pending" | "approved" | "rejected";
 
 export interface CatalogRequest {
@@ -116,10 +118,17 @@ export interface CatalogRequest {
   reviewed_by: number | null;
   reviewed_at: string | null;
   payload: {
+    mode?: "match" | "create" | "review";
     name_en?: string;
     name_ar?: string;
     parent_id?: number | null;
+    matched_brand_id?: number | null;
+    matched_category_id?: number | null;
     reason?: string | null;
+    title_en?: string | null;
+    title_ar?: string | null;
+    specifications?: Stage2Specification[];
+    attributes?: Stage2Attribute[];
     [key: string]: unknown;
   };
   result_entity_id: number | null;
@@ -139,5 +148,7 @@ export interface ApproveCatalogRequestInput {
   name_en?: string;
   name_ar?: string;
   parent_id?: number | null;
+  existing_entity_id?: number | null;
+  create_new?: boolean;
   admin_notes?: string;
 }

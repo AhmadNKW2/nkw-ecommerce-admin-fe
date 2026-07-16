@@ -33,6 +33,7 @@ const STATUS_LABELS: Record<VendorSubmissionStatus, string> = {
   awaiting_brand: "Awaiting brand",
   awaiting_category: "Awaiting category",
   awaiting_category_specs: "Awaiting category setup",
+  awaiting_specs_approval: "Awaiting specs approval",
   ready: "Ready",
   materialized: "Published",
   rejected: "Rejected",
@@ -44,6 +45,7 @@ const STATUS_FILTERS: { value: VendorSubmissionStatus | "all"; label: string }[]
   { value: "awaiting_brand", label: "Awaiting brand" },
   { value: "awaiting_category", label: "Awaiting category" },
   { value: "awaiting_category_specs", label: "Awaiting setup" },
+  { value: "awaiting_specs_approval", label: "Awaiting specs" },
   { value: "ready", label: "Ready" },
   { value: "materialized", label: "Published" },
   { value: "failed", label: "Failed" },
@@ -194,7 +196,8 @@ export default function ProductSubmissionsPage() {
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
                       {(submission.brand_request_id ||
-                        submission.category_request_id) && (
+                        submission.category_request_id ||
+                        submission.specs_request_id) && (
                         <Button
                           href="/catalog-requests"
                           variant="outline"
@@ -211,6 +214,15 @@ export default function ProductSubmissionsPage() {
                           className="h-10! px-3! text-sm!"
                         >
                           Run AI mapping
+                        </Button>
+                      )}
+                      {submission.status === "awaiting_specs_approval" && (
+                        <Button
+                          href="/catalog-requests?type=specs"
+                          variant="outline"
+                          className="h-10! px-3! text-sm!"
+                        >
+                          Approve specs
                         </Button>
                       )}
                       {submission.status === "ready" && (

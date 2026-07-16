@@ -262,8 +262,8 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState<AnalyticsRange | "custom">("28d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [visitorPage, setVisitorPage] = useState(PAGINATION.defaultPage);
-  const [visitorPageSize, setVisitorPageSize] = useState(PAGINATION.defaultPageSize);
+  const [visitorPage, setVisitorPage] = useState<number>(PAGINATION.defaultPage);
+  const [visitorPageSize, setVisitorPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [visitorSearch, setVisitorSearch] = useState("");
   const [visitorSortBy, setVisitorSortBy] = useState<VisitorSortKey>("lastSeen");
   const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");

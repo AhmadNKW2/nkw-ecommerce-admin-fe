@@ -63,6 +63,7 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
   analytics: ["/analytics"],
   settings: ["/settings/seo", "/settings/features", "/settings/popup", "/settings/terms"],
   admins: ["/admins", "/admins/create"],
+  catalog_requests: ["/catalog-requests"],
   // Product form steps gate form sections, not routes.
   product_form_basic: [],
   product_form_attributes: [],

@@ -8,7 +8,11 @@ import { queryKeys } from "@/lib/query-keys";
 import { showInfoToast } from "@/lib/toast";
 
 type AdminStreamEvent = {
-  type?: "order.created" | "note.created";
+  type?:
+    | "order.created"
+    | "note.created"
+    | "submission.created"
+    | "catalog_request.created";
   entityId?: number;
   createdAt?: string;
 };
@@ -99,6 +103,16 @@ function toastForEvent(type: AdminStreamEvent["type"], entityId?: number) {
         ? `New customer note #${entityId}`
         : "New customer note received",
     );
+    return;
+  }
+
+  if (type === "submission.created") {
+    showInfoToast("New vendor AI product submission received");
+    return;
+  }
+
+  if (type === "catalog_request.created") {
+    showInfoToast("New catalog request awaiting approval");
   }
 }
 
@@ -106,6 +120,8 @@ function refreshNotificationQueries(queryClient: ReturnType<typeof useQueryClien
   // Keys must be ["orders"] / ["notes"] (not nested) so list queries match via prefix.
   void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
   void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+  void queryClient.invalidateQueries({ queryKey: ["vendor-submissions"] });
+  void queryClient.invalidateQueries({ queryKey: ["catalog-requests"] });
   void queryClient.refetchQueries({ queryKey: queryKeys.orders.all, type: "active" });
   void queryClient.refetchQueries({ queryKey: queryKeys.notes.all, type: "active" });
 }
@@ -172,7 +188,13 @@ export function useAdminNotificationStream() {
 
       const payload = resolvePayload(rawPayload);
       if (!payload?.type) return;
-      if (payload.type !== "order.created" && payload.type !== "note.created") return;
+      const known = [
+        "order.created",
+        "note.created",
+        "submission.created",
+        "catalog_request.created",
+      ];
+      if (!known.includes(payload.type)) return;
 
       triggerRefreshSoundAndToast(payload);
     };

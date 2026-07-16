@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/auth.context";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { useOrders } from "@/services/orders/hooks/use-orders";
 import { useNotes } from "@/services/notes/hooks/use-notes";
+import { useCatalogRequestsPendingCount } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
 
 export type AdminNotificationItem = {
   id: string;
@@ -55,6 +56,9 @@ export function useAdminNotifications(): AdminNotificationState {
     { page: 1, per_page: 1 },
     { enabled: !isVendorPortalUser },
   );
+  const catalogRequestsQuery = useCatalogRequestsPendingCount({
+    enabled: !isVendorPortalUser,
+  });
 
   const pendingOrdersCount = useMemo(() => {
     if (isVendorPortalUser) return 0;
@@ -69,6 +73,14 @@ export function useAdminNotifications(): AdminNotificationState {
     if (isVendorPortalUser) return 0;
     return readNotesTotal(notesQuery.data);
   }, [isVendorPortalUser, notesQuery.data]);
+
+  const catalogRequestsCount = useMemo(() => {
+    if (isVendorPortalUser) return 0;
+    const count = catalogRequestsQuery.data;
+    return typeof count === "number" && Number.isFinite(count)
+      ? Math.max(0, count)
+      : 0;
+  }, [isVendorPortalUser, catalogRequestsQuery.data]);
 
   const notifications = useMemo<AdminNotificationItem[]>(() => {
     if (isVendorPortalUser) return [];
@@ -97,6 +109,19 @@ export function useAdminNotifications(): AdminNotificationState {
       });
     }
 
+    if (catalogRequestsCount > 0) {
+      items.push({
+        id: "catalog-requests",
+        title: "Catalog Requests",
+        description: `${catalogRequestsCount} brand/category request${
+          catalogRequestsCount === 1 ? "" : "s"
+        } awaiting approval`,
+        href: "/catalog-requests",
+        count: catalogRequestsCount,
+        tone: "warning",
+      });
+    }
+
     items.push({
       id: "system",
       title: "System Status",
@@ -107,7 +132,7 @@ export function useAdminNotifications(): AdminNotificationState {
     });
 
     return items;
-  }, [isVendorPortalUser, notesCount, pendingOrdersCount]);
+  }, [isVendorPortalUser, notesCount, pendingOrdersCount, catalogRequestsCount]);
 
   const unreadCount = useMemo(
     () => notifications.reduce((sum, item) => sum + item.count, 0),
@@ -118,8 +143,9 @@ export function useAdminNotifications(): AdminNotificationState {
     () => ({
       "/orders": pendingOrdersCount,
       "/notes": notesCount,
+      "/catalog-requests": catalogRequestsCount,
     }),
-    [notesCount, pendingOrdersCount],
+    [notesCount, pendingOrdersCount, catalogRequestsCount],
   );
 
   return {

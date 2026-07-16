@@ -2,7 +2,11 @@ import React from 'react';
 import type { AdminAccessKey } from '@/lib/admin-access';
 
 // roles: undefined = everyone, ['admin'] = admin only, ['admin','catalog_manager'] = both
-export type SidebarRole = 'admin' | 'catalog_manager';
+export type SidebarRole =
+  | 'admin'
+  | 'catalog_manager'
+  | 'vendor_admin'
+  | 'store_admin';
 
 export type SidebarLinkAction = 'openPopup';
 
@@ -125,6 +129,54 @@ export const sidebarConfig = {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/quick-submit',
+          label: 'Quick Submit',
+          roles: ['admin', 'catalog_manager', 'vendor_admin', 'store_admin'] as SidebarRole[],
+          adminAccess: 'products',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/product-submissions',
+          label: 'AI Submissions',
+          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          adminAccess: 'products',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              />
+            </svg>
+          ),
+        },
+        {
+          href: '/catalog-requests',
+          label: 'Catalog Requests',
+          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          adminAccess: 'catalog_requests',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           ),

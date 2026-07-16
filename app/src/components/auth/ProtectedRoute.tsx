@@ -12,6 +12,7 @@ import { useAuth } from "../../contexts/auth.context";
 import { useLoading } from "../../providers/loading-provider";
 import { SessionExpirationModal } from "./SessionExpirationModal";
 import { sessionManager } from "../../lib/session/session-manager";
+import { isAuthRoute } from "../../lib/auth-routes";
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -34,7 +35,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   }, [isLoading, setShowOverlay]);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== "/login") {
+    if (!isLoading && !isAuthenticated && !isAuthRoute(pathname)) {
       // Save the current path so we can redirect back after login
       sessionManager.setIntendedUrl(pathname + window.location.search);
       router.push("/login");
@@ -47,7 +48,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   }
 
   // Don't render protected content if not authenticated
-  if (!isAuthenticated && pathname !== "/login") {
+  if (!isAuthenticated && !isAuthRoute(pathname)) {
     return null;
   }
 

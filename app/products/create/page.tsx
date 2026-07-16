@@ -9,6 +9,7 @@ import React from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProductForm } from "../../src/components/products/ProductForm";
+import { QuickSubmitForm } from "../../src/components/vendor-submissions/QuickSubmitForm";
 import { ProductFormData } from "../../src/services/products/types/product-form.types";
 import { useCategories } from "../../src/services/categories/hooks/use-categories";
 import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
@@ -25,6 +26,8 @@ import { finishToastError, finishToastSuccess, showLoadingToast, updateLoadingTo
 import { useAuth } from "../../src/contexts/auth.context";
 import { getSimplifiedProductStatus, isSimplifiedProductCreator } from "../../src/lib/simplified-product-creator";
 import { useAdminAccess } from "../../src/hooks/use-admin-access";
+import { PageHeader } from "../../src/components/common/PageHeader";
+import { Package } from "lucide-react";
 
 export default function CreateProductPage() {
   const router = useRouter();
@@ -49,14 +52,26 @@ export default function CreateProductPage() {
   const { data: attributesData, isLoading: attributesLoading } = useAttributes();
   const { data: specificationsData, isLoading: specificationsLoading } = useSpecifications();
 
-  React.useEffect(() => {
-    if (simplifiedMode) {
-      router.replace("/products?create=1");
-    }
-  }, [simplifiedMode, router]);
-
+  // Vendor/store portal uses the dedicated quick-submit create page.
   if (simplifiedMode) {
-    return null;
+    return (
+      <div className="admin-page" dir="rtl">
+        <PageHeader
+          icon={<Package />}
+          title="إنشاء منتج"
+          description="أرسل منتجاً جديداً للمراجعة"
+          cancelAction={{
+            label: "إلغاء",
+            onClick: () => router.push("/products"),
+          }}
+        />
+        <QuickSubmitForm
+          silentSuccess
+          onCancel={() => router.push("/products")}
+          onSuccess={() => router.push("/products")}
+        />
+      </div>
+    );
   }
 
   // Transform backend data to frontend format

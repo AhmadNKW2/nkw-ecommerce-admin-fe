@@ -16,6 +16,7 @@ import { SidebarLayoutProvider } from "../../providers/sidebar-layout-provider";
 import { useResolvedSiteBranding } from "../../hooks/use-resolved-site-branding";
 import { AdminHeader } from "./AdminHeader";
 import { RegisterAdminDashboardClient } from "../analytics/RegisterAdminDashboardClient";
+import { isAuthRoute } from "../../lib/auth-routes";
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -97,9 +98,8 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
 
-  if (isAuthRoute) {
+  if (isAuthRoute(pathname)) {
     return <>{children}</>;
   }
 

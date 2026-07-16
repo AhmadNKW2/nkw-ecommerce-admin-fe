@@ -6,7 +6,6 @@ import type {
 import type {
   ApproveCatalogRequestInput,
   CatalogRequest,
-  CreateVendorSubmissionInput,
   ListCatalogRequestsParams,
   ListVendorSubmissionsParams,
   VendorSubmission,
@@ -28,7 +27,14 @@ class VendorSubmissionService {
   private endpoint = "/vendor-submissions";
 
   create(
-    input: CreateVendorSubmissionInput,
+    input: {
+      title: string;
+      description: string;
+      price: number;
+      sale_price: number;
+      stock: number;
+      media?: { media_id: number; is_primary?: boolean; sort_order?: number }[];
+    },
   ): Promise<ApiResponse<VendorSubmission>> {
     return httpClient.post<ApiResponse<VendorSubmission>>(this.endpoint, input);
   }
@@ -58,6 +64,12 @@ class VendorSubmissionService {
     return httpClient.post<ApiResponse<{ product_id: number }>>(
       `${this.endpoint}/${id}/materialize`,
       {},
+    );
+  }
+
+  remove(id: number): Promise<ApiResponse<{ deleted: true; id: number }>> {
+    return httpClient.delete<ApiResponse<{ deleted: true; id: number }>>(
+      `${this.endpoint}/${id}`,
     );
   }
 }

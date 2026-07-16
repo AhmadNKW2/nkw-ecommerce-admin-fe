@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/EmptyState";
+import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   Table,
   TableBody,
@@ -15,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  useDeleteVendorSubmission,
   useRunSubmissionAi,
   useVendorSubmissions,
 } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
@@ -50,6 +53,8 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
     VendorSubmissionStatus | "all"
   >("all");
   const [reviewing, setReviewing] = useState<VendorSubmission | null>(null);
+  const [submissionToDelete, setSubmissionToDelete] =
+    useState<VendorSubmission | null>(null);
 
   const { data, isLoading, refetch } = useVendorSubmissions(
     {
@@ -57,10 +62,21 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
       limit: 50,
       status: statusFilter === "all" ? undefined : statusFilter,
     },
-    { refetchInterval: 15000 },
   );
   const runAi = useRunSubmissionAi();
+  const deleteSubmission = useDeleteVendorSubmission();
   const submissions = (data?.data ?? []) as VendorSubmission[];
+
+  const handleDeleteConfirm = async () => {
+    if (!submissionToDelete) return;
+    try {
+      await deleteSubmission.mutateAsync(submissionToDelete.id);
+      setSubmissionToDelete(null);
+      void refetch();
+    } catch (error) {
+      console.error("Failed to delete submission:", error);
+    }
+  };
 
   return (
     <>
@@ -102,7 +118,7 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
               <TableHead>Submitted title</TableHead>
               <TableHead>AI name (EN)</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-64">Actions</TableHead>
+              <TableHead className="w-72">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -158,7 +174,7 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {submission.status === "awaiting_brand" && (
                         <Button
                           onClick={() => onOpenTab?.("brands")}
@@ -215,6 +231,11 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
                             Open product
                           </Button>
                         )}
+                      <IconButton
+                        variant="delete"
+                        title="Delete submission"
+                        onClick={() => setSubmissionToDelete(submission)}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -228,6 +249,26 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
         submission={reviewing}
         onClose={() => setReviewing(null)}
         onDone={() => refetch()}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={!!submissionToDelete}
+        onClose={() => setSubmissionToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete submission?"
+        message={
+          submissionToDelete
+            ? `This will permanently delete submission #${submissionToDelete.id} (“${submissionToDelete.title}”) and its related catalog requests. ${
+                submissionToDelete.status === "materialized" &&
+                submissionToDelete.product_id
+                  ? "The already-created product will not be deleted."
+                  : "This action cannot be undone."
+              }`
+            : undefined
+        }
+        confirmText="Delete"
+        isPermanent
+        isLoading={deleteSubmission.isPending}
       />
     </>
   );

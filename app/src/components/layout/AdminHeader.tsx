@@ -30,7 +30,8 @@ export function AdminHeader({
   const pathname = usePathname();
   const { user } = useAuth();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
-  const { isCollapsed, toggleCollapsed, isMobile } = useSidebar();
+  const { isCollapsed, toggleCollapsed, isMobile, isMobileOpen, setMobileOpen } =
+    useSidebar();
   const showCollapsed = isCollapsed && !isMobile;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -66,11 +67,18 @@ export function AdminHeader({
         >
         <button
           type="button"
-          onClick={onMenuClick}
-          aria-label="Open navigation menu"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+          onClick={() => {
+            if (isMobileOpen) {
+              setMobileOpen(false);
+              return;
+            }
+            onMenuClick();
+          }}
+          aria-label={isMobileOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isMobileOpen}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15 lg:hidden"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-6 w-6" />
         </button>
 
         <div

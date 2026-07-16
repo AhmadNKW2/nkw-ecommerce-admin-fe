@@ -24,6 +24,7 @@ import {
   registerAdminClientDevice,
   resetAdminClientDeviceRegistration,
 } from "../lib/register-admin-client-device";
+import { isAuthRoute } from "../lib/auth-routes";
 
 // Session configuration
 const SESSION_CONFIG = {
@@ -31,11 +32,46 @@ const SESSION_CONFIG = {
   warningBeforeExpiry: 5 * 60 * 1000,
   // Activity check interval (1 minute)
   activityCheckInterval: 60 * 1000,
-  // Session refresh threshold (when less than 10 minutes remaining)
-  refreshThreshold: 10 * 60 * 1000,
+  // Session refresh threshold (when less than 2 minutes remaining)
+  refreshThreshold: 2 * 60 * 1000,
   // Inactivity timeout for non-rememberMe sessions (30 minutes)
   inactivityTimeout: 30 * 60 * 1000,
+  // Minimum gap between successful refreshes (prevents refresh storms)
+  minRefreshInterval: 30 * 1000,
+  // Fallback access-token lifetime when API omits expires_in
+  defaultExpiresInMs: 60 * 60 * 1000,
 } as const;
+
+function decodeJwtExpMs(token: string): number | null {
+  try {
+    const segment = token.split(".")[1];
+    if (!segment) return null;
+    const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    const payload = JSON.parse(atob(padded)) as { exp?: number };
+    return payload.exp && payload.exp > 0 ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveExpiresAt(expiresIn: unknown, accessToken?: string): number {
+  if (
+    typeof expiresIn === "number" &&
+    Number.isFinite(expiresIn) &&
+    expiresIn > 0
+  ) {
+    return Date.now() + expiresIn * 1000;
+  }
+  if (accessToken) {
+    const fromJwt = decodeJwtExpMs(accessToken);
+    if (fromJwt) return fromJwt;
+  }
+  return Date.now() + SESSION_CONFIG.defaultExpiresInMs;
+}
 
 interface SessionWarning {
   show: boolean;
@@ -78,6 +114,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const isLoggingOutRef = useRef<boolean>(false);
   const isAuthenticatedRef = useRef<boolean>(false);
   const handleLogoutRef = useRef<(callApi?: boolean) => Promise<void>>(async () => {});
+  const lastRefreshAtRef = useRef<number>(0);
+  const refreshInFlightRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     isAuthenticatedRef.current = authState.isAuthenticated;
@@ -95,43 +133,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  // Refresh the session token
+  // Refresh the session token (single-flight + throttled)
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    try {
-      const response = await authService.refreshToken();
-      if (response.success && response.data) {
-        if (response.data.access_token) {
-          httpClient.setAuthToken(response.data.access_token);
-        }
-        const expiresAt = Date.now() + (response.data.expires_in * 1000);
-        
-        // Always update session info with the new expiry so the warning
-        // countdown is based on the real (post-refresh) token lifetime.
-        const sessionInfo = sessionManager.getSessionInfo();
-        sessionManager.setSessionInfo({
-          ...(sessionInfo ?? { rememberMe: false }),
-          expiresAt,
-          lastActivity: Date.now(),
-        });
-        
-        setAuthState(prev => ({
-          ...prev,
-          sessionExpiresAt: expiresAt,
-        }));
-        
-        // Broadcast session refresh to other tabs
-        sessionManager.broadcastEvent({ type: 'session_refresh', timestamp: Date.now() });
-        
-        return true;
-      }
-      return false;
-    } catch (error) {
-      // refreshToken call itself can throw when the httpClient triggers its own
-      // logout/redirect flow on a 401 from /auth/refresh. Swallow the error here
-      // so we simply return false and let the caller decide what to do.
-      console.error('Session refresh failed:', error);
-      return false;
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
     }
+
+    if (
+      Date.now() - lastRefreshAtRef.current < SESSION_CONFIG.minRefreshInterval
+    ) {
+      return true;
+    }
+
+    refreshInFlightRef.current = (async () => {
+      try {
+        const response = await authService.refreshToken();
+        if (response.success && response.data) {
+          if (response.data.access_token) {
+            httpClient.setAuthToken(response.data.access_token);
+          }
+          const expiresAt = resolveExpiresAt(
+            response.data.expires_in,
+            response.data.access_token,
+          );
+
+          // Prefer expiry already written by httpClient (same refresh call).
+          const existing = sessionManager.getSessionInfo();
+          const safeExpiresAt =
+            existing?.expiresAt && existing.expiresAt > Date.now() + 60_000
+              ? existing.expiresAt
+              : expiresAt;
+
+          sessionManager.setSessionInfo({
+            ...(existing ?? { rememberMe: false }),
+            expiresAt: safeExpiresAt,
+            lastActivity: Date.now(),
+          });
+
+          setAuthState((prev) => ({
+            ...prev,
+            sessionExpiresAt: safeExpiresAt,
+          }));
+
+          lastRefreshAtRef.current = Date.now();
+          return true;
+        }
+        return false;
+      } catch (error) {
+        // refreshToken call itself can throw when the httpClient triggers its own
+        // logout/redirect flow on a 401 from /auth/refresh. Swallow the error here
+        // so we simply return false and let the caller decide what to do.
+        console.error("Session refresh failed:", error);
+        return false;
+      } finally {
+        refreshInFlightRef.current = null;
+      }
+    })();
+
+    return refreshInFlightRef.current;
   }, []);
 
   // Check session and show warning if needed
@@ -226,7 +285,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       });
 
       // Only redirect if not already on login page
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      if (typeof window !== 'undefined' && !isAuthRoute(window.location.pathname)) {
         router.push("/login");
       }
     }
@@ -306,7 +365,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, []);
 
-  // When returning to this tab, refresh the session so Bearer + cookies stay in sync.
+  // When returning to this tab, refresh only if the access token is near expiry.
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -316,7 +375,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         if (!isAuthenticatedRef.current) return;
-        httpClient.removeAuthToken();
+        const sessionInfo = sessionManager.getSessionInfo();
+        const timeUntilExpiry = sessionInfo
+          ? sessionInfo.expiresAt - Date.now()
+          : 0;
+        if (timeUntilExpiry > SESSION_CONFIG.refreshThreshold) return;
         void refreshSession();
       }, 300);
     };
@@ -332,7 +395,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       // Skip validation if on login page to prevent infinite loop
-      if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+      if (typeof window !== 'undefined' && isAuthRoute(window.location.pathname)) {
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -423,7 +486,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             sessionExpiresAt: null,
           });
           // Only redirect if not already on login page
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          if (typeof window !== 'undefined' && !isAuthRoute(window.location.pathname)) {
             router.push('/login');
           }
           break;
@@ -458,9 +521,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         if (isLoggingOutRef.current) return;
 
         // Don't logout if already on login page
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        if (typeof window !== 'undefined' && !isAuthRoute(window.location.pathname)) {
           isLoggingOutRef.current = true;
-          handleLogout(false).finally(() => {
+          handleLogoutRef.current(false).finally(() => {
             isLoggingOutRef.current = false;
           });
         } else {
@@ -480,7 +543,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       unsubscribeHttp();
       clearIntervals();
     };
-  }, [handleLogout, clearIntervals]);
+    // Mount once — logout/refresh/checkSession are accessed via stable refs/callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Login handler
   const login = useCallback(async (credentials: LoginRequest) => {
@@ -492,7 +557,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         if (access_token) {
           httpClient.setAuthToken(access_token);
         }
-        const expiresAt = Date.now() + (expires_in * 1000);
+        const expiresAt = resolveExpiresAt(expires_in, access_token);
 
         // Store session info
         sessionManager.setSessionInfo({

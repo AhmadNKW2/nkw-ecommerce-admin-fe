@@ -126,6 +126,15 @@ function refreshNotificationQueries(queryClient: ReturnType<typeof useQueryClien
   void queryClient.refetchQueries({ queryKey: queryKeys.notes.all, type: "active" });
 }
 
+function refreshBadgeQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  // Lighter invalidation used while SSE is reconnecting — avoid thrashing list pages.
+  void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+  void queryClient.invalidateQueries({
+    queryKey: ["catalog-requests", "pending-count"],
+  });
+}
+
 export function useAdminNotificationStream() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -219,7 +228,7 @@ export function useAdminNotificationStream() {
         const now = Date.now();
         if (now - lastFallbackInvalidateAtRef.current < 10_000) return;
         lastFallbackInvalidateAtRef.current = now;
-        refreshNotificationQueries(queryClient);
+        refreshBadgeQueries(queryClient);
       };
 
       invalidateBadgeQueries();

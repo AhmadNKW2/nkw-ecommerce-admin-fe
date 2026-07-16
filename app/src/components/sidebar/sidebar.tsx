@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 
 // ---------- Context ----------
 
@@ -35,7 +35,10 @@ interface SidebarProps {
 export function Sidebar({ children }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches;
+  });
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
@@ -83,33 +86,83 @@ interface SidebarPanelProps {
 }
 
 export function SidebarPanel({ children }: SidebarPanelProps) {
-  const { isCollapsed, isMobileOpen, setMobileOpen } = useSidebar();
+  const { isCollapsed, isMobile, isMobileOpen, setMobileOpen } = useSidebar();
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
-  return (
-    <>
-      {isMobileOpen &&
-        createPortal(
-          <button
-            type="button"
-            aria-label="Close navigation menu"
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          />,
-          document.body,
-        )}
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileOpen || !isMobile) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isMobile, isMobileOpen, setMobileOpen]);
+
+  if (!isMobile) {
+    return (
       <aside
         className={`
-          z-50 flex h-full w-70 flex-col bg-white shadow-s1
-          transition-[width,transform] duration-300 ease-in-out
-          fixed top-[4.5rem] bottom-0 left-0
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:translate-x-0 lg:shrink-0
-          ${isCollapsed ? 'lg:w-18' : 'lg:w-70'}
+          relative z-20 flex h-full shrink-0 flex-col bg-white shadow-s1
+          transition-[width] duration-300 ease-in-out
+          ${isCollapsed ? 'w-18' : 'w-70'}
         `}
       >
         {children}
       </aside>
-    </>
+    );
+  }
+
+  if (!portalTarget) {
+    return null;
+  }
+
+  return createPortal(
+    <div aria-hidden={!isMobileOpen}>
+      <button
+        type="button"
+        aria-label="Close navigation menu"
+        tabIndex={isMobileOpen ? 0 : -1}
+        className={`
+          fixed inset-0 z-[60] bg-black/45 backdrop-blur-[1px]
+          transition-opacity duration-300
+          ${isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}
+        `}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        className={`
+          fixed inset-y-0 left-0 z-[70] flex w-[min(20rem,88vw)] flex-col
+          bg-white shadow-2xl
+          transition-transform duration-300 ease-out
+          pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="flex items-center justify-between border-b border-b1 px-4 py-3">
+          <p className="text-sm font-semibold text-gray-900">Menu</p>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation menu"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-r2 text-primary transition-colors hover:bg-primary/10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </aside>
+    </div>,
+    portalTarget,
   );
 }
 
@@ -199,7 +252,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ children }: SidebarContentProps) {
   return (
-    <nav className="flex-1 overflow-x-hidden overflow-y-auto py-4 px-2 [&::-webkit-scrollbar]:w-0 [scrollbar-width:none]">
+    <nav className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3 sm:py-4 [&::-webkit-scrollbar]:w-0 [scrollbar-width:none]">
       {children}
     </nav>
   );
@@ -213,7 +266,7 @@ interface SidebarFooterProps {
 
 export function SidebarFooter({ children }: SidebarFooterProps) {
   return (
-    <div className="border-t border-b1 p-4">
+    <div className="shrink-0 border-t border-b1 bg-white p-3 sm:p-4">
       {children}
     </div>
   );
@@ -342,11 +395,11 @@ export function SidebarLink({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={`
-          group relative flex items-center mb-1
+          group relative mb-1 flex items-center
           transition-all duration-300 ease-in-out
           ${showCollapsed
-            ? 'justify-center px-2 py-1.5 gap-0'
-            : `px-3 py-2.5 gap-3 rounded-r1 ${isActive ? 'bg-primary text-white shadow-s2' : 'hover:bg-primary/10'}`
+            ? 'justify-center gap-0 px-2 py-1.5'
+            : `gap-3 rounded-r1 px-3 py-3 sm:py-2.5 ${isActive ? 'bg-primary text-white shadow-s2' : 'active:bg-primary/15 hover:bg-primary/10'}`
           }
         `}
       >

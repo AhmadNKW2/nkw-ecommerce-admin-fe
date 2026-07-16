@@ -5,10 +5,6 @@ import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { VendorSubmission } from "@/services/vendor-submissions/types/vendor-submission.types";
-import {
-  SUBMISSION_STATUS_SHORT_LABELS,
-  submissionStatusVariant,
-} from "./submission-status";
 
 type VendorPendingSubmissionCardProps = {
   submission: VendorSubmission;
@@ -51,15 +47,6 @@ export function VendorPendingSubmissionCard({
             {submission.title}
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1">
-            <Badge variant="warning" className="!px-2 !py-0.5 text-[10px] sm:text-xs">
-              Without approval
-            </Badge>
-            <Badge
-              variant={submissionStatusVariant(submission.status)}
-              className="!px-2 !py-0.5 text-[10px] sm:text-xs"
-            >
-              {SUBMISSION_STATUS_SHORT_LABELS[submission.status]}
-            </Badge>
             <Badge
               variant="danger"
               className="!px-2 !py-0.5 text-[10px] sm:text-xs"
@@ -72,13 +59,14 @@ export function VendorPendingSubmissionCard({
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
         <div className="min-w-0">
+          <p className="text-xs text-gray-500">Cost</p>
+          <p className="font-semibold tabular-nums">
+            {submission.sale_price != null ? submission.sale_price : "—"}
+          </p>
+        </div>
+        <div className="min-w-0">
           <p className="text-xs text-gray-500">Price</p>
           <p className="font-semibold tabular-nums">{submission.price}</p>
-          {submission.sale_price != null ? (
-            <p className="text-xs text-gray-500 tabular-nums">
-              Sale {submission.sale_price}
-            </p>
-          ) : null}
         </div>
         <div className="min-w-0">
           <p className="text-xs text-gray-500">Stock</p>
@@ -90,7 +78,7 @@ export function VendorPendingSubmissionCard({
           </Badge>
         </div>
         {createdAtLabel ? (
-          <div className="col-span-2 min-w-0">
+          <div className="min-w-0">
             <p className="text-xs text-gray-500">Created</p>
             <p className="text-sm text-gray-700">{createdAtLabel}</p>
           </div>

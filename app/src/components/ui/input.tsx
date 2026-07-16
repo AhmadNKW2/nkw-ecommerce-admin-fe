@@ -113,7 +113,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         leftIcon={isSearchVariant ? <Search className={FIELD_ICON_CLASSES} /> : undefined}
         rightIcon={isNum ? <span className={`h-4 w-4 ${FIELD_RIGHT_ICON_COLOR} inline-flex items-center justify-center`}>#</span> : undefined}
         rightElement={rightElement}
-        labelLeftOffset={isSearchVariant ? 'left-9' : 'left-4'}
+        labelLeftOffset={
+          isSearchVariant
+            ? isRtl
+              ? 'right-9'
+              : 'left-9'
+            : isRtl
+              ? 'right-4'
+              : 'left-4'
+        }
         isClearButton={isClearButton}
         isRtl={isRtl}
         disabled={props.disabled}

@@ -30,18 +30,20 @@ export const FieldWrapper: React.FC<FieldWrapperProps> = ({
     isClearButton = true,
     children,
     className = '',
-    labelLeftOffset = 'left-4',
+    labelLeftOffset,
     disabled = false,
     isRtl = false,
 }) => {
     const showLabel = isFocused || hasValue;
     const showClear = isClearButton && hasValue && onClear;
+    const resolvedLabelOffset =
+        labelLeftOffset ?? (isRtl ? 'right-4' : 'left-4');
 
     return (
-        <div className="w-full">
+        <div className="w-full" dir={isRtl ? 'rtl' : undefined}>
             <div className={`relative w-full ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {leftIcon && (
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                    <div className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 pointer-events-none z-10`}>
                         {leftIcon}
                     </div>
                 )}
@@ -75,7 +77,7 @@ export const FieldWrapper: React.FC<FieldWrapperProps> = ({
 
                 {label && (
                     <label
-                        className={`absolute ${labelLeftOffset} rounded-r1 p-1 bg-white font-medium transition-all duaration-300 pointer-events-none z-10 ${showLabel
+                        className={`absolute ${resolvedLabelOffset} rounded-r1 p-1 bg-white font-medium transition-all duaration-300 pointer-events-none z-10 ${showLabel
                             ? 'top-0 -translate-y-1/2  text-xs'
                             : 'top-1/2 -translate-y-1/2 text-primary2 text-sm'
                             } ${error && showLabel ? 'text-danger' : ''}`}
@@ -84,8 +86,12 @@ export const FieldWrapper: React.FC<FieldWrapperProps> = ({
                     </label>
                 )}
             </div>
-            {error && typeof error === 'string' && error.trim() !== "" && <span className="text-xs text-danger mt-1 block">{error}</span>}
-        </div >
+            {error && typeof error === 'string' && error.trim() !== "" && (
+                <span className={`text-xs text-danger mt-1 block ${isRtl ? 'text-right' : 'text-left'}`}>
+                    {error}
+                </span>
+            )}
+        </div>
 
     );
 };
@@ -128,16 +134,19 @@ export const getFieldClassesBySize = (
     let leftPadding: string;
     let rightPadding: string;
 
-    if (isNum && isRtl) {
-        // Reverse padding for RTL number inputs
-        leftPadding = 'pl-13';
-        rightPadding = 'pr-4';
+    if (isRtl) {
+        // Clear / trailing controls sit on the physical left in RTL.
+        leftPadding = hasRightIcon || isNum ? 'pl-13' : 'pl-8';
+        rightPadding = hasLeftIcon ? 'pr-9' : 'pr-4';
+    } else if (isNum) {
+        leftPadding = 'pl-4';
+        rightPadding = 'pr-13';
     } else {
-        leftPadding = hasLeftIcon ? 'pl-9' : (isRtl ? 'pl-8' : 'pl-4');
-        rightPadding = hasRightIcon ? 'pr-13' : (isRtl ? 'pr-4' : 'pr-8');
+        leftPadding = hasLeftIcon ? 'pl-9' : 'pl-4';
+        rightPadding = hasRightIcon ? 'pr-13' : 'pr-8';
     }
 
-    return `${className || ''} ${FIELD_BASE_CLASSES} w-full py-3 ${leftPadding} ${rightPadding} ${borderColor}`;
+    return `${className || ''} ${FIELD_BASE_CLASSES} w-full py-3 ${leftPadding} ${rightPadding} ${borderColor} ${isRtl ? 'text-right' : 'text-left'}`;
 };
 
 // Legacy function for backward compatibility

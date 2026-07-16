@@ -153,10 +153,20 @@ class HttpClient {
     // (categories/vendors/brands/attributes) to refetch after file uploads.
     // Media uploads are handled separately and shouldn't force global refetch.
     if (endpoint.includes("/media/upload")) return false;
-    
+
     // Products have their own specific cache invalidation in ProductService
     if (endpoint.includes("/products")) return false;
-    
+
+    // Auth/session endpoints must never wipe the query cache (refresh loops).
+    if (
+      endpoint.includes("/auth/refresh") ||
+      endpoint.includes("/auth/login") ||
+      endpoint.includes("/auth/logout") ||
+      endpoint.includes("/auth/profile")
+    ) {
+      return false;
+    }
+
     return true;
   }
 
@@ -264,6 +274,32 @@ class HttpClient {
   }
 
   /**
+   * Resolve session expiry from refresh/login payload.
+   * Never return "now" for null/invalid expires_in — that caused refresh loops.
+   */
+  private resolveSessionExpiresAt(
+    expiresIn: unknown,
+    accessToken?: string,
+  ): number {
+    if (
+      typeof expiresIn === "number" &&
+      Number.isFinite(expiresIn) &&
+      expiresIn > 0
+    ) {
+      return Date.now() + expiresIn * 1000;
+    }
+
+    if (accessToken) {
+      const payload = this.decodeJwtPayload(accessToken);
+      if (payload?.exp && payload.exp > 0) {
+        return payload.exp * 1000;
+      }
+    }
+
+    return Date.now() + 60 * 60 * 1000;
+  }
+
+  /**
    * Drop expired Bearer headers so httpOnly cookies are used instead.
    * OptionalJwtAuthGuard treats invalid Bearer as anonymous — that caused
    * admin /search to return storefront "card" rows without brand/image/etc.
@@ -346,18 +382,21 @@ class HttpClient {
     }
 
     const expiresIn = json.data?.expires_in ?? json.expires_in;
-    if (typeof expiresIn === "number") {
-      const sessionInfo = sessionManager.getSessionInfo();
-      sessionManager.setSessionInfo({
-        ...(sessionInfo ?? { rememberMe: false }),
-        expiresAt: Date.now() + expiresIn * 1000,
-        lastActivity: Date.now(),
-      });
-      sessionManager.broadcastEvent({
-        type: "session_refresh",
-        timestamp: Date.now(),
-      });
-    }
+    const tokenForExpiry =
+      typeof tokenFromBody === "string" && tokenFromBody.length > 0
+        ? tokenFromBody
+        : undefined;
+    const expiresAt = this.resolveSessionExpiresAt(expiresIn, tokenForExpiry);
+    const sessionInfo = sessionManager.getSessionInfo();
+    sessionManager.setSessionInfo({
+      ...(sessionInfo ?? { rememberMe: false }),
+      expiresAt,
+      lastActivity: Date.now(),
+    });
+    sessionManager.broadcastEvent({
+      type: "session_refresh",
+      timestamp: Date.now(),
+    });
 
     return json as ApiResponse<RefreshTokenResponse>;
   }

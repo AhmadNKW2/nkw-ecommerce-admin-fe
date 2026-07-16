@@ -13,6 +13,8 @@ interface PricingSectionProps {
     calculateSalePercentage: (price: number, salePrice?: number) => number;
     errors?: Record<string, string | boolean>;
     vendorSourcePricesVisible?: boolean;
+    /** Vendor portal: Cost + Price only (no sale price). */
+    costAndPriceOnly?: boolean;
 }
 
 export function PricingSection({
@@ -21,6 +23,7 @@ export function PricingSection({
     calculateSalePercentage,
     errors,
     vendorSourcePricesVisible = true,
+    costAndPriceOnly = false,
 }: PricingSectionProps) {
     const handleFieldChange = (field: keyof Pricing, value: NullableNumber | boolean) => {
         onChange({
@@ -28,13 +31,13 @@ export function PricingSection({
             originalVendorPrice: pricing?.originalVendorPrice,
             originalVendorSalePrice: pricing?.originalVendorSalePrice,
             price: pricing?.price,
-            isSale: pricing?.isSale || false,
-            salePrice: pricing?.salePrice,
+            isSale: costAndPriceOnly ? false : pricing?.isSale || false,
+            salePrice: costAndPriceOnly ? undefined : pricing?.salePrice,
             [field]: value,
         });
     };
 
-    const isOnSale = pricing?.isSale ?? false;
+    const isOnSale = costAndPriceOnly ? false : (pricing?.isSale ?? false);
     const discountPercent =
         isOnSale && pricing?.salePrice != null
             ? calculateSalePercentage(pricing.price || 0, pricing.salePrice)
@@ -46,11 +49,13 @@ export function PricingSection({
                 <h2 className="text-xl font-semibold">
                     Pricing
                 </h2>
+                {!costAndPriceOnly ? (
                 <Checkbox
                     checked={isOnSale}
                     onChange={(checked) => handleFieldChange("isSale", checked)}
                     label="On Sale"
                 />
+                ) : null}
             </div>
             <div className="flex flex-col gap-4">
                 {vendorSourcePricesVisible && (
@@ -96,7 +101,7 @@ export function PricingSection({
                 >
                     <Input
                         id="pricing.cost"
-                        label="Cost Price"
+                        label="Cost"
                         type="number"
                         min="0"
                         step="0.01"

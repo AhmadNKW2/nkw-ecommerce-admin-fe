@@ -163,34 +163,39 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
 
       {footer && (
         <SidebarFooter>
-          <div className={`flex items-center gap-5 ${showCollapsed ? 'justify-center' : ''}`}>
+          <div
+            className={`flex items-center gap-3 sm:gap-5 ${showCollapsed ? 'justify-center' : ''}`}
+          >
             {footer.userAvatar ? (
               <img
                 src={footer.userAvatar}
                 alt={userDisplayName || footer.userName}
-                className="w-10 h-10 rounded-full object-cover shrink-0"
+                className="h-10 w-10 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
                 {(userDisplayName || footer.userName).charAt(0).toUpperCase()}
               </div>
             )}
             {!showCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
                   {userDisplayName || footer.userName}
                 </p>
-                <p className="text-xs truncate">{user?.email || footer.userEmail}</p>
+                <p className="truncate text-xs text-gray-500">
+                  {user?.email || footer.userEmail}
+                </p>
               </div>
             )}
             {!showCollapsed && (
               <button
                 onClick={handleLogout}
-                className="p-2 hover: rounded-r1 transition-colors duration-300"
+                className="rounded-r1 p-2.5 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
                 title="Logout"
+                aria-label="Logout"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="h-5 w-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

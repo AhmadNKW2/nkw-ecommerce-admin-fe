@@ -40,14 +40,11 @@ import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationM
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
 import { useAuth } from "@/contexts/auth.context";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
-import { QuickSubmitForm } from "@/components/vendor-submissions/QuickSubmitForm";
 import { VendorPendingSubmissionCard } from "@/components/vendor-submissions/VendorPendingSubmissionCard";
 import { useVendorSubmissions } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
 import type { VendorSubmission } from "@/services/vendor-submissions/types/vendor-submission.types";
 import {
   SUBMISSION_STATUS_LABELS,
-  SUBMISSION_STATUS_SHORT_LABELS,
-  submissionStatusVariant,
 } from "@/components/vendor-submissions/submission-status";
 
 interface ProductListPageProps {
@@ -66,8 +63,6 @@ interface ProductListPageProps {
   initialStatus?: ProductStatus;
   initialVisible?: boolean;
   onStatusCleared?: () => void;
-  /** Vendor portal: open Quick Submit form on mount (e.g. ?create=1). */
-  initialShowQuickSubmit?: boolean;
 }
 
 const formatPriceValue = (value: number) => {
@@ -205,6 +200,16 @@ const getProductDisplayPrice = (product: Product) => {
   };
 };
 
+const getProductCostAndPrice = (product: Product) => {
+  const cost = toPriceCandidate(product.cost);
+  const displayPrice = getProductDisplayPrice(product);
+
+  return {
+    cost: cost?.raw ?? null,
+    price: displayPrice?.currentPrice ?? null,
+  };
+};
+
 export function ProductListPage({
   title,
   description,
@@ -221,16 +226,14 @@ export function ProductListPage({
   initialStatus,
   initialVisible,
   onStatusCleared,
-  initialShowQuickSubmit = false,
 }: ProductListPageProps) {
   const router = useRouter();
   const { user } = useAuth();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
-  const [showQuickSubmit, setShowQuickSubmit] = useState(
-    Boolean(initialShowQuickSubmit && isVendorPortalUser),
-  );
   const { isEnabled } = useResolvedFeatureToggles();
-  const ratingsEnabled = isEnabled("ratings_enabled");
+  const ratingsEnabled = isEnabled("ratings_enabled") && !isVendorPortalUser;
+  const showStatusColumn = (showStatusFilter || isVendorPortalUser) && !isVendorPortalUser;
+  const showCreatedByColumn = !isVendorPortalUser;
   const { setShowOverlay } = useLoading();
   const filters = useProductFilters({
     storageKey,
@@ -310,13 +313,11 @@ export function ProductListPage({
 
   const {
     data: submissionsData,
-    refetch: refetchSubmissions,
     isLoading: isSubmissionsLoading,
   } = useVendorSubmissions(
       { page: 1, limit: 100 },
       {
         enabled: isVendorPortalUser,
-        refetchInterval: isVendorPortalUser ? 15000 : undefined,
       },
     );
   const pendingSubmissions = (
@@ -327,22 +328,19 @@ export function ProductListPage({
   const hasVendorPending = isVendorPortalUser && pendingSubmissions.length > 0;
   const hasListContent =
     products.length > 0 || (isVendorPortalUser && pendingSubmissions.length > 0);
-
-  useEffect(() => {
-    if (initialShowQuickSubmit && isVendorPortalUser) {
-      setShowQuickSubmit(true);
-    }
-  }, [initialShowQuickSubmit, isVendorPortalUser]);
-
-  useEffect(() => {
-    if (!showQuickSubmit || !isVendorPortalUser) return;
-    const timer = window.setTimeout(() => {
-      document
-        .getElementById("vendor-quick-submit")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-    return () => window.clearTimeout(timer);
-  }, [showQuickSubmit, isVendorPortalUser]);
+  const paginationData = data?.data.pagination
+    ? {
+        currentPage: data.data.pagination.page,
+        pageSize: data.data.pagination.limit,
+        totalItems: data.data.pagination.total,
+        totalPages: data.data.pagination.totalPages,
+        hasNextPage: data.data.pagination.page < data.data.pagination.totalPages,
+        hasPreviousPage: data.data.pagination.page > 1,
+      }
+    : undefined;
+  const showPagination =
+    Boolean(paginationData) &&
+    (products.length > 0 || (paginationData?.totalItems ?? 0) > 0);
 
   useEffect(() => {
     setShowOverlay(
@@ -405,10 +403,6 @@ export function ProductListPage({
   };
 
   const handleCreateNew = () => {
-    if (isVendorPortalUser) {
-      setShowQuickSubmit(true);
-      return;
-    }
     router.push("/products/create");
   };
 
@@ -513,7 +507,7 @@ export function ProductListPage({
         title={title}
         description={description}
         onCreate={handleCreateNew}
-        showCreate={!(isVendorPortalUser && showQuickSubmit)}
+        showCreate
         showViewToggle={showViewToggle}
         showReviewViewToggle={showReviewViewToggle}
         showPricingViewToggle={showPricingViewToggle}
@@ -525,19 +519,6 @@ export function ProductListPage({
           showBulkStatusChange ? () => setBulkStatusModalOpen(true) : undefined
         }
       />
-
-      {isVendorPortalUser && showQuickSubmit ? (
-        <div id="vendor-quick-submit" className="scroll-mt-4">
-          <QuickSubmitForm
-            onCancel={() => setShowQuickSubmit(false)}
-            onSuccess={() => {
-              setShowQuickSubmit(false);
-              void refetchSubmissions();
-              void refetch();
-            }}
-          />
-        </div>
-      ) : null}
 
       {!isVendorPortalUser ? (
       <ProductFiltersPanel
@@ -580,9 +561,7 @@ export function ProductListPage({
       />
       ) : null}
 
-      {!isVendorListLoading &&
-      !hasListContent &&
-      !(isVendorPortalUser && showQuickSubmit) ? (
+      {!isVendorListLoading && !hasListContent ? (
         <EmptyState
           icon={<Package />}
           title="No products found"
@@ -625,7 +604,12 @@ export function ProductListPage({
             ) : null}
             {products.map((product) => {
               const imageUrl = getProductImageUrl(product);
-              const displayPrice = getProductDisplayPrice(product);
+              const costAndPrice = isVendorPortalUser
+                ? getProductCostAndPrice(product)
+                : null;
+              const displayPrice = isVendorPortalUser
+                ? null
+                : getProductDisplayPrice(product);
               const createdAtParts = getCreatedAtParts(
                 product.created_at || (product as { createdAt?: string }).createdAt,
               );
@@ -674,7 +658,7 @@ export function ProductListPage({
                             </span>
                           </Badge>
                         ) : null}
-                        {showStatusFilter || isVendorPortalUser ? (
+                        {showStatusColumn ? (
                           <Badge
                             variant={getStatusVariant(product.status)}
                             className="!px-2 !py-0.5 text-[10px] sm:text-xs"
@@ -711,12 +695,25 @@ export function ProductListPage({
                         </p>
                       </div>
                     ) : null}
-                    <div>
-                      <p className="text-xs text-gray-500">Price</p>
-                      <p className="font-semibold">
-                        {displayPrice?.currentPrice ?? "—"}
-                      </p>
-                    </div>
+                    {isVendorPortalUser ? (
+                      <>
+                        <div>
+                          <p className="text-xs text-gray-500">Cost</p>
+                          <p className="font-semibold">{costAndPrice?.cost ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Price</p>
+                          <p className="font-semibold">{costAndPrice?.price ?? "—"}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <p className="text-xs text-gray-500">Price</p>
+                        <p className="font-semibold">
+                          {displayPrice?.currentPrice ?? "—"}
+                        </p>
+                      </div>
+                    )}
                     {ratingsEnabled ? (
                       <div>
                         <p className="text-xs text-gray-500">Rating</p>
@@ -770,17 +767,10 @@ export function ProductListPage({
             })}
           </div>
 
-          {data?.data.pagination && products.length > 0 ? (
+          {showPagination && paginationData ? (
             <div className="w-full lg:hidden">
               <Pagination
-                pagination={{
-                  currentPage: data.data.pagination.page,
-                  pageSize: data.data.pagination.limit,
-                  totalItems: data.data.pagination.total,
-                  totalPages: data.data.pagination.totalPages,
-                  hasNextPage: data.data.pagination.page < data.data.pagination.totalPages,
-                  hasPreviousPage: data.data.pagination.page > 1,
-                }}
+                pagination={paginationData}
                 onPageChange={handlePageChange}
                 onPageSizeChange={handlePageSizeChange}
               />
@@ -789,19 +779,8 @@ export function ProductListPage({
 
           <div className="hidden w-full min-w-0 lg:block">
         <Table
-          minWidth="1320px"
-          pagination={
-            data?.data.pagination
-              ? {
-                  currentPage: data.data.pagination.page,
-                  pageSize: data.data.pagination.limit,
-                  totalItems: data.data.pagination.total,
-                  totalPages: data.data.pagination.totalPages,
-                  hasNextPage: data.data.pagination.page < data.data.pagination.totalPages,
-                  hasPreviousPage: data.data.pagination.page > 1,
-                }
-              : undefined
-          }
+          minWidth={isVendorPortalUser ? "1100px" : "1320px"}
+          pagination={showPagination ? paginationData : undefined}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         >
@@ -813,12 +792,21 @@ export function ProductListPage({
               <TableHead width="8%">Category</TableHead>
               <TableHead width="11%">Brand</TableHead>
               {vendorsEnabled && <TableHead width="11%">Vendor</TableHead>}
-              <TableHead width="5%">Price</TableHead>
+              {isVendorPortalUser ? (
+                <>
+                  <TableHead width="6%">Cost</TableHead>
+                  <TableHead width="6%">Price</TableHead>
+                </>
+              ) : (
+                <TableHead width="5%">Price</TableHead>
+              )}
               <TableHead width="7%">Stock</TableHead>
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">Created At</TableHead>
-              <TableHead width="10%">Created By</TableHead>
-              {showStatusFilter || isVendorPortalUser ? (
+              {showCreatedByColumn ? (
+                <TableHead width="10%">Created By</TableHead>
+              ) : null}
+              {showStatusColumn ? (
                 <TableHead width="7%">Status</TableHead>
               ) : null}
               <TableHead width="7%">Visibility</TableHead>
@@ -831,13 +819,15 @@ export function ProductListPage({
                 const imageUrl =
                   submission.media?.find((m) => m.is_primary)?.media?.url ||
                   submission.media?.[0]?.media?.url;
+                const costValue = toPriceCandidate(submission.sale_price);
+                const priceValue = toPriceCandidate(submission.price);
                 return (
                   <TableRow
                     key={`submission-${submission.id}`}
                     id={`submission-row-${submission.id}`}
                   >
                     <TableCell className="font-mono text-sm text-gray-500">
-                      S-{submission.id}
+                      {submission.id}
                     </TableCell>
                     <TableCell>
                       <div className="h-14 w-14 relative rounded-lg overflow-hidden bg-primary/10 border border-primary/20">
@@ -877,25 +867,20 @@ export function ProductListPage({
                       </TableCell>
                     )}
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{submission.price}</span>
-                        {submission.sale_price != null ? (
-                          <span className="text-xs text-gray-500">
-                            sale {submission.sale_price}
-                          </span>
-                        ) : null}
-                      </div>
+                      <span className="font-semibold">
+                        {costValue?.raw ?? "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold">
+                        {priceValue?.raw ?? "—"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={submission.stock > 0 ? "success" : "danger"}>
                         {submission.stock > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>
                     </TableCell>
-                    {ratingsEnabled && (
-                      <TableCell>
-                        <span className="text-gray-400">—</span>
-                      </TableCell>
-                    )}
                     <TableCell>
                       {(() => {
                         const createdAtParts = getCreatedAtParts(
@@ -915,17 +900,6 @@ export function ProductListPage({
                       })()}
                     </TableCell>
                     <TableCell>
-                      <span className="text-gray-400">—</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="warning">Without approval</Badge>
-                        <Badge variant={submissionStatusVariant(submission.status)}>
-                          {SUBMISSION_STATUS_SHORT_LABELS[submission.status]}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
                       <Badge variant="danger">Hidden</Badge>
                     </TableCell>
                     <TableCell>
@@ -936,7 +910,12 @@ export function ProductListPage({
               })}
             {products.map((product) => {
               const imageUrl = getProductImageUrl(product);
-              const displayPrice = getProductDisplayPrice(product);
+              const costAndPrice = isVendorPortalUser
+                ? getProductCostAndPrice(product)
+                : null;
+              const displayPrice = isVendorPortalUser
+                ? null
+                : getProductDisplayPrice(product);
 
               return (
                 <TableRow
@@ -1031,20 +1010,35 @@ export function ProductListPage({
                     </div>
                   </TableCell>
                   )}
-                  <TableCell>
-                    {!displayPrice ? (
-                      <span className="text-gray-400">—</span>
-                    ) : (
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{displayPrice.currentPrice}</span>
-                        {displayPrice.compareAtPrice ? (
-                          <span className="text-xs text-gray-500 line-through">
-                            {displayPrice.compareAtPrice}
-                          </span>
-                        ) : null}
-                      </div>
-                    )}
-                  </TableCell>
+                  {isVendorPortalUser ? (
+                    <>
+                      <TableCell>
+                        <span className="font-semibold">
+                          {costAndPrice?.cost ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold">
+                          {costAndPrice?.price ?? "—"}
+                        </span>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <TableCell>
+                      {!displayPrice ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{displayPrice.currentPrice}</span>
+                          {displayPrice.compareAtPrice ? (
+                            <span className="text-xs text-gray-500 line-through">
+                              {displayPrice.compareAtPrice}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {(() => {
                       const isOutOfStock = product.is_out_of_stock === true;
@@ -1085,6 +1079,7 @@ export function ProductListPage({
                       );
                     })()}
                   </TableCell>
+                  {showCreatedByColumn ? (
                   <TableCell>
                     {product.created_by ? (
                       <div className="flex flex-col text-sm">
@@ -1106,7 +1101,8 @@ export function ProductListPage({
                       <span className="text-gray-400">—</span>
                     )}
                   </TableCell>
-                  {showStatusFilter || isVendorPortalUser ? (
+                  ) : null}
+                  {showStatusColumn ? (
                     <TableCell>
                       <Badge variant={getStatusVariant(product.status)}>
                         {getStatusLabel(product.status)}

@@ -7,7 +7,7 @@ function QuickSubmitRedirectInner() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/products?create=1");
+    router.replace("/products/create");
   }, [router]);
 
   return null;

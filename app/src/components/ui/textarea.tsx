@@ -12,7 +12,25 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, className = '', value, onChange, onFocus, onBlur, onClear, isRtl = false, ...props }, ref) => {
+  (
+    {
+      label,
+      error,
+      className = '',
+      value,
+      onChange,
+      onFocus,
+      onBlur,
+      onClear,
+      isRtl = false,
+      autoResize: _autoResize,
+      minRows,
+      maxRows: _maxRows,
+      rows,
+      ...props
+    },
+    ref,
+  ) => {
     const [isFocused, setIsFocused] = useState(false);
     const hasValue = Boolean(value && String(value).length > 0);
 
@@ -50,6 +68,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder={" "}
+          rows={rows ?? minRows}
           className={`${getFieldClasses(error, hasValue, false, false, className, isRtl)} resize-y min-h-20`}
           dir={isRtl ? 'rtl' : 'ltr'}
           {...props}

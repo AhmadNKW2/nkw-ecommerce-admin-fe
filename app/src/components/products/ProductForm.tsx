@@ -189,6 +189,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     enabled: !isEditMode,
   });
 
+  const [formLang, setFormLang] = useState<"ar" | "en">("ar");
   const [formData, setFormData] = useState<Partial<ProductFormData>>({
     nameEn: "",
     nameAr: "",
@@ -678,16 +679,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   useEnterToSubmit(handleSubmit, isSubmitting);
 
   return (
-    <div className="admin-page">
+    <div className="admin-page" dir={simplifiedMode ? "rtl" : undefined}>
       <PageHeader
         icon={<Package />}
         title={isEditMode ? (
           <span className="flex items-center gap-2">
-            Edit Product
+            {simplifiedMode ? "تعديل منتج" : "Edit Product"}
             {productId && <span className="text-primary">#{productId}</span>}
           </span>
-        ) : "Create New Product"}
-        description={isEditMode ? "Update product information" : "Fill in the details to create a new product"}
+        ) : simplifiedMode ? "إنشاء منتج" : "Create New Product"}
+        description={
+          isEditMode
+            ? simplifiedMode
+              ? "تحديث معلومات المنتج"
+              : "Update product information"
+            : simplifiedMode
+              ? "أدخل التفاصيل لإنشاء منتج جديد"
+              : "Fill in the details to create a new product"
+        }
         extraActions={
           isEditMode && formData.slug ? (
             <Button
@@ -701,17 +710,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 );
               }}
             >
-              Preview Product
+              {simplifiedMode ? "معاينة المنتج" : "Preview Product"}
             </Button>
           ) : undefined
         }
         cancelAction={{
-          label: "Cancel",
+          label: simplifiedMode ? "إلغاء" : "Cancel",
           onClick: () => { clearDraft(); router.push('/products'); },
           disabled: isSubmitting,
         }}
         action={{
-          label: isSubmitting ? "Submitting..." : (isEditMode ? "Update Product" : "Create Product"),
+          label: isSubmitting
+            ? simplifiedMode
+              ? "جاري الإرسال..."
+              : "Submitting..."
+            : isEditMode
+              ? simplifiedMode
+                ? "تحديث المنتج"
+                : "Update Product"
+              : simplifiedMode
+                ? "إنشاء منتج"
+                : "Create Product",
           onClick: handleSubmit,
           disabled: isSubmitting,
         }}
@@ -759,39 +778,74 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       ) : null}
 
       {showBasicStep && simplifiedMode ? (
-      <Card>
-        <h2 className="text-lg font-semibold">Product Details</h2>
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Input
-            label="Name (English)"
-            value={formData.nameEn || ""}
-            error={errors.nameEn}
-            onChange={(e) => handleFieldChange("nameEn", e.target.value)}
-            required
-          />
-          <Input
-            label="Name (Arabic)"
-            value={formData.nameAr || ""}
-            error={errors.nameAr}
-            onChange={(e) => handleFieldChange("nameAr", e.target.value)}
-            required
-          />
+      <Card dir="rtl">
+        <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold">تفاصيل المنتج</h2>
+          <div className="flex shrink-0 gap-1 self-start rounded-r1 border border-primary2/30 p-1">
+            <button
+              type="button"
+              onClick={() => setFormLang("ar")}
+              className={`rounded-r1 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                formLang === "ar"
+                  ? "bg-primary2 text-white"
+                  : "text-primary2 hover:bg-primary2/10"
+              }`}
+            >
+              AR
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormLang("en")}
+              className={`rounded-r1 px-3 py-1.5 text-sm font-semibold transition-colors ${
+                formLang === "en"
+                  ? "bg-primary2 text-white"
+                  : "text-primary2 hover:bg-primary2/10"
+              }`}
+            >
+              EN
+            </button>
+          </div>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-5">
-          <Textarea
-            label="Long Description (English)"
-            value={formData.longDescriptionEn || ""}
-            error={errors.longDescriptionEn}
-            onChange={(e) => handleFieldChange("longDescriptionEn", e.target.value)}
-            required
-          />
-          <Textarea
-            label="Long Description (Arabic)"
-            value={formData.longDescriptionAr || ""}
-            error={errors.longDescriptionAr}
-            onChange={(e) => handleFieldChange("longDescriptionAr", e.target.value)}
-            required
-          />
+          {formLang === "ar" ? (
+            <>
+              <Input
+                label="الاسم (عربي)"
+                value={formData.nameAr || ""}
+                error={errors.nameAr}
+                onChange={(e) => handleFieldChange("nameAr", e.target.value)}
+                required
+                isRtl
+              />
+              <Textarea
+                label="الوصف الطويل (عربي)"
+                value={formData.longDescriptionAr || ""}
+                error={errors.longDescriptionAr}
+                onChange={(e) => handleFieldChange("longDescriptionAr", e.target.value)}
+                required
+                isRtl
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                label="Name (English)"
+                value={formData.nameEn || ""}
+                error={errors.nameEn}
+                onChange={(e) => handleFieldChange("nameEn", e.target.value)}
+                required
+                isRtl
+              />
+              <Textarea
+                label="Long Description (English)"
+                value={formData.longDescriptionEn || ""}
+                error={errors.longDescriptionEn}
+                onChange={(e) => handleFieldChange("longDescriptionEn", e.target.value)}
+                required
+                isRtl
+              />
+            </>
+          )}
         </div>
       </Card>
       ) : null}
@@ -911,6 +965,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         calculateSalePercentage={calculateSalePercentage}
         errors={errors}
         vendorSourcePricesVisible={!simplifiedMode && vendorsEnabled}
+        costAndPriceOnly={simplifiedMode}
       />
       ) : null}
 

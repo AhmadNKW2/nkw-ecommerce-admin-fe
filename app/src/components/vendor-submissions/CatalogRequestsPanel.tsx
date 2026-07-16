@@ -41,7 +41,6 @@ export function CatalogRequestsPanel({ type }: CatalogRequestsPanelProps) {
       type,
       status: statusFilter === "all" ? undefined : "pending",
     },
-    { refetchInterval: 15000 },
   );
   const reject = useRejectCatalogRequest();
   const requests = (data?.data ?? []) as CatalogRequest[];

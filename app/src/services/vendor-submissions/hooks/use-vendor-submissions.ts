@@ -46,14 +46,23 @@ export function useVendorSubmission(id: number, options?: { enabled?: boolean })
   });
 }
 
-export function useCreateVendorSubmission() {
+export function useCreateVendorSubmission(options?: { silent?: boolean }) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateVendorSubmissionInput) =>
-      vendorSubmissionService.create(input),
+      vendorSubmissionService.create({
+        title: input.title,
+        description: input.description,
+        price: input.price,
+        sale_price: input.cost,
+        stock: input.stock,
+        media: input.media,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: submissionKeys.all });
-      showSuccessToast("Submission sent. AI is processing it now.");
+      if (!options?.silent) {
+        showSuccessToast("Submission sent. AI is processing it now.");
+      }
     },
   });
 }
@@ -80,6 +89,19 @@ export function useMaterializeSubmission() {
   });
 }
 
+export function useDeleteVendorSubmission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => vendorSubmissionService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: submissionKeys.all });
+      queryClient.invalidateQueries({ queryKey: catalogKeys.all });
+      queryClient.invalidateQueries({ queryKey: catalogKeys.pendingCount });
+      showSuccessToast("Submission deleted.");
+    },
+  });
+}
+
 export function useCatalogRequests(
   params?: ListCatalogRequestsParams,
   options?: { enabled?: boolean; refetchInterval?: number },
@@ -98,7 +120,6 @@ export function useCatalogRequestsPendingCount(options?: { enabled?: boolean }) 
     queryFn: () => catalogRequestService.pendingCount(),
     enabled: options?.enabled ?? true,
     select: (r) => r.data?.count ?? 0,
-    refetchInterval: 30000,
   });
 }
 

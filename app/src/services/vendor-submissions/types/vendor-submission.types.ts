@@ -93,8 +93,10 @@ export interface VendorSubmission {
 export interface CreateVendorSubmissionInput {
   title: string;
   description: string;
+  /** Vendor selling price */
   price: number;
-  sale_price: number;
+  /** Vendor cost (stored as sale_price in submissions table for compatibility) */
+  cost: number;
   stock: number;
   media?: { media_id: number; is_primary?: boolean; sort_order?: number }[];
 }

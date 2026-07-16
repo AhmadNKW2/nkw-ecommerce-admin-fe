@@ -41,9 +41,8 @@ export const useSeoSettings = (options?: { enabled?: boolean }) => {
     queryFn: fetchSeoSettings,
     select: (response) => response.data,
     enabled: options?.enabled ?? true,
-    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    staleTime: 0,
+    staleTime: QUERY_CONFIG.staleTime,
     placeholderData: storedBranding
       ? () => ({
           data: toCachedSeoSettings(storedBranding),

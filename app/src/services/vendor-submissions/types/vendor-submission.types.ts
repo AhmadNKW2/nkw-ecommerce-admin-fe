@@ -9,6 +9,37 @@ export type VendorSubmissionStatus =
   | "rejected"
   | "failed";
 
+export type AiMatchedValueId = number | "not_exist";
+
+export interface Stage2Value {
+  original_value: string | { name_en?: string; name_ar?: string } | unknown;
+  matched_value_id: AiMatchedValueId;
+}
+
+export interface Stage2Specification {
+  specification_id: number;
+  values: Stage2Value[];
+}
+
+export interface Stage2Attribute {
+  attribute: { attribute_id: number; original_value?: unknown };
+  values: Stage2Value[];
+}
+
+export interface Stage2Result {
+  title_en?: string;
+  title_ar?: string;
+  short_description_en?: string;
+  short_description_ar?: string;
+  description_en?: string;
+  description_ar?: string;
+  meta_title_en?: string;
+  meta_title_ar?: string;
+  specifications?: Stage2Specification[];
+  attributes?: Stage2Attribute[];
+  [key: string]: unknown;
+}
+
 export interface SubmissionMediaItem {
   id: number;
   submission_id: number;
@@ -29,6 +60,7 @@ export interface VendorSubmission {
   title: string;
   description: string;
   price: number;
+  sale_price: number | null;
   stock: number;
   status: VendorSubmissionStatus;
   ai_result: {
@@ -43,15 +75,7 @@ export interface VendorSubmission {
         reason?: string;
       } | null;
     };
-    stage2?: {
-      title_en?: string;
-      title_ar?: string;
-      short_description_en?: string;
-      short_description_ar?: string;
-      description_en?: string;
-      description_ar?: string;
-      [key: string]: unknown;
-    };
+    stage2?: Stage2Result;
   } | null;
   resolved_brand_id: number | null;
   resolved_category_id: number | null;
@@ -68,6 +92,7 @@ export interface CreateVendorSubmissionInput {
   title: string;
   description: string;
   price: number;
+  sale_price: number;
   stock: number;
   media?: { media_id: number; is_primary?: boolean; sort_order?: number }[];
 }

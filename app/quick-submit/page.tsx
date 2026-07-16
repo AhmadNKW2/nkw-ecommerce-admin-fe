@@ -56,6 +56,7 @@ export default function QuickSubmitPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<string>("");
+  const [salePrice, setSalePrice] = useState<string>("");
   const [stock, setStock] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -78,6 +79,9 @@ export default function QuickSubmitPage() {
     description.trim().length > 0 &&
     price !== "" &&
     Number(price) >= 0 &&
+    salePrice !== "" &&
+    Number(salePrice) >= 0 &&
+    Number(salePrice) <= Number(price) &&
     stock !== "" &&
     Number(stock) >= 0 &&
     !isUploading &&
@@ -96,6 +100,7 @@ export default function QuickSubmitPage() {
     setTitle("");
     setDescription("");
     setPrice("");
+    setSalePrice("");
     setStock("");
     setFiles([]);
   };
@@ -118,6 +123,7 @@ export default function QuickSubmitPage() {
         title: title.trim(),
         description: description.trim(),
         price: Number(price),
+        sale_price: Number(salePrice),
         stock: Number(stock),
         media,
       });
@@ -155,12 +161,23 @@ export default function QuickSubmitPage() {
             onChange={(e) => setDescription(e.target.value)}
             minRows={4}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
               label="Price"
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+            />
+            <Input
+              label="Sale price"
+              type="number"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value)}
+              error={
+                salePrice !== "" && Number(salePrice) > Number(price)
+                  ? "Sale price must be ≤ price"
+                  : undefined
+              }
             />
             <Input
               label="Stock quantity"
@@ -242,7 +259,11 @@ export default function QuickSubmitPage() {
                 <div className="min-w-0">
                   <div className="font-medium truncate">{submission.title}</div>
                   <div className="text-sm text-gray-500">
-                    Price {submission.price} · Stock {submission.stock}
+                    Price {submission.price}
+                    {submission.sale_price != null && (
+                      <> · Sale {submission.sale_price}</>
+                    )}{" "}
+                    · Stock {submission.stock}
                   </div>
                   {submission.status === "materialized" &&
                     submission.product_id && (

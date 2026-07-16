@@ -6,6 +6,7 @@ import { PageHeader } from "../src/components/common/PageHeader";
 import { Card } from "../src/components/ui/card";
 import { Button } from "../src/components/ui/button";
 import { Badge } from "../src/components/ui/badge";
+import { Modal } from "../src/components/ui/modal";
 import { EmptyState } from "../src/components/common/EmptyState";
 import {
   Table,
@@ -21,6 +22,7 @@ import {
   useVendorSubmissions,
 } from "../src/services/vendor-submissions/hooks/use-vendor-submissions";
 import type {
+  Stage2Value,
   VendorSubmission,
   VendorSubmissionStatus,
 } from "../src/services/vendor-submissions/types/vendor-submission.types";
@@ -63,10 +65,25 @@ function statusVariant(status: VendorSubmissionStatus) {
   }
 }
 
+function valueLabel(value: Stage2Value): string {
+  const original = value.original_value;
+  if (typeof original === "string") return original;
+  if (original && typeof original === "object") {
+    const record = original as { name_en?: string; name_ar?: string };
+    return record.name_en || record.name_ar || "";
+  }
+  return original != null ? String(original) : "";
+}
+
+function isNewValue(value: Stage2Value): boolean {
+  return value.matched_value_id === "not_exist";
+}
+
 export default function ProductSubmissionsPage() {
   const [statusFilter, setStatusFilter] = useState<VendorSubmissionStatus | "all">(
     "all",
   );
+  const [reviewing, setReviewing] = useState<VendorSubmission | null>(null);
 
   const { data, isLoading, refetch } = useVendorSubmissions(
     {
@@ -144,8 +161,11 @@ export default function ProductSubmissionsPage() {
                       {submission.title}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Vendor #{submission.vendor_id} · {submission.price} · stock{" "}
-                      {submission.stock}
+                      Vendor #{submission.vendor_id} · {submission.price}
+                      {submission.sale_price != null && (
+                        <> (sale {submission.sale_price})</>
+                      )}{" "}
+                      · stock {submission.stock}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -195,16 +215,11 @@ export default function ProductSubmissionsPage() {
                       )}
                       {submission.status === "ready" && (
                         <Button
-                          onClick={() =>
-                            materialize.mutate(submission.id, {
-                              onSuccess: () => refetch(),
-                            })
-                          }
-                          disabled={materialize.isPending}
+                          onClick={() => setReviewing(submission)}
                           color="var(--color-primary)"
                           className="h-10! px-3! text-sm!"
                         >
-                          Create product
+                          Review & create
                         </Button>
                       )}
                       {submission.status === "materialized" &&
@@ -225,6 +240,132 @@ export default function ProductSubmissionsPage() {
           </TableBody>
         </Table>
       )}
+
+      <Modal isOpen={!!reviewing} onClose={() => setReviewing(null)}>
+        <div className="p-6 w-full max-w-2xl">
+          {reviewing && (
+            <>
+              <h2 className="text-lg font-semibold mb-1">Review AI result</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Confirm the generated content and the specification/attribute
+                values before creating the product. Values marked{" "}
+                <span className="text-secondary font-medium">New</span> will be
+                created in the catalog.
+              </p>
+
+              <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-1">
+                <div>
+                  <div className="text-xs uppercase text-gray-400">Name (EN)</div>
+                  <div className="font-medium">
+                    {reviewing.ai_result?.stage2?.title_en || "—"}
+                  </div>
+                  <div className="text-sm text-gray-500" dir="rtl">
+                    {reviewing.ai_result?.stage2?.title_ar || ""}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs uppercase text-gray-400 mb-1">
+                    Specifications
+                  </div>
+                  {(reviewing.ai_result?.stage2?.specifications ?? []).filter(
+                    (spec) => spec.values?.length,
+                  ).length === 0 ? (
+                    <div className="text-sm text-gray-400">
+                      No specification values mapped.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {(reviewing.ai_result?.stage2?.specifications ?? [])
+                        .filter((spec) => spec.values?.length)
+                        .map((spec) => (
+                          <div
+                            key={spec.specification_id}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <span className="text-sm text-gray-500">
+                              #{spec.specification_id}:
+                            </span>
+                            {spec.values.map((value, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center gap-1 text-sm"
+                              >
+                                {valueLabel(value)}
+                                {isNewValue(value) && (
+                                  <Badge variant="secondary">New</Badge>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-xs uppercase text-gray-400 mb-1">
+                    Attributes
+                  </div>
+                  {(reviewing.ai_result?.stage2?.attributes ?? []).filter(
+                    (attr) => attr.values?.length,
+                  ).length === 0 ? (
+                    <div className="text-sm text-gray-400">
+                      No attribute values mapped.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {(reviewing.ai_result?.stage2?.attributes ?? [])
+                        .filter((attr) => attr.values?.length)
+                        .map((attr) => (
+                          <div
+                            key={attr.attribute.attribute_id}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <span className="text-sm text-gray-500">
+                              #{attr.attribute.attribute_id}:
+                            </span>
+                            {attr.values.map((value, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center gap-1 text-sm"
+                              >
+                                {valueLabel(value)}
+                                {isNewValue(value) && (
+                                  <Badge variant="secondary">New</Badge>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="outline" onClick={() => setReviewing(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() =>
+                    materialize.mutate(reviewing.id, {
+                      onSuccess: () => {
+                        setReviewing(null);
+                        refetch();
+                      },
+                    })
+                  }
+                  disabled={materialize.isPending}
+                  color="var(--color-primary)"
+                >
+                  {materialize.isPending ? "Creating..." : "Create product"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

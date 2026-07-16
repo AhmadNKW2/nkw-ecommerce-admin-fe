@@ -10,7 +10,6 @@ export type SubmitReviewPreview = {
   description: string;
   cost: string;
   price: string;
-  stock: string;
   images: { name: string; url: string }[];
 };
 
@@ -105,10 +104,9 @@ export function SubmitReviewConfirmModal({
           <SummaryRow label={copy.productTitle} value={preview.title} />
           <SummaryRow label={copy.description} value={preview.description} />
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             <SummaryRow label={copy.cost} value={preview.cost} />
             <SummaryRow label={copy.salePrice} value={preview.price} />
-            <SummaryRow label={copy.stockQty} value={preview.stock} />
           </div>
         </div>
 

@@ -689,12 +689,14 @@ export function ProductListPage({
                             {getStatusLabel(product.status)}
                           </Badge>
                         ) : null}
-                        <Badge
-                          variant={isOutOfStock ? "danger" : "success"}
-                          className="!px-2 !py-0.5 text-[10px] sm:text-xs"
-                        >
-                          {stockLabel(!isOutOfStock)}
-                        </Badge>
+                        {!isVendorPortalUser ? (
+                          <Badge
+                            variant={isOutOfStock ? "danger" : "success"}
+                            className="!px-2 !py-0.5 text-[10px] sm:text-xs"
+                          >
+                            {stockLabel(!isOutOfStock)}
+                          </Badge>
+                        ) : null}
                         <Badge
                           variant={getVisibilityVariant(product.visible ?? product.is_active)}
                           className="!px-2 !py-0.5 text-[10px] sm:text-xs"
@@ -851,9 +853,9 @@ export function ProductListPage({
               ) : (
                 <TableHead width="5%">Price</TableHead>
               )}
-              <TableHead width="7%">
-                {isVendorPortalUser ? copy.stock : "Stock"}
-              </TableHead>
+              {!isVendorPortalUser ? (
+                <TableHead width="7%">Stock</TableHead>
+              ) : null}
               {ratingsEnabled && <TableHead width="5%">Rating</TableHead>}
               <TableHead width="7%">
                 {isVendorPortalUser ? copy.createdAt : "Created At"}
@@ -934,11 +936,6 @@ export function ProductListPage({
                       <span className="font-semibold">
                         {priceValue?.raw ?? "—"}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={submission.stock > 0 ? "success" : "danger"}>
-                        {stockLabel(submission.stock > 0)}
-                      </Badge>
                     </TableCell>
                     <TableCell>
                       {(() => {
@@ -1100,17 +1097,19 @@ export function ProductListPage({
                       )}
                     </TableCell>
                   )}
-                  <TableCell>
-                    {(() => {
-                      const isOutOfStock = product.is_out_of_stock === true;
+                  {!isVendorPortalUser ? (
+                    <TableCell>
+                      {(() => {
+                        const isOutOfStock = product.is_out_of_stock === true;
 
-                      return (
-                        <Badge variant={isOutOfStock ? "danger" : "success"}>
-                          {stockLabel(!isOutOfStock)}
-                        </Badge>
-                      );
-                    })()}
-                  </TableCell>
+                        return (
+                          <Badge variant={isOutOfStock ? "danger" : "success"}>
+                            {stockLabel(!isOutOfStock)}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                  ) : null}
                   {ratingsEnabled && (
                   <TableCell>
                     <div className="flex items-center justify-start gap-1">

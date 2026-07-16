@@ -20,7 +20,6 @@ export function VendorPendingSubmissionCard({
   const imageUrl =
     submission.media?.find((m) => m.is_primary)?.media?.url ||
     submission.media?.[0]?.media?.url;
-  const inStock = submission.stock > 0;
 
   return (
     <Card
@@ -69,15 +68,6 @@ export function VendorPendingSubmissionCard({
         <div className="min-w-0">
           <p className="text-xs text-gray-500">{copy.price}</p>
           <p className="font-semibold tabular-nums">{submission.price}</p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs text-gray-500">{copy.stock}</p>
-          <Badge
-            variant={inStock ? "success" : "danger"}
-            className="!mt-0.5 !px-2 !py-0.5 text-[10px] sm:text-xs"
-          >
-            {inStock ? copy.inStock : copy.outOfStock}
-          </Badge>
         </div>
         {createdAtLabel ? (
           <div className="min-w-0">

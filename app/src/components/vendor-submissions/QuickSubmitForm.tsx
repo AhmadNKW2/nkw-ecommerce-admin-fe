@@ -12,6 +12,8 @@ import { useCreateVendorSubmission } from "@/services/vendor-submissions/hooks/u
 import { useVendorLocale } from "@/contexts/vendor-locale.context";
 import { SubmitReviewConfirmModal } from "./SubmitReviewConfirmModal";
 
+const DEFAULT_VENDOR_STOCK = 100;
+
 type QuickSubmitFormProps = {
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -32,7 +34,6 @@ export function QuickSubmitForm({
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
   const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -67,9 +68,7 @@ export function QuickSubmitForm({
     Number(cost) >= 0 &&
     price !== "" &&
     Number(price) >= 0 &&
-    !costExceedsPrice &&
-    stock !== "" &&
-    Number(stock) >= 0;
+    !costExceedsPrice;
 
   const canOpenConfirm = isFormValid && !isBusy;
 
@@ -78,7 +77,6 @@ export function QuickSubmitForm({
     setDescription("");
     setCost("");
     setPrice("");
-    setStock("");
     setFiles([]);
     setConfirmOpen(false);
   };
@@ -108,7 +106,7 @@ export function QuickSubmitForm({
         description: description.trim(),
         price: Number(price),
         cost: Number(cost),
-        stock: Number(stock),
+        stock: DEFAULT_VENDOR_STOCK,
         media,
       });
       resetForm();
@@ -149,7 +147,7 @@ export function QuickSubmitForm({
             minRows={4}
             isRtl={isRtl}
           />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label={copy.cost}
               type="number"
@@ -165,14 +163,6 @@ export function QuickSubmitForm({
               inputMode="decimal"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              isRtl={isRtl}
-            />
-            <Input
-              label={copy.stockQty}
-              type="number"
-              inputMode="numeric"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
               isRtl={isRtl}
             />
           </div>
@@ -259,7 +249,6 @@ export function QuickSubmitForm({
           description: description.trim(),
           cost,
           price,
-          stock,
           images: previews,
         }}
         onConfirm={handleConfirmSubmit}

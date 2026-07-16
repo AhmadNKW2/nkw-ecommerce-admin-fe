@@ -60,6 +60,7 @@ import type {
   AnalyticsRange,
   AnalyticsVisitorListItem,
 } from "../src/services/analytics/types/analytics.types";
+import { PAGINATION } from "../src/lib/constants";
 
 const RANGES: Array<{ value: AnalyticsRange; label: string }> = [
   { value: "7d", label: "7 days" },
@@ -261,7 +262,8 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState<AnalyticsRange | "custom">("28d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [visitorPage, setVisitorPage] = useState(1);
+  const [visitorPage, setVisitorPage] = useState(PAGINATION.defaultPage);
+  const [visitorPageSize, setVisitorPageSize] = useState(PAGINATION.defaultPageSize);
   const [visitorSearch, setVisitorSearch] = useState("");
   const [visitorSortBy, setVisitorSortBy] = useState<VisitorSortKey>("lastSeen");
   const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");
@@ -324,7 +326,7 @@ export default function AnalyticsPage() {
   } = useAnalyticsVisitors(
     {
       page: visitorPage,
-      limit: 20,
+      limit: visitorPageSize,
       search: visitorSearch || undefined,
       audience: tab === "admins" ? "admins" : "visitors",
       sortBy: visitorSortBy,
@@ -392,8 +394,8 @@ export default function AnalyticsPage() {
   const visitors = visitorsPayload?.data || [];
   const visitorsMeta = visitorsPayload?.meta || {
     total: 0,
-    page: 1,
-    limit: 20,
+    page: visitorPage,
+    limit: visitorPageSize,
     totalPages: 1,
   };
   const isAdminsTab = tab === "admins";
@@ -970,7 +972,21 @@ export default function AnalyticsPage() {
                   : "opacity-100 transition-opacity"
               }
             >
-              <Table>
+              <Table
+                pagination={{
+                  currentPage: visitorsMeta.page,
+                  totalPages: visitorsMeta.totalPages,
+                  pageSize: visitorsMeta.limit,
+                  totalItems: visitorsMeta.total,
+                  hasNextPage: visitorsMeta.page < visitorsMeta.totalPages,
+                  hasPreviousPage: visitorsMeta.page > 1,
+                }}
+                onPageChange={setVisitorPage}
+                onPageSizeChange={(size) => {
+                  setVisitorPageSize(size);
+                  setVisitorPage(1);
+                }}
+              >
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
@@ -1174,29 +1190,6 @@ export default function AnalyticsPage() {
                   ))}
                 </TableBody>
               </Table>
-
-              <div className="flex items-center justify-between gap-3 pt-4">
-                <p className="text-xs text-gray-500">
-                  {visitorsMeta.total} {isAdminsTab ? "admins" : "visitors"} · page{" "}
-                  {visitorsMeta.page} of {visitorsMeta.totalPages}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={visitorPage <= 1}
-                    onClick={() => setVisitorPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={visitorPage >= visitorsMeta.totalPages}
-                    onClick={() => setVisitorPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
             </div>
           )}
         </Card>

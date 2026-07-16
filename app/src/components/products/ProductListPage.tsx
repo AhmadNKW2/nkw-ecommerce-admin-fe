@@ -514,9 +514,10 @@ export function ProductListPage({
               const createdAtParts = getCreatedAtParts(
                 product.created_at || (product as { createdAt?: string }).createdAt,
               );
-              const isOutOfStock = product.variants?.length
-                ? product.variants.every((variant: { is_out_of_stock?: boolean }) => variant.is_out_of_stock === true)
-                : product.is_out_of_stock === true;
+              // This must use the same aggregate stock field that the list API
+              // filters on. Deriving it from variants made filtered out-of-stock
+              // products appear as "In Stock" in the admin table.
+              const isOutOfStock = product.is_out_of_stock === true;
 
               return (
                 <Card
@@ -802,9 +803,7 @@ export function ProductListPage({
                   </TableCell>
                   <TableCell>
                     {(() => {
-                      const isOutOfStock = product.variants?.length
-                        ? product.variants.every((variant: any) => variant.is_out_of_stock === true)
-                        : product.is_out_of_stock === true;
+                      const isOutOfStock = product.is_out_of_stock === true;
 
                       return (
                         <Badge variant={isOutOfStock ? "danger" : "success"}>

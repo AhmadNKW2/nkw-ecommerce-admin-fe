@@ -1,3 +1,16 @@
+export type ShippingCutoffMode = "before" | "after" | "any";
+export type ShippingArrivalMode = "offset_days" | "next_weekday";
+
+/** Weekday: 0 = Sunday … 6 = Saturday. */
+export type ShippingDeliveryRule = {
+  id: string;
+  days: number[];
+  cutoffMode: ShippingCutoffMode;
+  arrivalMode: ShippingArrivalMode;
+  arrivalOffsetDays?: number;
+  arrivalWeekday?: number;
+};
+
 export interface SeoSettings {
   id: number;
   site_name_en: string;
@@ -29,6 +42,9 @@ export interface SeoSettings {
   free_delivery_amount: number;
   delivery_fee: number;
   low_stock_threshold: number;
+  shipping_rules_enabled: boolean;
+  shipping_cutoff_hour: number;
+  shipping_rules: ShippingDeliveryRule[];
   created_at?: string;
   updated_at?: string;
 }
@@ -42,11 +58,13 @@ export type UpdateSeoSettingsDto = Partial<
     | 'free_delivery_amount'
     | 'delivery_fee'
     | 'low_stock_threshold'
+    | 'shipping_cutoff_hour'
   >
 > & {
   free_delivery_amount?: number | null;
   delivery_fee?: number | null;
   low_stock_threshold?: number | null;
+  shipping_cutoff_hour?: number | null;
 };
 
 export interface FeatureToggles {

@@ -82,19 +82,50 @@ export function writeStoredSiteBranding(settings: SeoSettings): void {
     return;
   }
 
+  const previous = readStoredSiteBranding();
+
+  // Keep prior brand colors when a partial SEO update omits them (undefined).
+  // Explicit `null` from Appearance save still clears a color.
+  const pickBrand = (
+    next: string | null | undefined,
+    prev: string | null | undefined,
+  ) => (next !== undefined ? next : (prev ?? null));
+
   const payload: StoredSiteBranding = {
-    site_name_en: settings.site_name_en,
-    site_name_ar: settings.site_name_ar,
-    site_logo: settings.site_logo ?? null,
-    brand_primary: settings.brand_primary ?? null,
-    brand_primary_2: settings.brand_primary_2 ?? null,
-    brand_primary_3: settings.brand_primary_3 ?? null,
-    brand_secondary: settings.brand_secondary ?? null,
-    brand_success: settings.brand_success ?? null,
-    brand_success_2: settings.brand_success_2 ?? null,
-    brand_danger: settings.brand_danger ?? null,
-    brand_danger_2: settings.brand_danger_2 ?? null,
+    site_name_en: settings.site_name_en || previous?.site_name_en || "",
+    site_name_ar: settings.site_name_ar || previous?.site_name_ar || "",
+    site_logo:
+      settings.site_logo !== undefined
+        ? (settings.site_logo ?? null)
+        : (previous?.site_logo ?? null),
+    brand_primary: pickBrand(settings.brand_primary, previous?.brand_primary),
+    brand_primary_2: pickBrand(
+      settings.brand_primary_2,
+      previous?.brand_primary_2,
+    ),
+    brand_primary_3: pickBrand(
+      settings.brand_primary_3,
+      previous?.brand_primary_3,
+    ),
+    brand_secondary: pickBrand(
+      settings.brand_secondary,
+      previous?.brand_secondary,
+    ),
+    brand_success: pickBrand(settings.brand_success, previous?.brand_success),
+    brand_success_2: pickBrand(
+      settings.brand_success_2,
+      previous?.brand_success_2,
+    ),
+    brand_danger: pickBrand(settings.brand_danger, previous?.brand_danger),
+    brand_danger_2: pickBrand(
+      settings.brand_danger_2,
+      previous?.brand_danger_2,
+    ),
   };
+
+  if (!payload.site_name_en || !payload.site_name_ar) {
+    return;
+  }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
@@ -131,6 +162,9 @@ export function toCachedSeoSettings(stored: StoredSiteBranding): SeoSettings {
     free_delivery_amount: 50,
     delivery_fee: 2,
     low_stock_threshold: 10,
+    shipping_rules_enabled: false,
+    shipping_cutoff_hour: 14,
+    shipping_rules: [],
   };
 }
 

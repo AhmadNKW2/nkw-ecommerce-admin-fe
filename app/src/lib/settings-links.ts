@@ -50,6 +50,7 @@ export const SETTINGS_LINK_DEFINITIONS: SettingsLinkDefinition[] = [
     adminAccess: "settings",
   },
   { href: "/settings/inventory", label: "Inventory Settings", navLabel: "Inventory", roles: ["admin"], adminAccess: "settings" },
+  { href: "/settings/shipping", label: "Shipping Settings", navLabel: "Shipping", roles: ["admin"], adminAccess: "settings" },
   { href: "/settings/pricing", label: "Pricing Rules", navLabel: "Pricing Rules", roles: ["admin"], adminAccess: "settings" },
   { href: "/settings/sidebar", label: "Sidebar", navLabel: "Sidebar", roles: ["admin"], adminAccess: "settings" },
 ];

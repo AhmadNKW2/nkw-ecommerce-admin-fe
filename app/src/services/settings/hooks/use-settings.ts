@@ -12,7 +12,7 @@ import {
   writeStoredSiteBranding,
 } from '../../../lib/site-branding-cache';
 import { applyBrandThemeToDocument, resolveBrandTheme } from '../../../lib/brand-theme';
-import { showSuccessToast } from '../../../lib/toast';
+import { showErrorToast, showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
   CreateProductPriceRuleDto,
@@ -62,10 +62,16 @@ export const useUpdateSeoSettings = () => {
       settingsService.updateSeoSettings(data),
     onSuccess: (response) => {
       writeStoredSiteBranding(response.data);
-      applyBrandThemeToDocument(resolveBrandTheme(response.data));
+      const branding = readStoredSiteBranding() ?? response.data;
+      applyBrandThemeToDocument(resolveBrandTheme(branding));
       queryClient.setQueryData(queryKeys.settings.seo(), response);
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       showSuccessToast('SEO settings updated successfully');
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Failed to update SEO settings";
+      showErrorToast(message);
     },
   });
 };

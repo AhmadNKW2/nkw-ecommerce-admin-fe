@@ -495,6 +495,28 @@ export const sidebarConfig = {
           ),
         },
         {
+          href: '/settings/shipping',
+          label: 'Shipping Settings',
+          roles: ['admin'] as SidebarRole[],
+          adminAccess: 'settings',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h2m8-1V6a1 1 0 011-1h2.5a1 1 0 01.8.4l3 4a1 1 0 01.2.6V16h-2"
+              />
+            </svg>
+          ),
+        },
+        {
           href: '/settings/pricing',
           label: 'Pricing Rules',
           roles: ['admin'] as SidebarRole[],

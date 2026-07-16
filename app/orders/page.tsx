@@ -287,11 +287,11 @@ export default function OrdersPage() {
               <TableRow>
                 <TableHead className="w-24">ID</TableHead>
                 <TableHead width="320px">Customer</TableHead>
-                <TableHead>Client</TableHead>
+                <TableHead className="w-[120px]">Client</TableHead>
                 <TableHead>Shipping Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead className="w-[110px]">Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead width="180px">Date</TableHead>
                 <TableHead className="w-[140px]">Actions</TableHead>
@@ -320,26 +320,30 @@ export default function OrdersPage() {
                         <p className="font-medium text-gray-900 whitespace-normal wrap-break-word">{customerLabel}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {order.clientId != null ? (
-                        <div className="space-y-1">
-                          <p className="font-semibold text-primary tabular-nums">
-                            Client #{order.clientId}
-                          </p>
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="font-semibold text-primary tabular-nums">
+                            #{order.clientId}
+                          </span>
                           {order.isAdminClient ? (
-                            <Badge variant="warning">Admin</Badge>
+                            <Badge variant="warning" className="px-2 py-0.5">
+                              Admin
+                            </Badge>
                           ) : null}
                         </div>
                       ) : order.browserKey ? (
-                        <div className="space-y-1">
-                          <p
-                            className="text-xs text-gray-600 font-mono truncate max-w-[120px]"
+                        <div className="inline-flex items-center gap-1.5">
+                          <span
+                            className="text-xs text-gray-600 font-mono"
                             title={order.browserKey}
                           >
                             {order.browserKey.slice(0, 8)}…
-                          </p>
+                          </span>
                           {order.isAdminClient ? (
-                            <Badge variant="warning">Admin</Badge>
+                            <Badge variant="warning" className="px-2 py-0.5">
+                              Admin
+                            </Badge>
                           ) : null}
                         </div>
                       ) : (
@@ -353,7 +357,10 @@ export default function OrdersPage() {
                       <p className="truncate text-gray-700">{shippingPhone}</p>
                     </TableCell>
                     <TableCell>{itemsCount}</TableCell>
-                    <TableCell className="font-semibold">{Number(order.totalAmount).toFixed(2)} JOD</TableCell>
+                    <TableCell className="font-semibold whitespace-nowrap">
+                      {Number(order.totalAmount).toFixed(2)}{" "}
+                      <span className="text-gray-500 font-medium">JOD</span>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getStatusColor(order.status)}>
                         {(order.status || "Unknown").toUpperCase()}

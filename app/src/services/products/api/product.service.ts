@@ -125,15 +125,6 @@ export interface UpdateStockDto {
 // ==================== UPDATE PRODUCT DTOs ====================
 // Imported from types
 
-
-
-
-/**
- * The `/search` endpoint (Typesense-backed) validates its query params against a
- * strict allowlisted DTO (unknown properties are rejected with a 400). Its field
- * names also differ from the `/products` REST endpoint's `ProductFilters` shape,
- * so requests must be translated rather than passed through as-is.
- */
 function mapProductFiltersToSearchParams(
   params: ProductFilters = {}
 ): Record<string, unknown> {
@@ -145,7 +136,6 @@ function mapProductFiltersToSearchParams(
   };
 
   const search = params.search?.trim();
-
   const mapped: Record<string, unknown> = {
     q: search || "*",
     page: params.page,
@@ -190,7 +180,7 @@ class ProductService extends BaseService<Product> {
   /**
    * Get all products with filters and pagination
    */
-    async getProducts(
+  async getProducts(
     params?: ProductFilters
   ): Promise<ApiResponse<PaginatedResponse<Product>>> {
     const endpoint =
@@ -200,7 +190,6 @@ class ProductService extends BaseService<Product> {
         ? mapProductFiltersToSearchParams(params)
         : params;
 
-    // Call the API
     const response = await httpClient.get<PaginatedApiResponse<Product>>(
       endpoint,
       requestParams

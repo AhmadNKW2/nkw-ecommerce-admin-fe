@@ -52,6 +52,10 @@ interface CategoryFormProps {
   nameAr: string;
   descriptionEn?: string;
   descriptionAr?: string;
+  metaTitleEn?: string;
+  metaTitleAr?: string;
+  metaDescriptionEn?: string;
+  metaDescriptionAr?: string;
   image: ImageUploadItem | null;
   visible: boolean;
   parentId: number | null;
@@ -63,6 +67,10 @@ interface CategoryFormProps {
   onNameArChange: (value: string) => void;
   onDescriptionEnChange?: (value: string) => void;
   onDescriptionArChange?: (value: string) => void;
+  onMetaTitleEnChange?: (value: string) => void;
+  onMetaTitleArChange?: (value: string) => void;
+  onMetaDescriptionEnChange?: (value: string) => void;
+  onMetaDescriptionArChange?: (value: string) => void;
   onImageChange: (value: ImageUploadItem | null) => void;
   onVisibleChange: (value: boolean) => void;
   onParentIdChange: (value: number | null) => void;
@@ -94,6 +102,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   nameAr,
   descriptionEn = "",
   descriptionAr = "",
+  metaTitleEn = "",
+  metaTitleAr = "",
+  metaDescriptionEn = "",
+  metaDescriptionAr = "",
   image,
   visible,
   parentId,
@@ -105,6 +117,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   onNameArChange,
   onDescriptionEnChange,
   onDescriptionArChange,
+  onMetaTitleEnChange,
+  onMetaTitleArChange,
+  onMetaDescriptionEnChange,
+  onMetaDescriptionArChange,
   onImageChange,
   onVisibleChange,
   onParentIdChange,
@@ -207,6 +223,43 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               rows={3}
               isRtl
               maxLength={500}
+            />
+          )}
+
+          {onMetaTitleEnChange && (
+            <Input
+              label="Meta Title (English)"
+              value={metaTitleEn}
+              onChange={(e) => onMetaTitleEnChange(e.target.value)}
+              maxLength={70}
+            />
+          )}
+          {onMetaTitleArChange && (
+            <Input
+              label="Meta Title (Arabic)"
+              value={metaTitleAr}
+              onChange={(e) => onMetaTitleArChange(e.target.value)}
+              maxLength={70}
+              isRtl
+            />
+          )}
+          {onMetaDescriptionEnChange && (
+            <Textarea
+              label="Meta Description (English)"
+              value={metaDescriptionEn}
+              onChange={(e) => onMetaDescriptionEnChange(e.target.value)}
+              rows={3}
+              maxLength={160}
+            />
+          )}
+          {onMetaDescriptionArChange && (
+            <Textarea
+              label="Meta Description (Arabic)"
+              value={metaDescriptionAr}
+              onChange={(e) => onMetaDescriptionArChange(e.target.value)}
+              rows={3}
+              maxLength={160}
+              isRtl
             />
           )}
           {/* Parent Category */}

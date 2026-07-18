@@ -33,6 +33,10 @@ export default function EditVendorPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [metaTitleEn, setMetaTitleEn] = useState("");
+  const [metaTitleAr, setMetaTitleAr] = useState("");
+  const [metaDescriptionEn, setMetaDescriptionEn] = useState("");
+  const [metaDescriptionAr, setMetaDescriptionAr] = useState("");
   const [logo, setLogo] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [product_ids, setProductIds] = useState<number[]>([]);
@@ -73,6 +77,10 @@ export default function EditVendorPage() {
       setNameAr(vendor.name_ar);
       setDescriptionEn(vendor.description_en || "");
       setDescriptionAr(vendor.description_ar || "");
+      setMetaTitleEn(vendor.meta_title_en || "");
+      setMetaTitleAr(vendor.meta_title_ar || "");
+      setMetaDescriptionEn(vendor.meta_description_en || "");
+      setMetaDescriptionAr(vendor.meta_description_ar || "");
       // Set existing logo URL
       if (vendor.logo) {
         setLogo({
@@ -126,6 +134,10 @@ export default function EditVendorPage() {
           name_ar: nameAr,
           description_en: descriptionEn || undefined,
           description_ar: descriptionAr || undefined,
+          meta_title_en: metaTitleEn || undefined,
+          meta_title_ar: metaTitleAr || undefined,
+          meta_description_en: metaDescriptionEn || undefined,
+          meta_description_ar: metaDescriptionAr || undefined,
           visible: visible,
           // Only send new file if one was uploaded
           logo: logo?.file || undefined,
@@ -206,6 +218,10 @@ export default function EditVendorPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      metaTitleEn={metaTitleEn}
+      metaTitleAr={metaTitleAr}
+      metaDescriptionEn={metaDescriptionEn}
+      metaDescriptionAr={metaDescriptionAr}
       logo={logo}
       visible={visible}
       product_ids={product_ids}
@@ -233,6 +249,10 @@ export default function EditVendorPage() {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
         }
       }}
+      onMetaTitleEnChange={setMetaTitleEn}
+      onMetaTitleArChange={setMetaTitleAr}
+      onMetaDescriptionEnChange={setMetaDescriptionEn}
+      onMetaDescriptionArChange={setMetaDescriptionAr}
       onLogoChange={setLogo}
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}

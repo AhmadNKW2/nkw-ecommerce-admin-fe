@@ -24,6 +24,10 @@ export const brandSchema = z.object({
   name_ar: z.string(),
   description_en: z.string().optional().nullable(),
   description_ar: z.string().optional().nullable(),
+  meta_title_en: z.string().optional().nullable(),
+  meta_title_ar: z.string().optional().nullable(),
+  meta_description_en: z.string().optional().nullable(),
+  meta_description_ar: z.string().optional().nullable(),
   logo: z.string().optional().nullable(),
   visible: z.boolean().optional(),
   is_active: z.boolean().optional(),
@@ -45,6 +49,10 @@ export interface CreateBrandDto {
   name_ar: string;
   description_en?: string;
   description_ar?: string;
+  meta_title_en?: string;
+  meta_title_ar?: string;
+  meta_description_en?: string;
+  meta_description_ar?: string;
   visible?: boolean;
   logo?: File | null;
   product_changes?: ProductChangesPayload;
@@ -56,6 +64,10 @@ export interface UpdateBrandDto {
   name_ar?: string;
   description_en?: string;
   description_ar?: string;
+  meta_title_en?: string;
+  meta_title_ar?: string;
+  meta_description_en?: string;
+  meta_description_ar?: string;
   visible?: boolean;
   logo?: File | null;
   product_changes?: ProductChangesPayload;

@@ -222,3 +222,85 @@ export interface SyncImportedPricingResult {
   skipped?: number;
   results: Array<SyncImportedPricingResultItem | ImportedPricingAuditItem>;
 }
+
+export type SeoEntityType = "product" | "category" | "brand" | "vendor";
+
+export type SeoMissingField =
+  | "meta_title_en"
+  | "meta_title_ar"
+  | "meta_description_en"
+  | "meta_description_ar";
+
+export interface SeoMissingCounts {
+  product: number;
+  category: number;
+  brand: number;
+  vendor: number;
+}
+
+export interface SeoMissingItem {
+  id: number;
+  type: SeoEntityType;
+  slug: string | null;
+  name_en: string;
+  name_ar: string;
+  description_en: string | null;
+  description_ar: string | null;
+  meta_title_en: string | null;
+  meta_title_ar: string | null;
+  meta_description_en: string | null;
+  meta_description_ar: string | null;
+  missing_fields: SeoMissingField[];
+  product_count?: number;
+  brand_name?: string | null;
+  sku?: string | null;
+}
+
+export interface ListMissingSeoFilters {
+  type?: SeoEntityType;
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface SeoMissingListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  counts: SeoMissingCounts;
+}
+
+export interface GenerateSeoDto {
+  type: SeoEntityType;
+  ids: number[] | "all_missing";
+  search_internet?: boolean;
+  overwrite?: boolean;
+}
+
+export interface GenerateSeoStartResult {
+  job_id: string;
+  message: string;
+}
+
+export interface SeoGenerateJobStatus {
+  job_id: string;
+  type: string;
+  entity_type?: SeoEntityType;
+  status: "running" | "done" | "failed" | "cancelled";
+  started_at: string;
+  finished_at: string | null;
+  progress: number | null;
+  total: number | null;
+  current_index: number | null;
+  current_item: string | null;
+  duration_seconds: number;
+  result: {
+    processed?: number;
+    updated?: number;
+    skipped?: number;
+    failed?: number;
+    failures?: Array<{ id: number; name: string; error: string }>;
+  } | null;
+  error: string | null;
+}

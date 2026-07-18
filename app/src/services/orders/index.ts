@@ -6,6 +6,7 @@ export {
   useCreateOrderAdmin,
   useUpdateOrder,
   useUpdateOrderStatus,
+  useUpdateCodCollection,
   useUpdateOrderItemCosts,
   useDeleteOrder,
 } from "./hooks/use-orders";
@@ -15,6 +16,8 @@ export type {
   OrderAdminStats,
   OrderStatus,
   PaymentMethod,
+  CodCollectionStatus,
+  CodCollectionFilter,
   CreateOrderDto,
   AdminCreateOrderDto,
   AdminOrderItemInput,

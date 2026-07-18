@@ -164,6 +164,7 @@ function mapProductFiltersToSearchParams(
     has_no_vendor: toBoolean(params.has_no_vendor),
     has_no_brand: toBoolean(params.has_no_brand),
     has_duplicate_reference_link: toBoolean(params.has_duplicate_reference_link),
+    has_no_reference_link: toBoolean(params.has_no_reference_link),
     is_admin: true,
   };
 

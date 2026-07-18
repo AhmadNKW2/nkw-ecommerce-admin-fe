@@ -2,6 +2,7 @@ import { httpClient } from "../../../lib/api/http-client";
 import type { ApiResponse } from "../../../types/common.types";
 import type {
   AdminCreateOrderDto,
+  CodCollectionStatus,
   CreateOrderDto,
   Order,
   OrderAdminStats,
@@ -43,6 +44,16 @@ class OrderService {
 
   updateOrderStatus(id: number, status: OrderStatus): Promise<ApiResponse<Order>> {
     return httpClient.patch<ApiResponse<Order>>(`${this.endpoint}/${id}/status`, { status });
+  }
+
+  updateCodCollection(
+    id: number,
+    status: CodCollectionStatus,
+  ): Promise<ApiResponse<Order>> {
+    return httpClient.patch<ApiResponse<Order>>(
+      `${this.endpoint}/${id}/cod-collection`,
+      { status },
+    );
   }
 
   createOrder(data: CreateOrderDto): Promise<ApiResponse<Order>> {

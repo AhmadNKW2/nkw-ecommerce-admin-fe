@@ -95,6 +95,7 @@ export function useProductFilters({
       next.has_no_vendor = undefined;
       next.status = undefined;
       next.has_duplicate_reference_link = undefined;
+      next.has_no_reference_link = undefined;
       next.created_by = undefined;
     }
 
@@ -223,12 +224,16 @@ export function useProductFilters({
 
     if (!referenceLinksEnabled) {
       setQueryParams((prev) => {
-        if (prev.has_duplicate_reference_link === undefined) {
+        if (
+          prev.has_duplicate_reference_link === undefined &&
+          prev.has_no_reference_link === undefined
+        ) {
           return prev;
         }
 
         const next = { ...prev };
         delete next.has_duplicate_reference_link;
+        delete next.has_no_reference_link;
         return { ...next, page: 1 };
       });
     }
@@ -239,7 +244,8 @@ export function useProductFilters({
         if (
           prev.status === undefined &&
           prev.created_by === undefined &&
-          prev.has_duplicate_reference_link === undefined
+          prev.has_duplicate_reference_link === undefined &&
+          prev.has_no_reference_link === undefined
         ) {
           return prev;
         }
@@ -248,6 +254,7 @@ export function useProductFilters({
         delete next.status;
         delete next.created_by;
         delete next.has_duplicate_reference_link;
+        delete next.has_no_reference_link;
         return { ...next, page: 1 };
       });
     }
@@ -402,13 +409,19 @@ export function useProductFilters({
 
   const handleDuplicateReferenceLinkChange = (value: string | string[]) => {
     const normalized = Array.isArray(value) ? value[0] : value;
-    let hasDuplicateReferenceLink = undefined;
+    let hasDuplicateReferenceLink: boolean | undefined;
+    let hasNoReferenceLink: boolean | undefined;
     if (normalized === "true") {
       hasDuplicateReferenceLink = true;
     } else if (normalized === "false") {
       hasDuplicateReferenceLink = false;
+    } else if (normalized === "none") {
+      hasNoReferenceLink = true;
     }
-    handleFilterChange({ has_duplicate_reference_link: hasDuplicateReferenceLink });
+    handleFilterChange({
+      has_duplicate_reference_link: hasDuplicateReferenceLink,
+      has_no_reference_link: hasNoReferenceLink,
+    });
   };
 
   const handleStatusFilterChange = (value: string | string[]) => {

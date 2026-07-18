@@ -401,6 +401,7 @@ export interface ProductFilters {
   visible?: boolean | string;
   in_stock?: boolean | string;
   has_duplicate_reference_link?: boolean | string;
+  has_no_reference_link?: boolean | string;
 }
 
 export interface ProductNamesFilters {

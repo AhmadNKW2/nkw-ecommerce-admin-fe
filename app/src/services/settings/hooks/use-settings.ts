@@ -19,8 +19,10 @@ import { showErrorToast, showSuccessToast } from '../../../lib/toast';
 import { settingsService } from '../api/settings.service';
 import {
   CreateProductPriceRuleDto,
+  GenerateSeoDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
+  ListMissingSeoFilters,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
   UpdateFeatureTogglesDto,
@@ -268,6 +270,26 @@ export const useSyncImportedPricing = () => {
       showSuccessToast(
         `Imported pricing sync finished: ${result.updated ?? 0} updated, ${result.failed ?? 0} failed`,
       );
+    },
+  });
+};
+
+export const useMissingSeo = (params: ListMissingSeoFilters, enabled = true) => {
+  return useQuery({
+    queryKey: queryKeys.settings.seoMissing(params),
+    queryFn: () => settingsService.listMissingSeo(params),
+    enabled,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useGenerateSeo = () => {
+  return useMutation({
+    mutationFn: (data: GenerateSeoDto) => settingsService.generateSeo(data),
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Failed to start SEO generation";
+      showErrorToast(message);
     },
   });
 };

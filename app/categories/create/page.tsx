@@ -48,6 +48,10 @@ export default function CreateCategoryPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [metaTitleEn, setMetaTitleEn] = useState("");
+  const [metaTitleAr, setMetaTitleAr] = useState("");
+  const [metaDescriptionEn, setMetaDescriptionEn] = useState("");
+  const [metaDescriptionAr, setMetaDescriptionAr] = useState("");
   const [image, setImage] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [parentId, setParentId] = useState<number | null>(null);
@@ -144,6 +148,10 @@ export default function CreateCategoryPage() {
         name_ar: nameAr,
         description_en: descriptionEn || undefined,
         description_ar: descriptionAr || undefined,
+        meta_title_en: metaTitleEn || undefined,
+        meta_title_ar: metaTitleAr || undefined,
+        meta_description_en: metaDescriptionEn || undefined,
+        meta_description_ar: metaDescriptionAr || undefined,
         visible: visible,
         parent_id: parentId,
         image: image?.file || undefined,
@@ -165,6 +173,10 @@ export default function CreateCategoryPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      metaTitleEn={metaTitleEn}
+      metaTitleAr={metaTitleAr}
+      metaDescriptionEn={metaDescriptionEn}
+      metaDescriptionAr={metaDescriptionAr}
       image={image}
       visible={visible}
       parentId={parentId}
@@ -196,6 +208,10 @@ export default function CreateCategoryPage() {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
         }
       }}
+      onMetaTitleEnChange={setMetaTitleEn}
+      onMetaTitleArChange={setMetaTitleAr}
+      onMetaDescriptionEnChange={setMetaDescriptionEn}
+      onMetaDescriptionArChange={setMetaDescriptionAr}
       onImageChange={setImage}
       onVisibleChange={setVisible}
       onParentIdChange={setParentId}

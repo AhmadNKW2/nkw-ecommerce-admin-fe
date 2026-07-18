@@ -1,7 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth.context";
+import {
+  readAdminNotificationSeen,
+  unreadFromSeen,
+  writeAdminNotificationSeen,
+  type AdminNotificationSeenState,
+} from "@/lib/admin-notification-seen";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { useOrders } from "@/services/orders/hooks/use-orders";
 import { useNotes } from "@/services/notes/hooks/use-notes";
@@ -42,8 +49,12 @@ function readNotesTotal(data: unknown): number {
 }
 
 export function useAdminNotifications(): AdminNotificationState {
+  const pathname = usePathname();
   const { user } = useAuth();
   const isVendorPortalUser = isSimplifiedProductCreator(user);
+  const [seen, setSeen] = useState<AdminNotificationSeenState>(() =>
+    readAdminNotificationSeen(),
+  );
 
   const pendingOrdersQuery = useOrders(
     {
@@ -96,6 +107,42 @@ export function useAdminNotifications(): AdminNotificationState {
     return 0;
   }, [isVendorPortalUser, partnersQuery.data]);
 
+  // Visiting notes/partners marks their badge counts as read.
+  useEffect(() => {
+    if (isVendorPortalUser) return;
+
+    const onNotesPage = pathname === "/notes" || pathname?.startsWith("/notes/");
+    const onPartnersPage =
+      pathname === "/partners" || pathname?.startsWith("/partners/");
+
+    if (!onNotesPage && !onPartnersPage) return;
+
+    setSeen((prev) => {
+      const next: AdminNotificationSeenState = {
+        notes: onNotesPage ? Math.max(prev.notes, notesCount) : prev.notes,
+        partners: onPartnersPage
+          ? Math.max(prev.partners, partnersCount)
+          : prev.partners,
+      };
+
+      if (next.notes === prev.notes && next.partners === prev.partners) {
+        return prev;
+      }
+
+      return writeAdminNotificationSeen(next);
+    });
+  }, [isVendorPortalUser, notesCount, partnersCount, pathname]);
+
+  const notesUnreadCount = useMemo(
+    () => unreadFromSeen(notesCount, seen.notes),
+    [notesCount, seen.notes],
+  );
+
+  const partnersUnreadCount = useMemo(
+    () => unreadFromSeen(partnersCount, seen.partners),
+    [partnersCount, seen.partners],
+  );
+
   const notifications = useMemo<AdminNotificationItem[]>(() => {
     if (isVendorPortalUser) return [];
 
@@ -118,7 +165,7 @@ export function useAdminNotifications(): AdminNotificationState {
         title: "Customer Notes",
         description: `${notesCount} note${notesCount === 1 ? "" : "s"} need follow-up`,
         href: "/notes",
-        count: notesCount,
+        count: notesUnreadCount,
         tone: "info",
       });
     }
@@ -142,7 +189,7 @@ export function useAdminNotifications(): AdminNotificationState {
         title: "Partner Leads",
         description: `${partnersCount} partner${partnersCount === 1 ? "" : "s"} awaiting follow-up`,
         href: "/partners",
-        count: partnersCount,
+        count: partnersUnreadCount,
         tone: "info",
       });
     }
@@ -160,9 +207,11 @@ export function useAdminNotifications(): AdminNotificationState {
   }, [
     isVendorPortalUser,
     notesCount,
+    notesUnreadCount,
     pendingOrdersCount,
     catalogRequestsCount,
     partnersCount,
+    partnersUnreadCount,
   ]);
 
   const unreadCount = useMemo(
@@ -173,11 +222,16 @@ export function useAdminNotifications(): AdminNotificationState {
   const navBadges = useMemo(
     () => ({
       "/orders": pendingOrdersCount,
-      "/notes": notesCount,
+      "/notes": notesUnreadCount,
       "/product-submissions": catalogRequestsCount,
-      "/partners": partnersCount,
+      "/partners": partnersUnreadCount,
     }),
-    [notesCount, pendingOrdersCount, catalogRequestsCount, partnersCount],
+    [
+      notesUnreadCount,
+      pendingOrdersCount,
+      catalogRequestsCount,
+      partnersUnreadCount,
+    ],
   );
 
   return {

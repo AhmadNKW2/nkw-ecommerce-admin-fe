@@ -28,6 +28,11 @@ export type OrderStatus = 'pending' | 'delivered' | 'cancelled' | 'refunded';
 
 export type PaymentMethod = 'card' | 'cod' | 'wallet';
 
+/** Cash remittance from the shipping company for COD orders. */
+export type CodCollectionStatus = 'pending' | 'received';
+
+export type CodCollectionFilter = 'owed' | 'received' | 'cod';
+
 /** A single line item used when an admin creates an order manually. */
 export interface AdminOrderItemInput {
   productId: number;
@@ -78,6 +83,8 @@ export interface UpdateOrderDto {
   items?: UpdateOrderItemEntry[];
   shippingAmount?: number;
   discountAmount?: number;
+  /** Shipping-company remittance status for COD cash. */
+  codCollectionStatus?: CodCollectionStatus;
 }
 
 export interface OrderFilters {
@@ -86,6 +93,9 @@ export interface OrderFilters {
   status?: OrderStatus | '';
   search?: string;
   userId?: number;
+  codCollectionStatus?: CodCollectionStatus | '';
+  /** owed = still want money; received = taken from shipping; cod = any COD */
+  codCollection?: CodCollectionFilter | '';
 }
 
 export interface OrderMeta {
@@ -110,6 +120,12 @@ export interface OrderAdminStats {
   revenue: number;
   /** Σ((price − cost) × quantity) for delivered orders only. */
   profit: number;
+  /** COD orders where shipping still owes cash. */
+  codOwedCount: number;
+  codOwedAmount: number;
+  /** COD orders already remitted by shipping. */
+  codReceivedCount: number;
+  codReceivedAmount: number;
 }
 
 export interface ItemProduct {
@@ -178,6 +194,7 @@ export interface Order {
   
   // Optional / Compatibility fields
   paymentMethod?: string;
+  walletAppliedAmount?: string | number;
   shippingAddress?: ShippingAddress;
   createdAt?: string;
   created_at?: string;
@@ -189,6 +206,12 @@ export interface Order {
   clientId?: number | null;
   /** True when browserKey is registered as an admin device (even for guest checkout). */
   isAdminClient?: boolean;
+  /** Shipping-company remittance status for COD cash. */
+  codCollectionStatus?: CodCollectionStatus | null;
+  /** Cash amount shipping company owes for this order. */
+  codAmountDue?: string | number;
+  /** When cash was marked received from shipping. */
+  codCollectedAt?: string | null;
   
   [key: string]: any;
 }

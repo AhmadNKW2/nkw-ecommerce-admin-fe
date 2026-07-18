@@ -1,13 +1,20 @@
 import { httpClient } from '../../../lib/api/http-client';
 import { ApiResponse } from '../../../types/common.types';
+import { PaginatedApiResponse } from '../../../types/common.types';
 import {
   CreateProductPriceRuleDto,
   ImportedPricingAuditFilters,
   ImportedPricingAuditResult,
   FeatureToggles,
+  GenerateSeoDto,
+  GenerateSeoStartResult,
+  ListMissingSeoFilters,
   ProductFieldToggles,
   ProductPriceRule,
   RepriceExistingProductsResult,
+  SeoGenerateJobStatus,
+  SeoMissingItem,
+  SeoMissingListMeta,
   SeoSettings,
   SyncImportedPricingDto,
   SyncImportedPricingResult,
@@ -149,6 +156,35 @@ class SettingsService {
       {
         headers: { 'x-skip-request-toast': '1' },
       },
+    );
+  }
+
+  async listMissingSeo(
+    params?: ListMissingSeoFilters,
+  ): Promise<PaginatedApiResponse<SeoMissingItem, SeoMissingListMeta>> {
+    return httpClient.get<PaginatedApiResponse<SeoMissingItem, SeoMissingListMeta>>(
+      `${this.seoEndpoint}/missing`,
+      params,
+    );
+  }
+
+  async generateSeo(
+    data: GenerateSeoDto,
+  ): Promise<ApiResponse<GenerateSeoStartResult>> {
+    return httpClient.post<ApiResponse<GenerateSeoStartResult>>(
+      `${this.seoEndpoint}/generate`,
+      data,
+      {
+        headers: { 'x-skip-request-toast': '1' },
+      },
+    );
+  }
+
+  async getSeoGenerateJobStatus(
+    jobId: string,
+  ): Promise<ApiResponse<SeoGenerateJobStatus>> {
+    return httpClient.get<ApiResponse<SeoGenerateJobStatus>>(
+      `${this.seoEndpoint}/jobs/${jobId}`,
     );
   }
 }

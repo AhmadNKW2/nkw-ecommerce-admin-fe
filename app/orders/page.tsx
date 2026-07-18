@@ -8,8 +8,15 @@ import {
   useOrders,
   useOrderAdminStats,
   useDeleteOrder,
+  useUpdateCodCollection,
 } from "../src/services/orders/hooks/use-orders";
-import type { Order, OrderStatus, OrderFilters } from "../src/services/orders/types/order.types";
+import type {
+  CodCollectionFilter,
+  CodCollectionStatus,
+  Order,
+  OrderStatus,
+  OrderFilters,
+} from "../src/services/orders/types/order.types";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { Card } from "../src/components/ui/card";
 import { Input } from "../src/components/ui/input";
@@ -24,6 +31,7 @@ import {
   TableRow,
 } from "../src/components/ui/table";
 import { Badge } from "../src/components/ui/badge";
+import { CodCollectionStatusIcon } from "../src/components/orders/CodCollectionBadge";
 import {
   Receipt,
   RefreshCw,
@@ -31,6 +39,8 @@ import {
   PackageCheck,
   Wallet,
   TrendingUp,
+  Banknote,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "../src/components/ui/button";
 import { IconButton } from "../src/components/ui/icon-button";
@@ -64,6 +74,12 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | ""; label: string }> = [
   { value: "refunded", label: "Refunded" },
 ];
 
+const COD_FILTERS: Array<{ value: CodCollectionFilter | ""; label: string }> = [
+  { value: "", label: "All payments" },
+  { value: "owed", label: "Not received" },
+  { value: "received", label: "Received" },
+];
+
 export default function OrdersPage() {
   const router = useRouter();
   const { setShowOverlay } = useLoading();
@@ -74,6 +90,7 @@ export default function OrdersPage() {
     limit: storedLimit,
     search: "",
     status: "",
+    codCollection: "",
   });
 
   useEffect(() => {
@@ -101,6 +118,7 @@ export default function OrdersPage() {
   });
 
   const deleteOrder = useDeleteOrder();
+  const updateCod = useUpdateCodCollection();
   const [orderPendingDelete, setOrderPendingDelete] = useState<Order | null>(null);
 
   const handleConfirmDelete = async () => {
@@ -114,8 +132,19 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    setShowOverlay(isLoading);
-  }, [isLoading, setShowOverlay]);
+    setShowOverlay(isLoading || updateCod.isPending);
+  }, [isLoading, updateCod.isPending, setShowOverlay]);
+
+  const markCodReceived = async (order: Order) => {
+    try {
+      await updateCod.mutateAsync({
+        id: order.id,
+        status: "received" as CodCollectionStatus,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handlePageChange = (page: number) => {
     setQueryParams((prev) => ({ ...prev, page }));
@@ -152,7 +181,7 @@ export default function OrdersPage() {
       />
 
       {/* Snapshot — revenue/profit are all delivered orders across every page */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 w-full">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -210,6 +239,31 @@ export default function OrdersPage() {
             </div>
           </div>
         </Card>
+        <Card
+          className="cursor-pointer hover:border-amber-300 transition-colors"
+          onClick={() =>
+            setQueryParams((prev) => ({
+              ...prev,
+              codCollection: "owed",
+              page: 1,
+            }))
+          }
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">COD owed</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {Number(stats?.codOwedAmount ?? 0).toFixed(2)} JOD
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {Number(stats?.codOwedCount ?? 0)} from shipping
+              </p>
+            </div>
+            <div className="p-3 bg-amber-50 rounded-r1 text-amber-600">
+              <Banknote className="w-5 h-5" />
+            </div>
+          </div>
+        </Card>
       </div>
 
       <Card className="p-4">
@@ -242,6 +296,32 @@ export default function OrdersPage() {
                     isActive
                       ? "bg-primary text-white border-primary"
                       : "border-primary/20 text-gray-600 hover:bg-primary/5"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100">
+            {COD_FILTERS.map((filter) => {
+              const isActive = (queryParams.codCollection || "") === filter.value;
+              return (
+                <button
+                  key={filter.value || "all-payments"}
+                  type="button"
+                  onClick={() =>
+                    setQueryParams((prev) => ({
+                      ...prev,
+                      codCollection: filter.value,
+                      page: 1,
+                    }))
+                  }
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    isActive
+                      ? "bg-amber-600 text-white border-amber-600"
+                      : "border-amber-200 text-gray-600 hover:bg-amber-50"
                   }`}
                 >
                   {filter.label}
@@ -291,10 +371,10 @@ export default function OrdersPage() {
                 <TableHead>Shipping Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Items</TableHead>
-                <TableHead className="w-[110px]">Total</TableHead>
+                <TableHead className="w-[130px]">Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead width="180px">Date</TableHead>
-                <TableHead className="w-[140px]">Actions</TableHead>
+                <TableHead className="w-[180px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -305,6 +385,12 @@ export default function OrdersPage() {
                 const customerLabel = isLoggedIn ? order.user!.email : "Guest";
                 const shippingName = shipping.fullName?.trim() || "-";
                 const shippingPhone = shipping.phone?.trim() || "-";
+                const canMarkCodReceived =
+                  Boolean(order.codCollectionStatus) &&
+                  order.codCollectionStatus !== "received" &&
+                  order.status !== "cancelled" &&
+                  order.status !== "refunded";
+                const isCodReceived = order.codCollectionStatus === "received";
                 return (
                   <TableRow
                     key={order.id}
@@ -358,8 +444,13 @@ export default function OrdersPage() {
                     </TableCell>
                     <TableCell>{itemsCount}</TableCell>
                     <TableCell className="font-semibold whitespace-nowrap">
-                      {Number(order.totalAmount).toFixed(2)}{" "}
-                      <span className="text-gray-500 font-medium">JOD</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        {Number(order.totalAmount).toFixed(2)}{" "}
+                        <span className="text-gray-500 font-medium">JOD</span>
+                        {isCodReceived ? (
+                          <CodCollectionStatusIcon status="received" />
+                        ) : null}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusColor(order.status)}>
@@ -369,6 +460,18 @@ export default function OrdersPage() {
                     <TableCell className="min-w-[180px] w-[180px] whitespace-nowrap">{getOrderDate(order.created_at || order.createdAt)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {canMarkCodReceived ? (
+                          <Button
+                            variant="outline"
+                            className="!h-9 !min-w-0 px-2.5 text-xs gap-1"
+                            title="Mark money received from shipping"
+                            disabled={updateCod.isPending}
+                            onClick={() => markCodReceived(order)}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Received
+                          </Button>
+                        ) : null}
                         <IconButton href={`/orders/${order.id}`} variant="view" title="View Details" />
                         <IconButton href={`/orders/${order.id}/edit`} variant="edit" title="Edit Order" />
                         <IconButton

@@ -252,16 +252,20 @@ export function ProductFiltersPanel({
               <Select
                 label="Reference Links"
                 value={
-                  queryParams.has_duplicate_reference_link === true
-                    ? "true"
-                    : queryParams.has_duplicate_reference_link === false
-                      ? "false"
-                      : ""
+                  queryParams.has_no_reference_link === true ||
+                  queryParams.has_no_reference_link === "true"
+                    ? "none"
+                    : queryParams.has_duplicate_reference_link === true
+                      ? "true"
+                      : queryParams.has_duplicate_reference_link === false
+                        ? "false"
+                        : ""
                 }
                 onChange={onDuplicateReferenceLinkChange}
                 options={[
                   { value: "true", label: "Duplicated Reference Links" },
                   { value: "false", label: "No Duplicated Reference Links" },
+                  { value: "none", label: "With No Reference Link" },
                 ]}
                 onClear={() => onDuplicateReferenceLinkChange("")}
                 multiple={false}

@@ -44,6 +44,22 @@ class BrandService {
       formData.append("description_ar", data.description_ar);
     }
 
+    if (data.meta_title_en) {
+      formData.append("meta_title_en", data.meta_title_en);
+    }
+
+    if (data.meta_title_ar) {
+      formData.append("meta_title_ar", data.meta_title_ar);
+    }
+
+    if (data.meta_description_en) {
+      formData.append("meta_description_en", data.meta_description_en);
+    }
+
+    if (data.meta_description_ar) {
+      formData.append("meta_description_ar", data.meta_description_ar);
+    }
+
     if (data.visible !== undefined) {
       formData.append("visible", String(data.visible));
     }
@@ -74,6 +90,22 @@ class BrandService {
 
     if (data.description_ar !== undefined) {
       formData.append("description_ar", data.description_ar);
+    }
+
+    if (data.meta_title_en !== undefined) {
+      formData.append("meta_title_en", data.meta_title_en);
+    }
+
+    if (data.meta_title_ar !== undefined) {
+      formData.append("meta_title_ar", data.meta_title_ar);
+    }
+
+    if (data.meta_description_en !== undefined) {
+      formData.append("meta_description_en", data.meta_description_en);
+    }
+
+    if (data.meta_description_ar !== undefined) {
+      formData.append("meta_description_ar", data.meta_description_ar);
     }
 
     if (data.visible !== undefined) {

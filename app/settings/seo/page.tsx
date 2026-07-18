@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Search } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
+import { CatalogSeoPanel } from "../../src/components/settings/CatalogSeoPanel";
 import { Card } from "../../src/components/ui/card";
 import { Input } from "../../src/components/ui/input";
 import { Textarea } from "../../src/components/ui/textarea";
@@ -298,6 +299,8 @@ export default function SeoSettingsPage() {
           />
         </div>
       </Card>
+
+      <CatalogSeoPanel />
 
       <Card>
         <h2 className="text-lg font-semibold">Search & SEO Social</h2>

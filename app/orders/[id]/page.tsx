@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useLoading } from "../../src/providers/loading-provider";
-import { useOrder, useUpdateOrderStatus, useDeleteOrder } from "../../src/services/orders/hooks/use-orders";
+import {
+    useOrder,
+    useUpdateOrderStatus,
+    useUpdateCodCollection,
+    useDeleteOrder,
+} from "../../src/services/orders/hooks/use-orders";
 import { Card } from "../../src/components/ui/card";
 import { Button } from "../../src/components/ui/button";
 import { EmptyState } from "../../src/components/common/EmptyState";
@@ -19,6 +24,7 @@ import {
 } from "../../src/components/ui/table";
 import { Badge } from "../../src/components/ui/badge";
 import { OrderStatusPills } from "../../src/components/orders/OrderStatusPills";
+import { CodCollectionPills } from "../../src/components/orders/CodCollectionPills";
 import {
     Receipt,
     User,
@@ -37,7 +43,10 @@ import {
     UserCircle2,
 } from "lucide-react";
 import Image from "next/image";
-import { OrderStatus } from "../../src/services/orders/types/order.types";
+import {
+    CodCollectionStatus,
+    OrderStatus,
+} from "../../src/services/orders/types/order.types";
 import { cn } from "../../src/lib/utils";
 import { STOREFRONT_CONFIG } from "../../src/lib/constants";
 import { DeleteConfirmationModal } from "../../src/components/common/DeleteConfirmationModal";
@@ -124,6 +133,7 @@ export default function OrderDetailsPage() {
     const params = useParams();
     const { setShowOverlay } = useLoading();
     const updateStatus = useUpdateOrderStatus();
+    const updateCodCollection = useUpdateCodCollection();
 
     const [targetStatus, setTargetStatus] = useState<OrderStatus | "">("");
     const deleteOrder = useDeleteOrder();
@@ -144,8 +154,19 @@ export default function OrderDetailsPage() {
     } = useOrder(id, { enabled: id > 0 });
 
     useEffect(() => {
-        setShowOverlay(isLoading || updateStatus.isPending || deleteOrder.isPending);
-    }, [isLoading, updateStatus.isPending, deleteOrder.isPending, setShowOverlay]);
+        setShowOverlay(
+            isLoading ||
+                updateStatus.isPending ||
+                updateCodCollection.isPending ||
+                deleteOrder.isPending,
+        );
+    }, [
+        isLoading,
+        updateStatus.isPending,
+        updateCodCollection.isPending,
+        deleteOrder.isPending,
+        setShowOverlay,
+    ]);
 
     useEffect(() => {
         if (order?.status) {
@@ -157,6 +178,15 @@ export default function OrderDetailsPage() {
         if (!targetStatus || !order) return;
         try {
             await updateStatus.mutateAsync({ id: order.id, status: targetStatus as OrderStatus });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleCodCollectionUpdate = async (status: CodCollectionStatus) => {
+        if (!order) return;
+        try {
+            await updateCodCollection.mutateAsync({ id: order.id, status });
         } catch (e) {
             console.error(e);
         }
@@ -548,6 +578,41 @@ export default function OrderDetailsPage() {
                             </Button>
                         </Card>
 
+                        {order.codCollectionStatus ||
+                        (order.paymentMethod || "").toLowerCase() === "cod" ? (
+                            <Card>
+                                <h3 className="text-sm font-semibold text-amber-900 uppercase tracking-wide">
+                                    Shipping cash
+                                </h3>
+                                <div className="flex items-center justify-between gap-2 text-sm">
+                                    <span className="text-gray-500">Amount due</span>
+                                    <span className="font-bold text-gray-900 tabular-nums">
+                                        {formatCurrency(
+                                            order.codAmountDue ??
+                                                Math.max(
+                                                    0,
+                                                    Number(order.totalAmount || 0) -
+                                                        Number(order.walletAppliedAmount ?? 0),
+                                                ),
+                                        )}
+                                    </span>
+                                </div>
+                                <CodCollectionPills
+                                    value={
+                                        order.codCollectionStatus === "received"
+                                            ? "received"
+                                            : "pending"
+                                    }
+                                    onChange={handleCodCollectionUpdate}
+                                    disabled={
+                                        updateCodCollection.isPending ||
+                                        order.status === "cancelled" ||
+                                        order.status === "refunded"
+                                    }
+                                />
+                            </Card>
+                        ) : null}
+
                         {/* Customer Details */}
                         <Card>
                             <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
@@ -666,6 +731,14 @@ export default function OrderDetailsPage() {
                                     <span className="text-gray-500">Method</span>
                                     <span className="font-medium text-gray-900">{order.paymentMethod || "Cash On Delivery"}</span>
                                 </div>
+                                {Number(order.walletAppliedAmount ?? 0) > 0 ? (
+                                    <div className="flex justify-between items-center text-sm p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <span className="text-gray-500">Wallet applied</span>
+                                        <span className="font-medium text-gray-900">
+                                            {formatCurrency(order.walletAppliedAmount ?? 0)}
+                                        </span>
+                                    </div>
+                                ) : null}
                             </div>
                         </Card>
 

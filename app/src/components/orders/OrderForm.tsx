@@ -38,6 +38,7 @@ import { useVendors } from "../../services/vendors/hooks/use-vendors";
 import type { Product } from "../../services/products/types/product.types";
 import type {
   AdminCreateOrderDto,
+  CodCollectionStatus,
   Order,
   OrderStatus,
   PaymentMethod,
@@ -46,6 +47,7 @@ import type {
 } from "../../services/orders/types/order.types";
 import { showErrorToast } from "../../lib/toast";
 import { coalesceNumber, type NullableNumber } from "../../lib/nullable-number";
+import { CodCollectionPills } from "./CodCollectionPills";
 
 export interface OrderFormItem {
   key: string;
@@ -378,6 +380,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     (initialOrder?.paymentMethod as PaymentMethod) || "cod"
   );
+  const [codCollectionStatus, setCodCollectionStatus] = useState<CodCollectionStatus>(
+    initialOrder?.codCollectionStatus === "received" ? "received" : "pending"
+  );
   const [status, setStatus] = useState<OrderStatus>(
     (initialOrder?.status as OrderStatus) || "pending"
   );
@@ -394,13 +399,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     setShippingAmount(resolveDefaultShippingFee(subtotal, seoSettings));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, shippingTouched, seoSettings, subtotal]);
-  const [discountAmount, setDiscountAmount] = useState<NullableNumber>(
-    initialOrder?.discountAmount != null ? Number(initialOrder.discountAmount) : null
-  );
-  const [discountEnabled, setDiscountEnabled] = useState<boolean>(
-    initialOrder?.discountAmount != null && Number(initialOrder.discountAmount) > 0
-  );
-
   const toDateInputValue = (raw?: string | null): string => {
     const date = raw ? new Date(raw) : new Date();
     if (Number.isNaN(date.getTime())) return "";
@@ -412,15 +410,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   );
 
   const shippingAmountNum = coalesceNumber(shippingAmount);
-  const discountAmountNum = discountEnabled ? coalesceNumber(discountAmount) : 0;
+  // Admin create/edit no longer edits discounts; keep any existing value on edit.
+  const discountAmountNum = isEditMode
+    ? Number(initialOrder?.discountAmount ?? 0)
+    : 0;
   const total = Math.max(0, subtotal + shippingAmountNum - discountAmountNum);
-
-  const handleToggleDiscount = (enabled: boolean) => {
-    setDiscountEnabled(enabled);
-    if (!enabled) {
-      setDiscountAmount(null);
-    }
-  };
+  const walletAppliedAmount = Number(initialOrder?.walletAppliedAmount ?? 0);
+  const codAmountDuePreview = Math.max(0, total - walletAppliedAmount);
+  const showCodCollection = paymentMethod === "cod" && codAmountDuePreview > 0;
 
   const validate = (): string | null => {
     if (items.length === 0) return "Add at least one product to the order.";
@@ -459,6 +456,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           orderDate: orderDate || undefined,
           shippingAmount: shippingAmountNum,
           discountAmount: discountAmountNum,
+          ...(showCodCollection
+            ? { codCollectionStatus }
+            : {}),
           items: items.map((it) => ({
             ...(it.itemId != null ? { itemId: it.itemId } : {}),
             productId: it.productId,
@@ -781,7 +781,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             label="Payment Method"
             options={PAYMENT_METHOD_OPTIONS}
             value={paymentMethod}
-            onChange={(val) => setPaymentMethod(val as PaymentMethod)}
+            onChange={(val) => {
+              const next = val as PaymentMethod;
+              setPaymentMethod(next);
+              if (next === "cod" && !codCollectionStatus) {
+                setCodCollectionStatus("pending");
+              }
+            }}
             search={false}
           />
           <Input
@@ -799,35 +805,29 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           />
         </div>
 
+        {showCodCollection ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-r1 border border-amber-200 bg-amber-50/60 px-4 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                Shipping cash
+              </span>
+              <span className="text-sm font-bold text-gray-900 tabular-nums">
+                {formatMoney(codAmountDuePreview)} JOD
+              </span>
+            </div>
+            <CodCollectionPills
+              value={isEditMode ? codCollectionStatus : "pending"}
+              onChange={setCodCollectionStatus}
+              disabled={!isEditMode}
+              label={null}
+            />
+          </div>
+        ) : null}
+
         <OrderStatusPills
           value={status}
           onChange={setStatus}
         />
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-          <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={discountEnabled}
-              onChange={(e) => handleToggleDiscount(e.target.checked)}
-              className="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary"
-            />
-            Discount
-          </label>
-          {discountEnabled && (
-            <Input
-              label="Discount (JOD)"
-              type="number"
-              min={0}
-              step="0.01"
-              value={discountAmount}
-              onNumberChange={setDiscountAmount}
-              dir="ltr"
-              className="text-left"
-              autoFocus
-            />
-          )}
-        </div>
 
         <div className="bg-primary/5 -mx-5 -mb-5 mt-2 p-5 rounded-b-r1 flex flex-col items-end gap-2">
           <div className="w-full max-w-xs space-y-2">
@@ -838,10 +838,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <div className="flex justify-between text-sm text-gray-600">
               <span>Shipping</span>
               <span>{formatMoney(shippingAmountNum)} JOD</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Discount</span>
-              <span>-{formatMoney(discountAmountNum)} JOD</span>
             </div>
             <div className="my-2 h-px bg-gray-200" />
             <div className="flex justify-between text-lg font-bold text-gray-900">

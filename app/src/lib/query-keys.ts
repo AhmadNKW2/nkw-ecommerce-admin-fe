@@ -214,6 +214,8 @@ export const queryKeys = {
   settings: {
     all: ["settings"] as const,
     seo: () => [...queryKeys.settings.all, "seo"] as const,
+    seoMissing: (params?: Record<string, any>) =>
+      [...queryKeys.settings.all, "seo-missing", params] as const,
     features: () =>
       [...queryKeys.settings.all, "features"] as const,
     /** @deprecated Use features */

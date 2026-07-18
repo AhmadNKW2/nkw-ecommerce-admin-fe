@@ -22,6 +22,10 @@ export default function CreateVendorPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [metaTitleEn, setMetaTitleEn] = useState("");
+  const [metaTitleAr, setMetaTitleAr] = useState("");
+  const [metaDescriptionEn, setMetaDescriptionEn] = useState("");
+  const [metaDescriptionAr, setMetaDescriptionAr] = useState("");
   const [logo, setLogo] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [product_ids, setProductIds] = useState<number[]>([]);
@@ -84,6 +88,10 @@ export default function CreateVendorPage() {
         name_ar: nameAr,
         description_en: descriptionEn || undefined,
         description_ar: descriptionAr || undefined,
+        meta_title_en: metaTitleEn || undefined,
+        meta_title_ar: metaTitleAr || undefined,
+        meta_description_en: metaDescriptionEn || undefined,
+        meta_description_ar: metaDescriptionAr || undefined,
         visible: visible,
         logo: logo?.file || undefined,
         product_changes: buildCreateProductChanges(product_ids),
@@ -103,6 +111,10 @@ export default function CreateVendorPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      metaTitleEn={metaTitleEn}
+      metaTitleAr={metaTitleAr}
+      metaDescriptionEn={metaDescriptionEn}
+      metaDescriptionAr={metaDescriptionAr}
       logo={logo}
       visible={visible}
       product_ids={product_ids}
@@ -130,6 +142,10 @@ export default function CreateVendorPage() {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
         }
       }}
+      onMetaTitleEnChange={setMetaTitleEn}
+      onMetaTitleArChange={setMetaTitleAr}
+      onMetaDescriptionEnChange={setMetaDescriptionEn}
+      onMetaDescriptionArChange={setMetaDescriptionAr}
       onLogoChange={setLogo}
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}

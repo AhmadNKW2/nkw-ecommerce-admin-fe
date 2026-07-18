@@ -22,6 +22,10 @@ interface BrandFormProps {
   nameAr: string;
   descriptionEn: string;
   descriptionAr: string;
+  metaTitleEn: string;
+  metaTitleAr: string;
+  metaDescriptionEn: string;
+  metaDescriptionAr: string;
   logo: ImageUploadItem | null;
   visible: boolean;
   product_ids: number[];
@@ -29,6 +33,10 @@ interface BrandFormProps {
   onNameArChange: (value: string) => void;
   onDescriptionEnChange: (value: string) => void;
   onDescriptionArChange: (value: string) => void;
+  onMetaTitleEnChange: (value: string) => void;
+  onMetaTitleArChange: (value: string) => void;
+  onMetaDescriptionEnChange: (value: string) => void;
+  onMetaDescriptionArChange: (value: string) => void;
   onLogoChange: (value: ImageUploadItem | null) => void;
   onVisibleChange: (value: boolean) => void;
   onProductIdsChange: (value: number[]) => void;
@@ -52,6 +60,10 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   nameAr,
   descriptionEn,
   descriptionAr,
+  metaTitleEn,
+  metaTitleAr,
+  metaDescriptionEn,
+  metaDescriptionAr,
   logo,
   visible,
   product_ids,
@@ -59,6 +71,10 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   onNameArChange,
   onDescriptionEnChange,
   onDescriptionArChange,
+  onMetaTitleEnChange,
+  onMetaTitleArChange,
+  onMetaDescriptionEnChange,
+  onMetaDescriptionArChange,
   onLogoChange,
   onVisibleChange,
   onProductIdsChange,
@@ -134,6 +150,35 @@ export const BrandForm: React.FC<BrandFormProps> = ({
             rows={3}
             isRtl
             maxLength={1000}
+          />
+
+          <Input
+            label="Meta Title (English)"
+            value={metaTitleEn}
+            onChange={(e) => onMetaTitleEnChange(e.target.value)}
+            maxLength={70}
+          />
+          <Input
+            label="Meta Title (Arabic)"
+            value={metaTitleAr}
+            onChange={(e) => onMetaTitleArChange(e.target.value)}
+            maxLength={70}
+            isRtl
+          />
+          <Textarea
+            label="Meta Description (English)"
+            value={metaDescriptionEn}
+            onChange={(e) => onMetaDescriptionEnChange(e.target.value)}
+            rows={3}
+            maxLength={160}
+          />
+          <Textarea
+            label="Meta Description (Arabic)"
+            value={metaDescriptionAr}
+            onChange={(e) => onMetaDescriptionArChange(e.target.value)}
+            rows={3}
+            maxLength={160}
+            isRtl
           />
 
           <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">

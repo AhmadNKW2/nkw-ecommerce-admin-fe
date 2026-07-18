@@ -56,6 +56,10 @@ export default function EditCategoryPage() {
   const [nameAr, setNameAr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
+  const [metaTitleEn, setMetaTitleEn] = useState("");
+  const [metaTitleAr, setMetaTitleAr] = useState("");
+  const [metaDescriptionEn, setMetaDescriptionEn] = useState("");
+  const [metaDescriptionAr, setMetaDescriptionAr] = useState("");
   const [image, setImage] = useState<ImageUploadItem | null>(null);
   const [visible, setVisible] = useState(true);
   const [parentId, setParentId] = useState<number | null>(null);
@@ -113,6 +117,10 @@ export default function EditCategoryPage() {
       setNameAr(category.name_ar);
       setDescriptionEn(category.description_en || "");
       setDescriptionAr(category.description_ar || "");
+      setMetaTitleEn(category.meta_title_en || "");
+      setMetaTitleAr(category.meta_title_ar || "");
+      setMetaDescriptionEn(category.meta_description_en || "");
+      setMetaDescriptionAr(category.meta_description_ar || "");
       // Set existing image URL
       if (category.image) {
         setImage({
@@ -188,6 +196,10 @@ export default function EditCategoryPage() {
           name_ar: nameAr,
           description_en: descriptionEn || undefined,
           description_ar: descriptionAr || undefined,
+          meta_title_en: metaTitleEn || undefined,
+          meta_title_ar: metaTitleAr || undefined,
+          meta_description_en: metaDescriptionEn || undefined,
+          meta_description_ar: metaDescriptionAr || undefined,
           visible: visible,
           parent_id: parentId,
           ...(attributesEnabled ? { attribute_ids } : {}),
@@ -275,6 +287,10 @@ export default function EditCategoryPage() {
       nameAr={nameAr}
       descriptionEn={descriptionEn}
       descriptionAr={descriptionAr}
+      metaTitleEn={metaTitleEn}
+      metaTitleAr={metaTitleAr}
+      metaDescriptionEn={metaDescriptionEn}
+      metaDescriptionAr={metaDescriptionAr}
       image={image}
       visible={visible}
       parentId={parentId}
@@ -306,6 +322,10 @@ export default function EditCategoryPage() {
           setFormErrors((prev) => ({ ...prev, description_ar: undefined }));
         }
       }}
+      onMetaTitleEnChange={setMetaTitleEn}
+      onMetaTitleArChange={setMetaTitleAr}
+      onMetaDescriptionEnChange={setMetaDescriptionEn}
+      onMetaDescriptionArChange={setMetaDescriptionAr}
       onImageChange={setImage}
       onVisibleChange={setVisible}
       onParentIdChange={setParentId}

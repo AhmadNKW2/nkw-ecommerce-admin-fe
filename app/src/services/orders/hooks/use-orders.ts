@@ -4,6 +4,7 @@ import { showSuccessToast } from "../../../lib/toast";
 import { orderService } from "../api/order.service";
 import type {
   AdminCreateOrderDto,
+  CodCollectionStatus,
   CreateOrderDto,
   OrderFilters,
   OrderStatus,
@@ -52,6 +53,25 @@ export const useUpdateOrderStatus = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
       showSuccessToast("Order status updated successfully");
+    },
+  });
+};
+
+export const useUpdateCodCollection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: number;
+      status: CodCollectionStatus;
+    }) => orderService.updateCodCollection(id, status),
+    onSuccess: (_, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(id) });
+      showSuccessToast("Shipping collection updated");
     },
   });
 };

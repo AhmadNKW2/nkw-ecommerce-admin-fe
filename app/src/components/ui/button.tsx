@@ -12,6 +12,7 @@ interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   isSquare?: boolean;
   href?: string;
+  title?: string;
 }
 
 /** Shared control size: 52px height; square controls are 52×52. */
@@ -19,7 +20,7 @@ export const BUTTON_HEIGHT_CLASS = 'h-13';
 export const BUTTON_MIN_WIDTH_CLASS = 'min-w-13';
 export const BUTTON_SQUARE_CLASS = 'h-13 w-13 min-w-13 p-0';
 
-export const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'solid', color, disabled = false, className = '', type = 'button', isSquare = false, href }) => {
+export const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'solid', color, disabled = false, className = '', type = 'button', isSquare = false, href, title }) => {
 
   const defaultVariantClasses = {
     solid: 'bg-secondary active:bg-secondary/75 hover:bg-secondary/80 text-white',
@@ -47,6 +48,7 @@ export const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'so
         href={href}
         className={baseClasses}
         style={buttonStyle}
+        title={title}
         onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
       >
         {children}
@@ -61,6 +63,7 @@ export const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'so
       disabled={disabled}
       className={baseClasses}
       style={buttonStyle}
+      title={title}
     >
       {children}
     </button>

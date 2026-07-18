@@ -22,6 +22,7 @@ const catalogKeys = {
   all: ["catalog-requests"] as const,
   list: (params?: ListCatalogRequestsParams) =>
     ["catalog-requests", "list", params ?? {}] as const,
+  detail: (id: number) => ["catalog-requests", "detail", id] as const,
   pendingCount: ["catalog-requests", "pending-count"] as const,
 };
 
@@ -114,6 +115,18 @@ export function useCatalogRequests(
   });
 }
 
+export function useCatalogRequest(
+  id: number | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: catalogKeys.detail(id ?? 0),
+    queryFn: () => catalogRequestService.getOne(id!),
+    enabled: (options?.enabled ?? true) && !!id,
+    select: (r) => r.data,
+  });
+}
+
 export function useCatalogRequestsPendingCount(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: catalogKeys.pendingCount,
@@ -148,6 +161,7 @@ export function useRejectCatalogRequest() {
       catalogRequestService.reject(id, admin_notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: catalogKeys.all });
+      queryClient.invalidateQueries({ queryKey: submissionKeys.all });
       showSuccessToast("Request rejected.");
     },
   });

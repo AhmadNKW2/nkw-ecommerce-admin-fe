@@ -91,6 +91,12 @@ class CatalogRequestService {
     );
   }
 
+  getOne(id: number): Promise<ApiResponse<CatalogRequest>> {
+    return httpClient.get<ApiResponse<CatalogRequest>>(
+      `${this.endpoint}/${id}`,
+    );
+  }
+
   approve(
     id: number,
     input: ApproveCatalogRequestInput,

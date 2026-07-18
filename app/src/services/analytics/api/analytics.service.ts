@@ -3,6 +3,9 @@ import type { ApiResponse, PaginatedApiResponse } from "../../../types/common.ty
 import type {
   AnalyticsDateCoverage,
   AnalyticsDateCoverageScope,
+  AnalyticsFooterPageView,
+  AnalyticsFooterPageViewsMeta,
+  AnalyticsFooterPageViewsParams,
   AnalyticsFunnelSession,
   AnalyticsFunnelSessionsMeta,
   AnalyticsFunnelSessionsParams,
@@ -54,6 +57,12 @@ class AnalyticsService {
     return httpClient.get<
       PaginatedApiResponse<AnalyticsFunnelSession, AnalyticsFunnelSessionsMeta>
     >(`${this.endpoint}/funnel-sessions`, params);
+  }
+
+  async listFooterPageViews(params?: AnalyticsFooterPageViewsParams) {
+    return httpClient.get<
+      PaginatedApiResponse<AnalyticsFooterPageView, AnalyticsFooterPageViewsMeta>
+    >(`${this.endpoint}/footer-page-views`, params);
   }
 
   async getDateCoverage(scope: AnalyticsDateCoverageScope) {

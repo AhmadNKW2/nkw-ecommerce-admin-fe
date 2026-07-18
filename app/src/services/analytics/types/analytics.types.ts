@@ -253,6 +253,38 @@ export type AnalyticsFunnelSessionsParams = {
   sortOrder?: "asc" | "desc";
 };
 
+export type AnalyticsFooterPageView = {
+  eventId: number;
+  clientId: number;
+  sessionId: number;
+  pageKey: string | null;
+  pageName: string;
+  path: string | null;
+  occurredAt: string;
+};
+
+export type AnalyticsFooterPageViewsMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  includeAdmin?: boolean;
+  sortBy?: string;
+  sortOrder?: string;
+};
+
+export type AnalyticsFooterPageViewsParams = {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  /** 1 = with admin, 0 = without */
+  includeAdmin?: boolean | 0 | 1;
+  sortBy?: "occurredAt" | "clientId" | "pageName";
+  sortOrder?: "asc" | "desc";
+};
+
 export type AnalyticsDateCoverageScope =
   | "overview"
   | "products"

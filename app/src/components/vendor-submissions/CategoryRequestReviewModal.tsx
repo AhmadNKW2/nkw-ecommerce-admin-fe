@@ -17,6 +17,8 @@ type CategoryRequestReviewModalProps = {
   request: CatalogRequest | null;
   onClose: () => void;
   onDone?: () => void;
+  /** Render form content without its own Modal (for workspace embedding). */
+  embedded?: boolean;
 };
 
 function findCategory(
@@ -42,6 +44,7 @@ export function CategoryRequestReviewModal({
   request,
   onClose,
   onDone,
+  embedded = false,
 }: CategoryRequestReviewModalProps) {
   const approve = useApproveCatalogRequest();
   const { data: categories = [] } = useCategories();
@@ -119,140 +122,178 @@ export function CategoryRequestReviewModal({
       });
     }
     onDone?.();
-    onClose();
+    if (!embedded) onClose();
   };
 
-  return (
-    <Modal isOpen={!!request} onClose={onClose}>
-      <div className="p-6 w-full max-w-xl">
-        <h2 className="text-lg font-semibold mb-1">Review category</h2>
+  if (!request && !embedded) return null;
+
+  const content = (
+    <div className={embedded ? "w-full" : "p-6 w-full max-w-xl"}>
+      {!embedded && (
+        <>
+          <h2 className="text-lg font-semibold mb-1">Review category</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Confirm the AI leaf category, pick another from the tree, or create a
+            new leaf category.
+          </p>
+        </>
+      )}
+
+      {embedded && (
         <p className="text-sm text-gray-500 mb-4">
           Confirm the AI leaf category, pick another from the tree, or create a
           new leaf category.
         </p>
+      )}
 
-        {hasAiMatch && matchedCategory && (
-          <div className="mb-4 p-3 rounded border border-secondary/40">
-            <div className="text-xs uppercase text-gray-400 mb-1">AI match</div>
-            <div className="font-medium">{matchedCategory.name_en}</div>
-            <div className="text-sm text-gray-500" dir="rtl">
-              {matchedCategory.name_ar}
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="default">Category #{matchedCategory.id}</Badge>
-              <Badge
-                variant={isLeafCategory(matchedCategory) ? "success" : "danger"}
-              >
-                {isLeafCategory(matchedCategory) ? "Leaf" : "Not a leaf"}
-              </Badge>
-            </div>
-          </div>
-        )}
-
-        {!hasAiMatch && (
-          <div className="mb-4 p-3 rounded border border-warning/40 bg-yellow-50">
-            <div className="text-xs uppercase text-gray-400 mb-1">
-              AI suggested new category
-            </div>
-            <div className="font-medium">
-              {request?.payload?.name_en || "No category detected"}
-            </div>
-            <div className="text-sm text-gray-500" dir="rtl">
-              {request?.payload?.name_ar || ""}
-            </div>
-            {request?.payload?.reason && (
-              <div className="text-xs text-gray-500 mt-1">
-                {String(request.payload.reason)}
+      {!request ? (
+        <div className="text-sm text-gray-500 py-6">
+          No category request is linked to this submission yet.
+        </div>
+      ) : request.status !== "pending" ? (
+        <div className="p-3 rounded border border-secondary/30 text-sm">
+          Category request is already{" "}
+          <span className="font-medium">{request.status}</span>
+          {request.result_entity_id != null && (
+            <> (category #{request.result_entity_id})</>
+          )}
+          .
+        </div>
+      ) : (
+        <>
+          {hasAiMatch && matchedCategory && (
+            <div className="mb-4 p-3 rounded border border-secondary/40">
+              <div className="text-xs uppercase text-gray-400 mb-1">AI match</div>
+              <div className="font-medium">{matchedCategory.name_en}</div>
+              <div className="text-sm text-gray-500" dir="rtl">
+                {matchedCategory.name_ar}
               </div>
-            )}
-          </div>
-        )}
+              <div className="flex gap-2 mt-2">
+                <Badge variant="default">Category #{matchedCategory.id}</Badge>
+                <Badge
+                  variant={isLeafCategory(matchedCategory) ? "success" : "danger"}
+                >
+                  {isLeafCategory(matchedCategory) ? "Leaf" : "Not a leaf"}
+                </Badge>
+              </div>
+            </div>
+          )}
 
-        <div className="flex flex-col gap-2 mb-4">
-          {hasAiMatch && (
+          {!hasAiMatch && (
+            <div className="mb-4 p-3 rounded border border-warning/40 bg-yellow-50">
+              <div className="text-xs uppercase text-gray-400 mb-1">
+                AI suggested new category
+              </div>
+              <div className="font-medium">
+                {request.payload?.name_en || "No category detected"}
+              </div>
+              <div className="text-sm text-gray-500" dir="rtl">
+                {request.payload?.name_ar || ""}
+              </div>
+              {request.payload?.reason && (
+                <div className="text-xs text-gray-500 mt-1">
+                  {String(request.payload.reason)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 mb-4">
+            {hasAiMatch && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`category-mode-${request.id}`}
+                  checked={mode === "match"}
+                  onChange={() => setMode("match")}
+                />
+                Approve selected (AI matched) leaf category
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="category-mode"
-                checked={mode === "match"}
-                onChange={() => setMode("match")}
+                name={`category-mode-${request.id}`}
+                checked={mode === "other"}
+                onChange={() => setMode("other")}
               />
-              Approve selected (AI matched) leaf category
+              Select another category from the tree
             </label>
-          )}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="category-mode"
-              checked={mode === "other"}
-              onChange={() => setMode("other")}
-            />
-            Select another category from the tree
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="category-mode"
-              checked={mode === "create"}
-              onChange={() => setMode("create")}
-            />
-            Approve / edit AI category creation
-          </label>
-        </div>
-
-        {mode === "other" && (
-          <CategoryTreeSelect
-            label="Category (leaf only)"
-            categories={categories}
-            selectedIds={selectedIds}
-            onChange={setSelectedIds}
-            singleSelect
-            error={leafError}
-            placeholder="Select a leaf category"
-          />
-        )}
-
-        {mode === "create" && (
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Name (English)"
-              value={nameEn}
-              onChange={(e) => setNameEn(e.target.value)}
-            />
-            <Input
-              label="Name (Arabic)"
-              value={nameAr}
-              onChange={(e) => setNameAr(e.target.value)}
-              isRtl
-            />
-            <CategoryTreeSelect
-              label="Parent category (optional)"
-              categories={categories}
-              selectedIds={parentIds}
-              onChange={setParentIds}
-              singleSelect
-              placeholder="Root if empty"
-            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={`category-mode-${request.id}`}
+                checked={mode === "create"}
+                onChange={() => setMode("create")}
+              />
+              Approve / edit AI category creation
+            </label>
           </div>
-        )}
 
-        {leafError && mode === "match" && (
-          <p className="text-sm text-danger mt-2">{leafError}</p>
-        )}
+          {mode === "other" && (
+            <CategoryTreeSelect
+              label="Category (leaf only)"
+              categories={categories}
+              selectedIds={selectedIds}
+              onChange={setSelectedIds}
+              singleSelect
+              error={leafError}
+              placeholder="Select a leaf category"
+            />
+          )}
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleApprove}
-            disabled={!canConfirm || approve.isPending}
-            color="var(--color-primary)"
-          >
-            {approve.isPending ? "Saving..." : "Approve"}
-          </Button>
-        </div>
-      </div>
+          {mode === "create" && (
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Name (English)"
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+              />
+              <Input
+                label="Name (Arabic)"
+                value={nameAr}
+                onChange={(e) => setNameAr(e.target.value)}
+                isRtl
+              />
+              <CategoryTreeSelect
+                label="Parent category (optional)"
+                categories={categories}
+                selectedIds={parentIds}
+                onChange={setParentIds}
+                singleSelect
+                placeholder="Root if empty"
+              />
+            </div>
+          )}
+
+          {leafError && mode === "match" && (
+            <p className="text-sm text-danger mt-2">{leafError}</p>
+          )}
+
+          <div className="flex justify-end gap-2 mt-6">
+            {!embedded && (
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+            )}
+            <Button
+              onClick={handleApprove}
+              disabled={!canConfirm || approve.isPending}
+              color="var(--color-primary)"
+            >
+              {approve.isPending ? "Saving..." : "Approve"}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Modal isOpen={!!request} onClose={onClose}>
+      {content}
     </Modal>
   );
 }

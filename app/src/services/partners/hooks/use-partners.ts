@@ -8,10 +8,14 @@ import type {
   UpdatePartnerDto,
 } from "../types/partner.types";
 
-export const usePartners = (params?: PartnerListParams) => {
+export const usePartners = (
+  params?: PartnerListParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: queryKeys.partners.list(params),
     queryFn: () => partnerService.listPartners(params),
+    enabled: options?.enabled ?? true,
     select: (response) => response.data,
   });
 };

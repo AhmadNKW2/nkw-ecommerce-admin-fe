@@ -4,6 +4,7 @@ import { showSuccessToast } from "../../../lib/toast";
 import { analyticsService } from "../api/analytics.service";
 import type {
   AnalyticsDateCoverageScope,
+  AnalyticsFooterPageViewsParams,
   AnalyticsFunnelSessionsParams,
   AnalyticsOverviewParams,
   AnalyticsPopularProductsParams,
@@ -114,6 +115,31 @@ export const useAnalyticsFunnelSessions = (
         kind: params.kind,
         includeAdmin: false,
         sortBy: "lastSeen",
+        sortOrder: "desc",
+      },
+    }),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useAnalyticsFooterPageViews = (
+  params?: AnalyticsFooterPageViewsParams,
+  options?: { enabled?: boolean },
+) => {
+  return useQuery({
+    queryKey: queryKeys.analytics.footerPageViews(params),
+    queryFn: () => analyticsService.listFooterPageViews(params),
+    select: (response) => ({
+      data: response.data || [],
+      meta: response.meta || {
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+        includeAdmin: false,
+        sortBy: "occurredAt",
         sortOrder: "desc",
       },
     }),

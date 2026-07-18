@@ -18,52 +18,24 @@ import {
 } from "@/components/ui/table";
 import {
   useDeleteVendorSubmission,
-  useRunSubmissionAi,
   useVendorSubmissions,
 } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
-import type {
-  VendorSubmission,
-  VendorSubmissionStatus,
-} from "@/services/vendor-submissions/types/vendor-submission.types";
+import type { VendorSubmission } from "@/services/vendor-submissions/types/vendor-submission.types";
 import {
   SUBMISSION_STATUS_LABELS,
   submissionStatusVariant,
-  type ProductSubmissionsTab,
 } from "./submission-status";
-import { ProductReviewModal } from "./ProductReviewModal";
+import { SubmissionReviewWorkspaceModal } from "./SubmissionReviewWorkspaceModal";
 
-const STATUS_FILTERS: { value: VendorSubmissionStatus | "all"; label: string }[] =
-  [
-    { value: "all", label: "All" },
-    { value: "awaiting_brand", label: "Awaiting brand" },
-    { value: "awaiting_category", label: "Awaiting category" },
-    { value: "awaiting_category_specs", label: "Awaiting setup" },
-    { value: "awaiting_specs_approval", label: "Awaiting specs" },
-    { value: "ready", label: "Ready" },
-    { value: "materialized", label: "Published" },
-    { value: "failed", label: "Failed" },
-  ];
-
-type SubmissionsPanelProps = {
-  onOpenTab?: (tab: ProductSubmissionsTab) => void;
-};
-
-export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
-  const [statusFilter, setStatusFilter] = useState<
-    VendorSubmissionStatus | "all"
-  >("all");
+export function SubmissionsPanel() {
   const [reviewing, setReviewing] = useState<VendorSubmission | null>(null);
   const [submissionToDelete, setSubmissionToDelete] =
     useState<VendorSubmission | null>(null);
 
-  const { data, isLoading, refetch } = useVendorSubmissions(
-    {
-      page: 1,
-      limit: 50,
-      status: statusFilter === "all" ? undefined : statusFilter,
-    },
-  );
-  const runAi = useRunSubmissionAi();
+  const { data, isLoading, refetch } = useVendorSubmissions({
+    page: 1,
+    limit: 50,
+  });
   const deleteSubmission = useDeleteVendorSubmission();
   const submissions = (data?.data ?? []) as VendorSubmission[];
 
@@ -80,24 +52,6 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
 
   return (
     <>
-      <Card>
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
-              className={`px-4 h-10 rounded-r1 border transition-all ${
-                statusFilter === filter.value
-                  ? "bg-secondary text-white border-secondary"
-                  : "border-secondary/40 text-gray-600 hover:bg-secondary/10"
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      </Card>
-
       {isLoading ? (
         <Card>
           <p className="text-gray-500">Loading...</p>
@@ -107,7 +61,7 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
           <EmptyState
             icon={<Boxes />}
             title="No submissions"
-            description="No vendor submissions match this filter."
+            description="No vendor product submissions yet."
           />
         </Card>
       ) : (
@@ -118,7 +72,7 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
               <TableHead>Submitted title</TableHead>
               <TableHead>AI name (EN)</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-72">Actions</TableHead>
+              <TableHead className="w-56">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -175,62 +129,24 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-2">
-                      {submission.status === "awaiting_brand" && (
+                      {submission.status === "materialized" &&
+                      submission.product_id ? (
                         <Button
-                          onClick={() => onOpenTab?.("brands")}
+                          href={`/products/${submission.product_id}`}
                           variant="outline"
                           className="h-10! px-3! text-sm!"
                         >
-                          Review brand
+                          Open product
                         </Button>
-                      )}
-                      {submission.status === "awaiting_category" && (
-                        <Button
-                          onClick={() => onOpenTab?.("categories")}
-                          variant="outline"
-                          className="h-10! px-3! text-sm!"
-                        >
-                          Review category
-                        </Button>
-                      )}
-                      {submission.status === "awaiting_category_specs" && (
-                        <Button
-                          onClick={() => runAi.mutate(submission.id)}
-                          disabled={runAi.isPending}
-                          color="var(--color-primary)"
-                          className="h-10! px-3! text-sm!"
-                        >
-                          Run AI mapping
-                        </Button>
-                      )}
-                      {submission.status === "awaiting_specs_approval" && (
-                        <Button
-                          onClick={() => onOpenTab?.("specs")}
-                          variant="outline"
-                          className="h-10! px-3! text-sm!"
-                        >
-                          Review specs
-                        </Button>
-                      )}
-                      {submission.status === "ready" && (
+                      ) : (
                         <Button
                           onClick={() => setReviewing(submission)}
                           color="var(--color-primary)"
                           className="h-10! px-3! text-sm!"
                         >
-                          Review & create
+                          Review
                         </Button>
                       )}
-                      {submission.status === "materialized" &&
-                        submission.product_id && (
-                          <Button
-                            href={`/products/${submission.product_id}`}
-                            variant="outline"
-                            className="h-10! px-3! text-sm!"
-                          >
-                            Open product
-                          </Button>
-                        )}
                       <IconButton
                         variant="delete"
                         title="Delete submission"
@@ -245,7 +161,7 @@ export function SubmissionsPanel({ onOpenTab }: SubmissionsPanelProps) {
         </Table>
       )}
 
-      <ProductReviewModal
+      <SubmissionReviewWorkspaceModal
         submission={reviewing}
         onClose={() => setReviewing(null)}
         onDone={() => refetch()}

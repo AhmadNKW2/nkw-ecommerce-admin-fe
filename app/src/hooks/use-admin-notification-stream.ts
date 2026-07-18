@@ -12,7 +12,8 @@ type AdminStreamEvent = {
     | "order.created"
     | "note.created"
     | "submission.created"
-    | "catalog_request.created";
+    | "catalog_request.created"
+    | "partner.created";
   entityId?: number;
   createdAt?: string;
 };
@@ -113,6 +114,15 @@ function toastForEvent(type: AdminStreamEvent["type"], entityId?: number) {
 
   if (type === "catalog_request.created") {
     showInfoToast("New catalog request awaiting approval");
+    return;
+  }
+
+  if (type === "partner.created") {
+    showInfoToast(
+      typeof entityId === "number"
+        ? `New partner lead #${entityId}`
+        : "New partner lead received",
+    );
   }
 }
 
@@ -120,16 +130,19 @@ function refreshNotificationQueries(queryClient: ReturnType<typeof useQueryClien
   // Keys must be ["orders"] / ["notes"] (not nested) so list queries match via prefix.
   void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
   void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.partners.all });
   void queryClient.invalidateQueries({ queryKey: ["vendor-submissions"] });
   void queryClient.invalidateQueries({ queryKey: ["catalog-requests"] });
   void queryClient.refetchQueries({ queryKey: queryKeys.orders.all, type: "active" });
   void queryClient.refetchQueries({ queryKey: queryKeys.notes.all, type: "active" });
+  void queryClient.refetchQueries({ queryKey: queryKeys.partners.all, type: "active" });
 }
 
 function refreshBadgeQueries(queryClient: ReturnType<typeof useQueryClient>) {
   // Lighter invalidation used while SSE is reconnecting — avoid thrashing list pages.
   void queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
   void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.partners.all });
   void queryClient.invalidateQueries({
     queryKey: ["catalog-requests", "pending-count"],
   });
@@ -202,6 +215,7 @@ export function useAdminNotificationStream() {
         "note.created",
         "submission.created",
         "catalog_request.created",
+        "partner.created",
       ];
       if (!known.includes(payload.type)) return;
 

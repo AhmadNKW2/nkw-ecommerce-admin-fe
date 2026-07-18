@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   Users,
   Pencil,
+  FileText,
 } from "lucide-react";
 import { PageHeader } from "../src/components/common/PageHeader";
 import { EmptyState } from "../src/components/common/EmptyState";
@@ -52,6 +53,7 @@ import {
 } from "../src/components/ui/table";
 import {
   useAnalyticsDateCoverage,
+  useAnalyticsFooterPageViews,
   useAnalyticsFunnelSessions,
   useAnalyticsOverview,
   useAnalyticsPopularProducts,
@@ -63,6 +65,7 @@ import {
 } from "../src/services/analytics/hooks/use-analytics";
 import type {
   AnalyticsDateCoverageScope,
+  AnalyticsFooterPageViewsMeta,
   AnalyticsFunnelSessionsMeta,
   AnalyticsKpi,
   AnalyticsNamedValue,
@@ -94,11 +97,17 @@ const CHART_COLORS = [
 ];
 
 type TabKey = "overview" | "products" | "search" | "visitors" | "admins";
-type VisitorViewKey = "general" | "add_to_cart" | "checkout";
+type VisitorViewKey = "general" | "add_to_cart" | "checkout" | "other_pages";
 type FunnelSortKey = "startedAt" | "lastSeen" | "events" | "clientId";
+type FooterPageSortKey = "occurredAt" | "clientId" | "pageName";
 
 const TAB_KEYS: TabKey[] = ["overview", "products", "search", "visitors", "admins"];
-const VISITOR_VIEW_KEYS: VisitorViewKey[] = ["general", "add_to_cart", "checkout"];
+const VISITOR_VIEW_KEYS: VisitorViewKey[] = [
+  "general",
+  "add_to_cart",
+  "checkout",
+  "other_pages",
+];
 
 type VisitorSortKey =
   | "lastPath"
@@ -370,6 +379,11 @@ export default function AnalyticsPage() {
   const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");
   const [funnelSortBy, setFunnelSortBy] = useState<FunnelSortKey>("lastSeen");
   const [funnelSortOrder, setFunnelSortOrder] = useState<"asc" | "desc">("desc");
+  const [footerPageSortBy, setFooterPageSortBy] =
+    useState<FooterPageSortKey>("occurredAt");
+  const [footerPageSortOrder, setFooterPageSortOrder] = useState<"asc" | "desc">(
+    "desc",
+  );
   const [productPage, setProductPage] = useState<number>(PAGINATION.defaultPage);
   const [productPageSize, setProductPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [productSearch, setProductSearch] = useState("");
@@ -394,6 +408,8 @@ export default function AnalyticsPage() {
   const [deviceNameDraft, setDeviceNameDraft] = useState("");
   const isFunnelVisitorView =
     tab === "visitors" && (visitorView === "add_to_cart" || visitorView === "checkout");
+  const isOtherPagesVisitorView =
+    tab === "visitors" && visitorView === "other_pages";
   const funnelKind =
     visitorView === "checkout" ? ("checkout" as const) : ("add_to_cart" as const);
 
@@ -525,6 +541,24 @@ export default function AnalyticsPage() {
   );
 
   const {
+    data: footerPagesPayload,
+    isLoading: footerPagesLoading,
+    refetch: refetchFooterPages,
+    isFetching: footerPagesFetching,
+  } = useAnalyticsFooterPageViews(
+    {
+      page: visitorPage,
+      limit: visitorPageSize,
+      search: visitorSearch || undefined,
+      includeAdmin: 0,
+      sortBy: footerPageSortBy,
+      sortOrder: footerPageSortOrder,
+      ...visitorDateParams,
+    },
+    { enabled: isOtherPagesVisitorView },
+  );
+
+  const {
     data: productsPayload,
     isLoading: productsLoading,
     refetch: refetchProducts,
@@ -630,6 +664,13 @@ export default function AnalyticsPage() {
     totalPages: 1,
     kind: funnelKind,
   };
+  const footerPageViews = footerPagesPayload?.data || [];
+  const footerPagesMeta: AnalyticsFooterPageViewsMeta = footerPagesPayload?.meta || {
+    total: 0,
+    page: visitorPage,
+    limit: visitorPageSize,
+    totalPages: 1,
+  };
   const popularProducts = productsPayload?.data || [];
   const productsMeta: AnalyticsPopularProductsMeta = productsPayload?.meta || {
     total: 0,
@@ -662,6 +703,11 @@ export default function AnalyticsPage() {
     order: funnelSortOrder,
   };
 
+  const footerPageCurrentSort = {
+    key: footerPageSortBy,
+    order: footerPageSortOrder,
+  };
+
   const productCurrentSort = {
     key: productSortBy,
     order: productSortOrder,
@@ -690,6 +736,17 @@ export default function AnalyticsPage() {
     } else {
       setFunnelSortBy(sortKey);
       setFunnelSortOrder("desc");
+    }
+    setVisitorPage(1);
+  };
+
+  const handleFooterPageSort = (key: string) => {
+    const sortKey = key as FooterPageSortKey;
+    if (footerPageSortBy === sortKey) {
+      setFooterPageSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setFooterPageSortBy(sortKey);
+      setFooterPageSortOrder(sortKey === "pageName" ? "asc" : "desc");
     }
     setVisitorPage(1);
   };
@@ -852,6 +909,7 @@ export default function AnalyticsPage() {
                 } else if (tab === "products") refetchProducts();
                 else if (tab === "search") refetchSearch();
                 else if (isFunnelVisitorView) refetchFunnel();
+                else if (isOtherPagesVisitorView) refetchFooterPages();
                 else refetchVisitors();
               }}
               disabled={
@@ -863,7 +921,9 @@ export default function AnalyticsPage() {
                       ? searchFetching
                       : isFunnelVisitorView
                         ? funnelFetching
-                        : visitorsFetching
+                        : isOtherPagesVisitorView
+                          ? footerPagesFetching
+                          : visitorsFetching
               }
               className="gap-2"
             >
@@ -878,7 +938,9 @@ export default function AnalyticsPage() {
                           ? searchFetching
                           : isFunnelVisitorView
                             ? funnelFetching
-                            : visitorsFetching
+                            : isOtherPagesVisitorView
+                              ? footerPagesFetching
+                              : visitorsFetching
                   )
                     ? "animate-spin"
                     : ""
@@ -1801,6 +1863,7 @@ export default function AnalyticsPage() {
                   { key: "general" as const, label: "General" },
                   { key: "add_to_cart" as const, label: "Add to cart" },
                   { key: "checkout" as const, label: "Checkout" },
+                  { key: "other_pages" as const, label: "Other pages" },
                 ] as const
               ).map((item) => (
                 <button
@@ -1832,7 +1895,9 @@ export default function AnalyticsPage() {
                     ? "Add to cart sessions"
                     : visitorView === "checkout"
                       ? "Checkout sessions"
-                      : "Visitors"}
+                      : visitorView === "other_pages"
+                        ? "Other pages"
+                        : "Visitors"}
               </h3>
               <p className="text-xs text-gray-500">
                 {isAdminsTab
@@ -1841,7 +1906,9 @@ export default function AnalyticsPage() {
                     ? "One row per session that added a product to cart. Click a session to open full journey details."
                     : visitorView === "checkout"
                       ? "One row per session that reached checkout or placed an order. Click a session for full details."
-                      : "Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …)."}
+                      : visitorView === "other_pages"
+                        ? "Footer pages only (About, Contact, FAQ, Shipping, Privacy, Terms, Cookies, Accessibility). Click a row for the client journey."
+                        : "Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …)."}
               </p>
             </div>
             <div className="w-full sm:w-72">
@@ -1852,7 +1919,9 @@ export default function AnalyticsPage() {
                     ? "Search by ID, path, admin email…"
                     : isFunnelVisitorView
                       ? "Search client #, session #, product, path…"
-                      : "Search by ID or path…"
+                      : isOtherPagesVisitorView
+                        ? "Search client # or page name…"
+                        : "Search by ID or path…"
                 }
                 value={visitorSearch}
                 onChange={(e) => {
@@ -1991,6 +2060,84 @@ export default function AnalyticsPage() {
                         <TableCell>{formatDuration(row.durationSeconds)}</TableCell>
                         <TableCell>{formatDateTime(String(row.startedAt))}</TableCell>
                         <TableCell>{formatDateTime(String(row.lastSeenAt))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          ) : isOtherPagesVisitorView ? (
+            footerPagesLoading && footerPageViews.length === 0 ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            ) : footerPageViews.length === 0 ? (
+              <EmptyState
+                icon={<FileText />}
+                title="No footer page views yet"
+                description="Views appear here when a visitor opens a footer page (About, Contact, FAQ, Shipping, Privacy, Terms, Cookies, or Accessibility)."
+              />
+            ) : (
+              <div
+                className={
+                  footerPagesFetching && !footerPagesLoading
+                    ? "opacity-70 transition-opacity"
+                    : "opacity-100 transition-opacity"
+                }
+              >
+                <Table
+                  pagination={{
+                    currentPage: footerPagesMeta.page,
+                    totalPages: footerPagesMeta.totalPages,
+                    pageSize: footerPagesMeta.limit,
+                    totalItems: footerPagesMeta.total,
+                    hasNextPage: footerPagesMeta.page < footerPagesMeta.totalPages,
+                    hasPreviousPage: footerPagesMeta.page > 1,
+                  }}
+                  onPageChange={setVisitorPage}
+                  onPageSizeChange={(size) => {
+                    setVisitorPageSize(size);
+                    setVisitorPage(1);
+                  }}
+                >
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        sortable
+                        sortKey="pageName"
+                        currentSort={footerPageCurrentSort}
+                        onSort={handleFooterPageSort}
+                      >
+                        Page name
+                      </TableHead>
+                      <TableHead
+                        sortable
+                        sortKey="clientId"
+                        currentSort={footerPageCurrentSort}
+                        onSort={handleFooterPageSort}
+                      >
+                        Client
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {footerPageViews.map((row) => (
+                      <TableRow
+                        key={row.eventId}
+                        className="cursor-pointer hover:bg-primary/5"
+                        onClick={() => {
+                          setSelectedVisitorId(row.clientId);
+                          setSelectedSessionId(row.sessionId);
+                        }}
+                      >
+                        <TableCell>
+                          <p className="text-sm font-semibold text-gray-900">{row.pageName}</p>
+                        </TableCell>
+                        <TableCell className="font-semibold text-primary">
+                          #{row.clientId}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

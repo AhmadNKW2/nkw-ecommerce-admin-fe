@@ -60,24 +60,3 @@ export function stage2ValueLabel(value: Stage2Value): string {
   return original != null ? String(original) : "";
 }
 
-export type ProductSubmissionsTab =
-  | "submit"
-  | "submissions"
-  | "brands"
-  | "categories"
-  | "specs";
-
-export function parseProductSubmissionsTab(
-  value: string | null | undefined,
-): ProductSubmissionsTab {
-  if (
-    value === "submit" ||
-    value === "submissions" ||
-    value === "brands" ||
-    value === "categories" ||
-    value === "specs"
-  ) {
-    return value;
-  }
-  return "submissions";
-}

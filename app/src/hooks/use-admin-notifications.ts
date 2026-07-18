@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/auth.context";
 import { isSimplifiedProductCreator } from "@/lib/simplified-product-creator";
 import { useOrders } from "@/services/orders/hooks/use-orders";
 import { useNotes } from "@/services/notes/hooks/use-notes";
+import { usePartners } from "@/services/partners/hooks/use-partners";
 import { useCatalogRequestsPendingCount } from "@/services/vendor-submissions/hooks/use-vendor-submissions";
 
 export type AdminNotificationItem = {
@@ -59,6 +60,10 @@ export function useAdminNotifications(): AdminNotificationState {
   const catalogRequestsQuery = useCatalogRequestsPendingCount({
     enabled: !isVendorPortalUser,
   });
+  const partnersQuery = usePartners(
+    { page: 1, limit: 1 },
+    { enabled: !isVendorPortalUser },
+  );
 
   const pendingOrdersCount = useMemo(() => {
     if (isVendorPortalUser) return 0;
@@ -81,6 +86,15 @@ export function useAdminNotifications(): AdminNotificationState {
       ? Math.max(0, count)
       : 0;
   }, [isVendorPortalUser, catalogRequestsQuery.data]);
+
+  const partnersCount = useMemo(() => {
+    if (isVendorPortalUser) return 0;
+    const total = partnersQuery.data?.pagination?.total;
+    if (typeof total === "number" && Number.isFinite(total)) {
+      return Math.max(0, total);
+    }
+    return 0;
+  }, [isVendorPortalUser, partnersQuery.data]);
 
   const notifications = useMemo<AdminNotificationItem[]>(() => {
     if (isVendorPortalUser) return [];
@@ -116,9 +130,20 @@ export function useAdminNotifications(): AdminNotificationState {
         description: `${catalogRequestsCount} brand/category request${
           catalogRequestsCount === 1 ? "" : "s"
         } awaiting approval`,
-        href: "/product-submissions?tab=brands",
+        href: "/product-submissions",
         count: catalogRequestsCount,
         tone: "warning",
+      });
+    }
+
+    if (partnersCount > 0) {
+      items.push({
+        id: "partner-leads",
+        title: "Partner Leads",
+        description: `${partnersCount} partner${partnersCount === 1 ? "" : "s"} awaiting follow-up`,
+        href: "/partners",
+        count: partnersCount,
+        tone: "info",
       });
     }
 
@@ -132,7 +157,13 @@ export function useAdminNotifications(): AdminNotificationState {
     });
 
     return items;
-  }, [isVendorPortalUser, notesCount, pendingOrdersCount, catalogRequestsCount]);
+  }, [
+    isVendorPortalUser,
+    notesCount,
+    pendingOrdersCount,
+    catalogRequestsCount,
+    partnersCount,
+  ]);
 
   const unreadCount = useMemo(
     () => notifications.reduce((sum, item) => sum + item.count, 0),
@@ -144,8 +175,9 @@ export function useAdminNotifications(): AdminNotificationState {
       "/orders": pendingOrdersCount,
       "/notes": notesCount,
       "/product-submissions": catalogRequestsCount,
+      "/partners": partnersCount,
     }),
-    [notesCount, pendingOrdersCount, catalogRequestsCount],
+    [notesCount, pendingOrdersCount, catalogRequestsCount, partnersCount],
   );
 
   return {
@@ -154,6 +186,8 @@ export function useAdminNotifications(): AdminNotificationState {
     navBadges,
     isLoading: isVendorPortalUser
       ? false
-      : pendingOrdersQuery.isLoading || notesQuery.isLoading,
+      : pendingOrdersQuery.isLoading ||
+        notesQuery.isLoading ||
+        partnersQuery.isLoading,
   };
 }

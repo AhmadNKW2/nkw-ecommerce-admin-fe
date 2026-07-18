@@ -204,6 +204,8 @@ export const queryKeys = {
       [...queryKeys.analytics.all, "search-queries", params] as const,
     funnelSessions: (params?: Record<string, any>) =>
       [...queryKeys.analytics.all, "funnel-sessions", params] as const,
+    footerPageViews: (params?: Record<string, any>) =>
+      [...queryKeys.analytics.all, "footer-page-views", params] as const,
     dateCoverage: (scope?: string) =>
       [...queryKeys.analytics.all, "date-coverage", scope] as const,
   },

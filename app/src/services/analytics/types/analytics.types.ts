@@ -206,6 +206,53 @@ export type AnalyticsSearchQueriesParams = {
   sortOrder?: "asc" | "desc";
 };
 
+export type AnalyticsFunnelKind = "add_to_cart" | "checkout";
+
+export type AnalyticsFunnelSession = {
+  clientId: number;
+  sessionId: number;
+  sessionKey: string;
+  matchCount: number;
+  firstMatchAt: string;
+  lastMatchAt: string;
+  lastEventName: string;
+  lastPath: string | null;
+  productName: string | null;
+  productId: number | null;
+  landingPath: string | null;
+  exitPath: string | null;
+  eventCount: number;
+  pageViewCount: number;
+  durationSeconds: number;
+  startedAt: string;
+  lastSeenAt: string;
+  kind: AnalyticsFunnelKind;
+};
+
+export type AnalyticsFunnelSessionsMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  kind: AnalyticsFunnelKind;
+  includeAdmin?: boolean;
+  sortBy?: string;
+  sortOrder?: string;
+};
+
+export type AnalyticsFunnelSessionsParams = {
+  kind: AnalyticsFunnelKind;
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  /** 1 = with admin, 0 = without */
+  includeAdmin?: boolean | 0 | 1;
+  sortBy?: "startedAt" | "lastSeen" | "events" | "clientId";
+  sortOrder?: "asc" | "desc";
+};
+
 export type AnalyticsDateCoverageScope =
   | "overview"
   | "products"

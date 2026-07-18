@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Area,
   AreaChart,
@@ -29,6 +30,7 @@ import {
   RefreshCw,
   Route,
   Search,
+  ShoppingCart,
   Users,
   Pencil,
 } from "lucide-react";
@@ -50,6 +52,7 @@ import {
 } from "../src/components/ui/table";
 import {
   useAnalyticsDateCoverage,
+  useAnalyticsFunnelSessions,
   useAnalyticsOverview,
   useAnalyticsPopularProducts,
   useAnalyticsSearchQueries,
@@ -60,6 +63,7 @@ import {
 } from "../src/services/analytics/hooks/use-analytics";
 import type {
   AnalyticsDateCoverageScope,
+  AnalyticsFunnelSessionsMeta,
   AnalyticsKpi,
   AnalyticsNamedValue,
   AnalyticsOverviewParams,
@@ -90,6 +94,11 @@ const CHART_COLORS = [
 ];
 
 type TabKey = "overview" | "products" | "search" | "visitors" | "admins";
+type VisitorViewKey = "general" | "add_to_cart" | "checkout";
+type FunnelSortKey = "startedAt" | "lastSeen" | "events" | "clientId";
+
+const TAB_KEYS: TabKey[] = ["overview", "products", "search", "visitors", "admins"];
+const VISITOR_VIEW_KEYS: VisitorViewKey[] = ["general", "add_to_cart", "checkout"];
 
 type VisitorSortKey =
   | "lastPath"
@@ -103,6 +112,16 @@ type VisitorSortKey =
 
 type ProductSortKey = "views" | "sessions" | "clientIds" | "clicks";
 type SearchSortKey = "views" | "sessions" | "clientIds";
+
+function parseTab(value: string | null): TabKey {
+  return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : "overview";
+}
+
+function parseVisitorView(value: string | null): VisitorViewKey {
+  return VISITOR_VIEW_KEYS.includes(value as VisitorViewKey)
+    ? (value as VisitorViewKey)
+    : "general";
+}
 
 function tabCoverageScope(tab: TabKey): AnalyticsDateCoverageScope {
   if (tab === "products") return "products";
@@ -184,6 +203,22 @@ function eventDisplayName(event: {
   name: string;
   properties: Record<string, unknown> | null;
 }): string {
+  const productName = event.properties?.product_name;
+  if (typeof productName === "string" && productName.trim()) {
+    if (/^product_card_click$/i.test(event.name)) {
+      return `Product card: ${productName.trim()}`;
+    }
+    if (/^cart_product_click$/i.test(event.name)) {
+      return `Cart product: ${productName.trim()}`;
+    }
+    if (/^product_option_chip_click$/i.test(event.name)) {
+      return `Option chip: ${productName.trim()}`;
+    }
+    if (/^search_suggestion_click$/i.test(event.name)) {
+      return `Search suggestion: ${productName.trim()}`;
+    }
+  }
+
   const searchTerm = event.properties?.search_term;
   if (typeof searchTerm === "string" && searchTerm.trim()) {
     const term = searchTerm.trim();
@@ -280,7 +315,51 @@ function RankedList({
 }
 
 export default function AnalyticsPage() {
-  const [tab, setTab] = useState<TabKey>("overview");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = parseTab(searchParams.get("tab"));
+  const visitorView =
+    tab === "visitors" ? parseVisitorView(searchParams.get("visitorView")) : "general";
+
+  const replaceAnalyticsQuery = useCallback(
+    (patch: { tab?: TabKey; visitorView?: VisitorViewKey | null }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const nextTab = patch.tab ?? parseTab(params.get("tab"));
+      params.set("tab", nextTab);
+      if (nextTab === "visitors") {
+        const nextView =
+          patch.visitorView === null
+            ? "general"
+            : patch.visitorView ?? parseVisitorView(params.get("visitorView"));
+        if (nextView === "general") params.delete("visitorView");
+        else params.set("visitorView", nextView);
+      } else {
+        params.delete("visitorView");
+      }
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const setTab = useCallback(
+    (next: TabKey) => {
+      replaceAnalyticsQuery({
+        tab: next,
+        visitorView: next === "visitors" ? visitorView : null,
+      });
+    },
+    [replaceAnalyticsQuery, visitorView],
+  );
+
+  const setVisitorView = useCallback(
+    (next: VisitorViewKey) => {
+      replaceAnalyticsQuery({ tab: "visitors", visitorView: next });
+    },
+    [replaceAnalyticsQuery],
+  );
+
   const [range, setRange] = useState<AnalyticsRange | "custom">("28d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -289,6 +368,8 @@ export default function AnalyticsPage() {
   const [visitorSearch, setVisitorSearch] = useState("");
   const [visitorSortBy, setVisitorSortBy] = useState<VisitorSortKey>("lastSeen");
   const [visitorSortOrder, setVisitorSortOrder] = useState<"asc" | "desc">("desc");
+  const [funnelSortBy, setFunnelSortBy] = useState<FunnelSortKey>("lastSeen");
+  const [funnelSortOrder, setFunnelSortOrder] = useState<"asc" | "desc">("desc");
   const [productPage, setProductPage] = useState<number>(PAGINATION.defaultPage);
   const [productPageSize, setProductPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [productSearch, setProductSearch] = useState("");
@@ -311,6 +392,10 @@ export default function AnalyticsPage() {
     currentName: string;
   } | null>(null);
   const [deviceNameDraft, setDeviceNameDraft] = useState("");
+  const isFunnelVisitorView =
+    tab === "visitors" && (visitorView === "add_to_cart" || visitorView === "checkout");
+  const funnelKind =
+    visitorView === "checkout" ? ("checkout" as const) : ("add_to_cart" as const);
 
   const overviewParams: AnalyticsOverviewParams = useMemo(() => {
     if (range === "custom" && customStart && customEnd) {
@@ -414,7 +499,29 @@ export default function AnalyticsPage() {
       sortOrder: visitorSortOrder,
       ...visitorDateParams,
     },
-    { enabled: tab === "visitors" || tab === "admins" },
+    {
+      enabled:
+        tab === "admins" || (tab === "visitors" && visitorView === "general"),
+    },
+  );
+
+  const {
+    data: funnelPayload,
+    isLoading: funnelLoading,
+    refetch: refetchFunnel,
+    isFetching: funnelFetching,
+  } = useAnalyticsFunnelSessions(
+    {
+      kind: funnelKind,
+      page: visitorPage,
+      limit: visitorPageSize,
+      search: visitorSearch || undefined,
+      includeAdmin: 0,
+      sortBy: funnelSortBy,
+      sortOrder: funnelSortOrder,
+      ...visitorDateParams,
+    },
+    { enabled: isFunnelVisitorView },
   );
 
   const {
@@ -515,6 +622,14 @@ export default function AnalyticsPage() {
     limit: visitorPageSize,
     totalPages: 1,
   };
+  const funnelSessions = funnelPayload?.data || [];
+  const funnelMeta: AnalyticsFunnelSessionsMeta = funnelPayload?.meta || {
+    total: 0,
+    page: visitorPage,
+    limit: visitorPageSize,
+    totalPages: 1,
+    kind: funnelKind,
+  };
   const popularProducts = productsPayload?.data || [];
   const productsMeta: AnalyticsPopularProductsMeta = productsPayload?.meta || {
     total: 0,
@@ -542,6 +657,11 @@ export default function AnalyticsPage() {
     order: visitorSortOrder,
   };
 
+  const funnelCurrentSort = {
+    key: funnelSortBy,
+    order: funnelSortOrder,
+  };
+
   const productCurrentSort = {
     key: productSortBy,
     order: productSortOrder,
@@ -559,6 +679,17 @@ export default function AnalyticsPage() {
     } else {
       setVisitorSortBy(sortKey);
       setVisitorSortOrder(sortKey === "lastPath" || sortKey === "deviceName" || sortKey === "admin" ? "asc" : "desc");
+    }
+    setVisitorPage(1);
+  };
+
+  const handleFunnelSort = (key: string) => {
+    const sortKey = key as FunnelSortKey;
+    if (funnelSortBy === sortKey) {
+      setFunnelSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setFunnelSortBy(sortKey);
+      setFunnelSortOrder("desc");
     }
     setVisitorPage(1);
   };
@@ -720,6 +851,7 @@ export default function AnalyticsPage() {
                   refetchProducts();
                 } else if (tab === "products") refetchProducts();
                 else if (tab === "search") refetchSearch();
+                else if (isFunnelVisitorView) refetchFunnel();
                 else refetchVisitors();
               }}
               disabled={
@@ -729,7 +861,9 @@ export default function AnalyticsPage() {
                     ? productsFetching
                     : tab === "search"
                       ? searchFetching
-                      : visitorsFetching
+                      : isFunnelVisitorView
+                        ? funnelFetching
+                        : visitorsFetching
               }
               className="gap-2"
             >
@@ -742,7 +876,9 @@ export default function AnalyticsPage() {
                         ? productsFetching
                         : tab === "search"
                           ? searchFetching
-                          : visitorsFetching
+                          : isFunnelVisitorView
+                            ? funnelFetching
+                            : visitorsFetching
                   )
                     ? "animate-spin"
                     : ""
@@ -1188,7 +1324,7 @@ export default function AnalyticsPage() {
                         Most popular products
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Views / sessions / clicks from your database ·{" "}
+                        Views / sessions / client IDs / card clicks ·{" "}
                         {effectiveIncludeAdmin ? "with admin" : "without admin"}
                       </p>
                     </div>
@@ -1257,7 +1393,7 @@ export default function AnalyticsPage() {
                             currentSort={productCurrentSort}
                             onSort={handleProductSort}
                           >
-                            Clicks
+                            Card clicks
                           </TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1306,8 +1442,10 @@ export default function AnalyticsPage() {
               Most popular products
             </p>
             <p className="text-xs text-sky-800 mt-1 leading-relaxed">
-              <strong>Views, sessions, Client IDs, and clicks</strong> come from your database and
-              respect the admin toggle. Sort by views or sessions to see With/Without admin differ.
+              <strong>Views</strong> and <strong>sessions</strong> are product page opens.
+              <strong> Client IDs</strong> = distinct browsers that viewed the product.
+              <strong> Card clicks</strong> = listing card taps (<code>product_card_click</code>),
+              not GA clicks. All respect the admin toggle.
             </p>
           </div>
 
@@ -1359,7 +1497,7 @@ export default function AnalyticsPage() {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Popular products</h3>
               <p className="text-xs text-gray-500">
-                Sort by views, sessions, or client IDs. Admin filter uses the header toggle.
+                Sort by views, sessions, client IDs, or card clicks. Admin filter uses the header toggle.
               </p>
             </div>
             <div className="w-full sm:w-64">
@@ -1443,7 +1581,7 @@ export default function AnalyticsPage() {
                       currentSort={productCurrentSort}
                       onSort={handleProductSort}
                     >
-                      Clicks
+                      Card clicks
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1656,15 +1794,54 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
+          {!isAdminsTab ? (
+            <div className="flex flex-wrap rounded-r1 border border-primary/15 bg-white p-0.5 w-fit mb-4">
+              {(
+                [
+                  { key: "general" as const, label: "General" },
+                  { key: "add_to_cart" as const, label: "Add to cart" },
+                  { key: "checkout" as const, label: "Checkout" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    setVisitorView(item.key);
+                    setVisitorPage(1);
+                    setVisitorSearch("");
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-[calc(var(--radius)-2px)] transition-colors ${
+                    visitorView === item.key
+                      ? "bg-primary text-white"
+                      : "text-gray-600 hover:bg-primary/5"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">
-                {isAdminsTab ? "Admins" : "Visitors"}
+                {isAdminsTab
+                  ? "Admins"
+                  : visitorView === "add_to_cart"
+                    ? "Add to cart sessions"
+                    : visitorView === "checkout"
+                      ? "Checkout sessions"
+                      : "Visitors"}
               </h3>
               <p className="text-xs text-gray-500">
                 {isAdminsTab
                   ? "Click a row to see that admin client’s journey. Same account can have many client IDs."
-                  : "Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …)."}
+                  : visitorView === "add_to_cart"
+                    ? "One row per session that added a product to cart. Click a session to open full journey details."
+                    : visitorView === "checkout"
+                      ? "One row per session that reached checkout or placed an order. Click a session for full details."
+                      : "Click a row to see that client’s pages, time on site, and actions (Client #1, #2, …)."}
               </p>
             </div>
             <div className="w-full sm:w-72">
@@ -1673,7 +1850,9 @@ export default function AnalyticsPage() {
                 placeholder={
                   isAdminsTab
                     ? "Search by ID, path, admin email…"
-                    : "Search by ID or path…"
+                    : isFunnelVisitorView
+                      ? "Search client #, session #, product, path…"
+                      : "Search by ID or path…"
                 }
                 value={visitorSearch}
                 onChange={(e) => {
@@ -1684,7 +1863,141 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {visitorsLoading && visitors.length === 0 ? (
+          {isFunnelVisitorView ? (
+            funnelLoading && funnelSessions.length === 0 ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            ) : funnelSessions.length === 0 ? (
+              <EmptyState
+                icon={visitorView === "checkout" ? <MousePointerClick /> : <ShoppingCart />}
+                title={
+                  visitorView === "checkout"
+                    ? "No checkout sessions yet"
+                    : "No add-to-cart sessions yet"
+                }
+                description={
+                  visitorView === "checkout"
+                    ? "Sessions appear here when a visitor opens /checkout or hits order/checkout events."
+                    : "Sessions appear here when a visitor taps Add to cart on the storefront."
+                }
+              />
+            ) : (
+              <div
+                className={
+                  funnelFetching && !funnelLoading
+                    ? "opacity-70 transition-opacity"
+                    : "opacity-100 transition-opacity"
+                }
+              >
+                <Table
+                  pagination={{
+                    currentPage: funnelMeta.page,
+                    totalPages: funnelMeta.totalPages,
+                    pageSize: funnelMeta.limit,
+                    totalItems: funnelMeta.total,
+                    hasNextPage: funnelMeta.page < funnelMeta.totalPages,
+                    hasPreviousPage: funnelMeta.page > 1,
+                  }}
+                  onPageChange={setVisitorPage}
+                  onPageSizeChange={(size) => {
+                    setVisitorPageSize(size);
+                    setVisitorPage(1);
+                  }}
+                >
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        sortable
+                        sortKey="clientId"
+                        currentSort={funnelCurrentSort}
+                        onSort={handleFunnelSort}
+                      >
+                        Client
+                      </TableHead>
+                      <TableHead>Session</TableHead>
+                      <TableHead>
+                        {visitorView === "add_to_cart" ? "Product" : "Last checkout event"}
+                      </TableHead>
+                      <TableHead>Matches</TableHead>
+                      <TableHead
+                        sortable
+                        sortKey="events"
+                        currentSort={funnelCurrentSort}
+                        onSort={handleFunnelSort}
+                      >
+                        Events
+                      </TableHead>
+                      <TableHead>Time on site</TableHead>
+                      <TableHead
+                        sortable
+                        sortKey="startedAt"
+                        currentSort={funnelCurrentSort}
+                        onSort={handleFunnelSort}
+                      >
+                        Started
+                      </TableHead>
+                      <TableHead
+                        sortable
+                        sortKey="lastSeen"
+                        currentSort={funnelCurrentSort}
+                        onSort={handleFunnelSort}
+                      >
+                        Last seen
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {funnelSessions.map((row) => (
+                      <TableRow
+                        key={`${row.clientId}-${row.sessionId}`}
+                        className="cursor-pointer hover:bg-primary/5"
+                        onClick={() => {
+                          setSelectedVisitorId(row.clientId);
+                          setSelectedSessionId(row.sessionId);
+                        }}
+                      >
+                        <TableCell className="font-semibold text-primary">
+                          #{row.clientId}
+                        </TableCell>
+                        <TableCell className="font-semibold text-gray-900">
+                          #{row.sessionId}
+                        </TableCell>
+                        <TableCell className="max-w-[260px]">
+                          {visitorView === "add_to_cart" ? (
+                            <>
+                              <p className="text-sm text-gray-900 truncate">
+                                {row.productName || "—"}
+                              </p>
+                              <p className="text-[11px] text-gray-400 truncate">
+                                {row.productId != null ? `Product #${row.productId}` : shortPath(row.lastPath)}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-gray-900 truncate">
+                                {row.lastEventName || "—"}
+                              </p>
+                              <p className="text-[11px] text-gray-400 truncate">
+                                {shortPath(row.lastPath || row.exitPath || row.landingPath)}
+                              </p>
+                            </>
+                          )}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{row.matchCount}</TableCell>
+                        <TableCell className="tabular-nums">{row.eventCount}</TableCell>
+                        <TableCell>{formatDuration(row.durationSeconds)}</TableCell>
+                        <TableCell>{formatDateTime(String(row.startedAt))}</TableCell>
+                        <TableCell>{formatDateTime(String(row.lastSeenAt))}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          ) : visitorsLoading && visitors.length === 0 ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-12 rounded-r1 bg-gray-100 animate-pulse" />

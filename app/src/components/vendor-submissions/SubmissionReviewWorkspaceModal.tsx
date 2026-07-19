@@ -120,17 +120,31 @@ export function SubmissionReviewWorkspaceModal({
   const { data: attributes = [] } = useAttributes();
 
   const brand = useMemo(() => {
-    if (!submission?.resolved_brand_id) return null;
+    if (!submission) return null;
+    if (submission.resolved_brand_id) {
+      return (
+        brandsData?.data?.find((b) => b.id === submission.resolved_brand_id) ??
+        null
+      );
+    }
+    const matchName = submission.ai_result?.stage1?.brand_match;
+    if (!matchName) return null;
     return (
-      brandsData?.data?.find((b) => b.id === submission.resolved_brand_id) ??
-      null
+      brandsData?.data?.find(
+        (b) => b.name_en?.toLowerCase() === matchName.toLowerCase(),
+      ) ?? null
     );
-  }, [brandsData?.data, submission?.resolved_brand_id]);
+  }, [brandsData?.data, submission]);
 
   const category = useMemo(() => {
-    if (!submission?.resolved_category_id) return null;
-    return findCategory(categories, submission.resolved_category_id);
-  }, [categories, submission?.resolved_category_id]);
+    if (!submission) return null;
+    const categoryId =
+      submission.resolved_category_id ??
+      submission.ai_result?.stage1?.category_match ??
+      null;
+    if (!categoryId) return null;
+    return findCategory(categories, categoryId);
+  }, [categories, submission]);
 
   const specNameById = useMemo(() => {
     const map = new Map<number, string>();
@@ -284,6 +298,20 @@ export function SubmissionReviewWorkspaceModal({
 
             {activePill === "ai" && (
               <div className="flex flex-col gap-4">
+                {stage1 && !stage2 && (
+                  <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-r1 px-3 py-2">
+                    Names and descriptions are generated after brand and
+                    category are approved (Stage 2). Brand and category below
+                    come from the first AI classification.
+                  </div>
+                )}
+
+                {!stage2 && !stage1 && (
+                  <div className="text-sm text-gray-500">
+                    AI has not produced product details yet.
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="text-xs uppercase text-gray-400">
@@ -303,48 +331,43 @@ export function SubmissionReviewWorkspaceModal({
                   </div>
                 </div>
 
-                {(stage2?.short_description_en ||
-                  stage2?.short_description_ar) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs uppercase text-gray-400">
-                        Short description (EN)
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap">
-                        {stage2?.short_description_en || "—"}
-                      </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs uppercase text-gray-400">
+                      Short description (EN)
                     </div>
-                    <div>
-                      <div className="text-xs uppercase text-gray-400">
-                        Short description (AR)
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap" dir="rtl">
-                        {stage2?.short_description_ar || "—"}
-                      </div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {stage2?.short_description_en || "—"}
                     </div>
                   </div>
-                )}
+                  <div>
+                    <div className="text-xs uppercase text-gray-400">
+                      Short description (AR)
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap" dir="rtl">
+                      {stage2?.short_description_ar || "—"}
+                    </div>
+                  </div>
+                </div>
 
-                {(stage2?.description_en || stage2?.description_ar) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs uppercase text-gray-400">
-                        Description (EN)
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap">
-                        {stage2?.description_en || "—"}
-                      </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs uppercase text-gray-400">
+                      Long description (EN)
                     </div>
-                    <div>
-                      <div className="text-xs uppercase text-gray-400">
-                        Description (AR)
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap" dir="rtl">
-                        {stage2?.description_ar || "—"}
-                      </div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {stage2?.description_en || "—"}
                     </div>
                   </div>
-                )}
+                  <div>
+                    <div className="text-xs uppercase text-gray-400">
+                      Long description (AR)
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap" dir="rtl">
+                      {stage2?.description_ar || "—"}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -446,12 +469,6 @@ export function SubmissionReviewWorkspaceModal({
                       )}
                     </div>
                   </>
-                )}
-
-                {!stage2 && !stage1 && (
-                  <div className="text-sm text-gray-500 py-4">
-                    AI has not produced product details yet.
-                  </div>
                 )}
 
                 <div className="flex flex-wrap justify-end gap-2 pt-2">

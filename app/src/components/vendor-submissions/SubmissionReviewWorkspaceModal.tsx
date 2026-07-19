@@ -63,6 +63,26 @@ function findCategory(categories: Category[], id: number): Category | null {
   return null;
 }
 
+function HtmlContent({
+  html,
+  dir,
+}: {
+  html?: string | null;
+  dir?: "rtl" | "ltr";
+}) {
+  if (!html?.trim()) {
+    return <div className="text-sm text-gray-400">—</div>;
+  }
+
+  return (
+    <div
+      dir={dir}
+      className="text-sm text-gray-900 [&_ul]:list-disc [&_ul]:ps-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1 [&_strong]:font-semibold"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 function defaultPillForStatus(status: VendorSubmissionStatus): WorkspacePill {
   switch (status) {
     case "awaiting_brand":
@@ -333,39 +353,34 @@ export function SubmissionReviewWorkspaceModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs uppercase text-gray-400">
+                    <div className="text-xs uppercase text-gray-400 mb-1">
                       Short description (EN)
                     </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {stage2?.short_description_en || "—"}
-                    </div>
+                    <HtmlContent html={stage2?.short_description_en} />
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-gray-400">
+                    <div className="text-xs uppercase text-gray-400 mb-1">
                       Short description (AR)
                     </div>
-                    <div className="text-sm whitespace-pre-wrap" dir="rtl">
-                      {stage2?.short_description_ar || "—"}
-                    </div>
+                    <HtmlContent
+                      html={stage2?.short_description_ar}
+                      dir="rtl"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs uppercase text-gray-400">
+                    <div className="text-xs uppercase text-gray-400 mb-1">
                       Long description (EN)
                     </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {stage2?.description_en || "—"}
-                    </div>
+                    <HtmlContent html={stage2?.description_en} />
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-gray-400">
+                    <div className="text-xs uppercase text-gray-400 mb-1">
                       Long description (AR)
                     </div>
-                    <div className="text-sm whitespace-pre-wrap" dir="rtl">
-                      {stage2?.description_ar || "—"}
-                    </div>
+                    <HtmlContent html={stage2?.description_ar} dir="rtl" />
                   </div>
                 </div>
 

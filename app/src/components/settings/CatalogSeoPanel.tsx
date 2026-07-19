@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
+import { Select } from "../ui/select";
 import { Toggle } from "../ui/toggle";
 import {
   useGenerateSeo,
@@ -14,6 +15,7 @@ import { settingsService } from "../../services/settings/api/settings.service";
 import type {
   SeoEntityType,
   SeoGenerateJobStatus,
+  SeoListStatus,
   SeoMissingCounts,
 } from "../../services/settings/types/settings.types";
 import { showErrorToast, showSuccessToast } from "../../lib/toast";
@@ -27,6 +29,12 @@ const ENTITY_TABS: Array<{ type: SeoEntityType; label: string }> = [
   { type: "vendor", label: "Vendors" },
 ];
 
+const SEO_STATUS_OPTIONS: Array<{ value: SeoListStatus; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "missing", label: "Missing SEO" },
+  { value: "complete", label: "Not missing (complete)" },
+];
+
 const EMPTY_COUNTS: SeoMissingCounts = {
   product: 0,
   category: 0,
@@ -37,6 +45,7 @@ const EMPTY_COUNTS: SeoMissingCounts = {
 export function CatalogSeoPanel() {
   const queryClient = useQueryClient();
   const [activeType, setActiveType] = useState<SeoEntityType>("product");
+  const [seoStatus, setSeoStatus] = useState<SeoListStatus>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -47,7 +56,12 @@ export function CatalogSeoPanel() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<SeoGenerateJobStatus | null>(null);
 
-  const limit = 25;
+  const isUnpaginatedType =
+    activeType === "category" ||
+    activeType === "brand" ||
+    activeType === "vendor";
+  const limit = isUnpaginatedType ? 5000 : 25;
+  const requestPage = isUnpaginatedType ? 1 : page;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -61,21 +75,23 @@ export function CatalogSeoPanel() {
     setSelectedIds([]);
     setSelectAllMissing(false);
     setPage(1);
-  }, [activeType]);
+  }, [activeType, seoStatus]);
 
-  const missingQuery = useMissingSeo({
+  const catalogQuery = useMissingSeo({
     type: activeType,
+    seo_status: seoStatus,
     q: debouncedSearch || undefined,
-    page,
+    page: requestPage,
     limit,
   });
 
   const generateSeo = useGenerateSeo();
 
-  const items = missingQuery.data?.data ?? [];
-  const meta = missingQuery.data?.meta;
+  const items = catalogQuery.data?.data ?? [];
+  const meta = catalogQuery.data?.meta;
   const counts = meta?.counts ?? EMPTY_COUNTS;
-  const totalMissingForType = meta?.total ?? counts[activeType] ?? 0;
+  const listTotal = meta?.total ?? 0;
+  const totalMissingForType = counts[activeType] ?? 0;
   const totalPages = meta?.totalPages ?? 0;
 
   const pageIds = useMemo(() => items.map((item) => item.id), [items]);
@@ -199,12 +215,20 @@ export function CatalogSeoPanel() {
     ? totalMissingForType
     : selectedIds.length;
 
+  const emptyMessage =
+    seoStatus === "missing"
+      ? "No items missing SEO for this filter."
+      : seoStatus === "complete"
+        ? "No items with complete SEO for this filter."
+        : "No catalog items for this filter.";
+
   return (
     <Card>
       <h2 className="text-lg font-semibold">Catalog SEO</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Review items missing SEO meta, select what you want, then generate with AI.
-        Internet search is optional and costs more.
+        Browse all products, categories, brands, and vendors. Filter by missing
+        or complete SEO, then generate with AI. Internet search is optional and
+        costs more.
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -232,13 +256,26 @@ export function CatalogSeoPanel() {
       </div>
 
       <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="w-full max-w-md">
-          <Input
-            label="Search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name, slug, or SKU"
-          />
+        <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="w-full max-w-xs">
+            <Select
+              label="SEO status"
+              value={seoStatus}
+              onChange={(value) =>
+                setSeoStatus((Array.isArray(value) ? value[0] : value) as SeoListStatus)
+              }
+              options={SEO_STATUS_OPTIONS}
+              search={false}
+            />
+          </div>
+          <div className="w-full max-w-md">
+            <Input
+              label="Search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Name, slug, or SKU"
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -262,7 +299,8 @@ export function CatalogSeoPanel() {
             <div>
               <p className="text-sm font-medium">Search internet</p>
               <p className="text-xs text-gray-500">
-                Off = catalog only (cheaper). On = web research (3–10x cost).
+                Off = catalog facts only. On = research mode (name-only payload +
+                required web search; slower, higher cost).
               </p>
             </div>
           </div>
@@ -318,26 +356,28 @@ export function CatalogSeoPanel() {
               </th>
               <th className="px-3 py-2 font-medium">Name</th>
               <th className="px-3 py-2 font-medium">Slug</th>
+              <th className="px-3 py-2 font-medium">SEO status</th>
               <th className="px-3 py-2 font-medium">Missing fields</th>
             </tr>
           </thead>
           <tbody>
-            {missingQuery.isLoading ? (
+            {catalogQuery.isLoading ? (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                  Loading missing SEO items…
+                <td colSpan={5} className="px-3 py-8 text-center text-gray-500">
+                  Loading catalog SEO items…
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                  No missing SEO items for this filter.
+                <td colSpan={5} className="px-3 py-8 text-center text-gray-500">
+                  {emptyMessage}
                 </td>
               </tr>
             ) : (
               items.map((item) => {
                 const checked =
                   selectAllMissing || selectedIds.includes(item.id);
+                const isComplete = item.missing_fields.length === 0;
                 return (
                   <tr key={item.id} className="border-t border-gray-100">
                     <td className="px-3 py-2">
@@ -354,8 +394,19 @@ export function CatalogSeoPanel() {
                       </p>
                     </td>
                     <td className="px-3 py-2 text-gray-600">{item.slug || "—"}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={
+                          isComplete
+                            ? "inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                            : "inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                        }
+                      >
+                        {isComplete ? "Complete" : "Missing"}
+                      </span>
+                    </td>
                     <td className="px-3 py-2 text-gray-600">
-                      {item.missing_fields.join(", ")}
+                      {isComplete ? "—" : item.missing_fields.join(", ")}
                     </td>
                   </tr>
                 );
@@ -367,27 +418,33 @@ export function CatalogSeoPanel() {
 
       <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
         <p>
-          Page {page}
-          {totalPages > 0 ? ` of ${totalPages}` : ""}
+          {listTotal} item{listTotal === 1 ? "" : "s"}
+          {!isUnpaginatedType && totalPages > 0
+            ? ` · Page ${page} of ${totalPages}`
+            : ""}
         </p>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={page <= 1 || isGenerating}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={page >= totalPages || isGenerating}
-            onClick={() => setPage((prev) => prev + 1)}
-          >
-            Next
-          </Button>
-        </div>
+        {!isUnpaginatedType ? (
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={page <= 1 || isGenerating}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={page >= totalPages || isGenerating}
+              onClick={() => setPage((prev) => prev + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">Showing all results</p>
+        )}
       </div>
     </Card>
   );

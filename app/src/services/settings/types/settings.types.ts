@@ -225,6 +225,8 @@ export interface SyncImportedPricingResult {
 
 export type SeoEntityType = "product" | "category" | "brand" | "vendor";
 
+export type SeoListStatus = "missing" | "all" | "complete";
+
 export type SeoMissingField =
   | "meta_title_en"
   | "meta_title_ar"
@@ -258,6 +260,7 @@ export interface SeoMissingItem {
 
 export interface ListMissingSeoFilters {
   type?: SeoEntityType;
+  seo_status?: SeoListStatus;
   q?: string;
   page?: number;
   limit?: number;
@@ -269,6 +272,7 @@ export interface SeoMissingListMeta {
   limit: number;
   totalPages: number;
   counts: SeoMissingCounts;
+  seo_status?: SeoListStatus;
 }
 
 export interface GenerateSeoDto {

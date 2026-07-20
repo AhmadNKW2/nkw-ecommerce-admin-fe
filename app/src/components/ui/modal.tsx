@@ -93,6 +93,11 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
+  const hasExplicitItemsClass = /(?:^|\s)items-/.test(contentClassName);
+  const hasExplicitPaddingClass = /(?:^|\s)p(?:[xystrelse])?(?:-\S+)/.test(
+    contentClassName
+  );
+
   return (
     <div
       className={`
@@ -127,8 +132,8 @@ export const Modal: React.FC<ModalProps> = ({
         <div
           className={`flex flex-col flex-1 justify-center ${
             scrollable ? "overflow-y-auto" : ""
-          } ${contentClassName.includes("items-") ? "" : "items-center"} ${
-            contentClassName.includes("p-") || variant !== "default"
+          } ${hasExplicitItemsClass ? "" : "items-center"} ${
+            hasExplicitPaddingClass || variant !== "default"
               ? ""
               : "p-6 md:p-8"
           } ${contentClassName}`}

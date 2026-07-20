@@ -27,6 +27,10 @@ import { useCategories } from "../../services/categories/hooks/use-categories";
 import { useCustomers } from "../../services/customers/hooks/use-customers";
 import { PAGINATION } from "../../lib/constants";
 
+const EMPTY_PRODUCTS: ProductItem[] = [];
+const EMPTY_PRODUCT_IDS: number[] = [];
+const EMPTY_API_PRODUCTS: never[] = [];
+
 interface ProductSelectionModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -37,14 +41,31 @@ interface ProductSelectionModalProps {
     excludeProductIds?: number[];
 }
 
+function mergeProductsIntoCache(
+    prevCache: Record<number, ProductItem>,
+    products: ProductItem[],
+): Record<number, ProductItem> {
+    let changed = false;
+    const nextCache = { ...prevCache };
+
+    products.forEach((product) => {
+        if (prevCache[product.id] !== product) {
+            nextCache[product.id] = product;
+            changed = true;
+        }
+    });
+
+    return changed ? nextCache : prevCache;
+}
+
 export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     isOpen,
     onClose,
     selectedProductIds,
-    selectedProducts = [],
+    selectedProducts = EMPTY_PRODUCTS,
     onSelectionChange,
     title = "Manage Products",
-    excludeProductIds = [],
+    excludeProductIds = EMPTY_PRODUCT_IDS,
 }) => {
     const [queryParams, setQueryParams] = useState<ProductFilters>({
         page: PAGINATION.defaultPage,
@@ -76,10 +97,13 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
         { enabled: isOpen },
     );
 
-    const products = data?.data?.data || [];
+    const products = data?.data?.data ?? EMPTY_API_PRODUCTS;
     const pagination = data?.data?.pagination;
 
     const filteredProducts = useMemo(() => {
+        if (excludeProductIds.length === 0) {
+            return products;
+        }
         return products.filter((product) => !excludeProductIds.includes(product.id));
     }, [excludeProductIds, products]);
 
@@ -98,13 +122,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
             return;
         }
 
-        setProductCache((prevCache) => {
-            const nextCache = { ...prevCache };
-            selectedProducts.forEach((product) => {
-                nextCache[product.id] = product;
-            });
-            return nextCache;
-        });
+        setProductCache((prevCache) => mergeProductsIntoCache(prevCache, selectedProducts));
     }, [selectedProducts]);
 
     useEffect(() => {
@@ -112,13 +130,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
             return;
         }
 
-        setProductCache((prevCache) => {
-            const nextCache = { ...prevCache };
-            tableProducts.forEach((product) => {
-                nextCache[product.id] = product;
-            });
-            return nextCache;
-        });
+        setProductCache((prevCache) => mergeProductsIntoCache(prevCache, tableProducts));
     }, [tableProducts]);
 
     useEffect(() => {

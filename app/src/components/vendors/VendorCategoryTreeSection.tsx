@@ -21,6 +21,7 @@ import { Modal } from "../ui/modal";
 import { DeleteConfirmationModal } from "../common/DeleteConfirmationModal";
 import { CategoryTreeSelect } from "../products/CategoryTreeSelect";
 import { showErrorToast } from "../../lib/toast";
+import { cn } from "../../lib/utils";
 import { useCategories } from "../../services/categories/hooks/use-categories";
 import { Category } from "../../services/categories/types/category.types";
 import {
@@ -37,6 +38,66 @@ interface VendorCategoryTreeSectionProps {
 }
 
 type EditorMode = "create-child" | "edit";
+type AssignmentFilter = "all" | "unassigned";
+type CategoryScopeFilter = "all" | "leaf";
+
+const ASSIGNMENT_FILTER_OPTIONS: { value: AssignmentFilter; label: string }[] = [
+    { value: "all", label: "All assignments" },
+    { value: "unassigned", label: "No categories assigned" },
+];
+
+const CATEGORY_SCOPE_FILTER_OPTIONS: { value: CategoryScopeFilter; label: string }[] = [
+    { value: "all", label: "All categories" },
+    { value: "leaf", label: "Leaf categories" },
+];
+
+interface TreeFilterGroupProps<T extends string> {
+    label: string;
+    value: T;
+    options: { value: T; label: string }[];
+    onChange: (value: T) => void;
+}
+
+const TreeFilterGroup = <T extends string>({
+    label,
+    value,
+    options,
+    onChange,
+}: TreeFilterGroupProps<T>) => {
+    return (
+        <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                {label}
+            </span>
+            <div
+                className="flex flex-wrap gap-1 rounded-2xl border border-primary/15 bg-white p-1"
+                role="group"
+                aria-label={label}
+            >
+                {options.map((option) => {
+                    const isActive = option.value === value;
+
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => onChange(option.value)}
+                            aria-pressed={isActive}
+                            className={cn(
+                                "rounded-xl px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap",
+                                isActive
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-gray-600 hover:bg-primary/5 hover:text-primary"
+                            )}
+                        >
+                            {option.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 interface VendorCategoryFormState {
     title: string;
@@ -159,32 +220,91 @@ const getAssignedStoreCategoryIds = (
     return getAssignedStoreCategories(node, categories).map((category) => category.id);
 };
 
+const isLeafVendorCategory = (node: VendorCategory): boolean => {
+    return !node.children?.length;
+};
+
+const hasNoCategoriesAssigned = (
+    node: VendorCategory,
+    categories: Category[]
+): boolean => {
+    return getAssignedStoreCategories(node, categories).length === 0;
+};
+
+const nodeMatchesSearch = (
+    node: VendorCategory,
+    normalizedQuery: string,
+    categories: Category[]
+): boolean => {
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    const categoryNames = getResolvedCategoryList(node, categories).map((category) =>
+        category.name_en.toLowerCase()
+    );
+    const referenceLink = getVendorCategoryReferenceLink(node);
+
+    return [node.title, referenceLink, ...categoryNames].some((value) =>
+        value.toLowerCase().includes(normalizedQuery)
+    );
+};
+
 const filterVendorCategoryTree = (
     nodes: VendorCategory[],
     searchTerm: string,
-    categories: Category[]
+    categories: Category[],
+    assignmentFilter: AssignmentFilter = "all",
+    categoryScopeFilter: CategoryScopeFilter = "all"
 ): VendorCategory[] => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
-    if (!normalizedQuery) {
-        return nodes;
+
+    // Leaf mode returns a flat list of matching leaves only (no parent wrappers).
+    if (categoryScopeFilter === "leaf") {
+        return nodes.flatMap((node) => {
+            if (!isLeafVendorCategory(node)) {
+                return filterVendorCategoryTree(
+                    node.children || [],
+                    normalizedQuery,
+                    categories,
+                    assignmentFilter,
+                    categoryScopeFilter
+                );
+            }
+
+            const matchesAssignment =
+                assignmentFilter === "all" ||
+                hasNoCategoriesAssigned(node, categories);
+            const matchesSearch = nodeMatchesSearch(node, normalizedQuery, categories);
+
+            if (matchesAssignment && matchesSearch) {
+                return [{ ...node, children: [] }];
+            }
+
+            return [];
+        });
     }
 
     return nodes.flatMap((node) => {
-        const categoryNames = getResolvedCategoryList(node, categories)
-            .map((category) => category.name_en.toLowerCase());
-        const referenceLink = getVendorCategoryReferenceLink(node);
-        const matchesNode = [
-            node.title,
-            referenceLink,
-            ...categoryNames,
-        ].some((value) => value.toLowerCase().includes(normalizedQuery));
         const filteredChildren = filterVendorCategoryTree(
             node.children || [],
             normalizedQuery,
-            categories
+            categories,
+            assignmentFilter,
+            categoryScopeFilter
         );
+        const matchesAssignment =
+            assignmentFilter === "all" ||
+            hasNoCategoriesAssigned(node, categories);
+        const matchesSearch = nodeMatchesSearch(node, normalizedQuery, categories);
+        const matchesNode = matchesAssignment && matchesSearch;
 
         if (matchesNode) {
+            // Unassigned filter: keep only matching descendants under a match.
+            if (assignmentFilter === "unassigned") {
+                return [{ ...node, children: filteredChildren }];
+            }
+
             return [node];
         }
 
@@ -194,6 +314,20 @@ const filterVendorCategoryTree = (
 
         return [];
     });
+};
+
+const buildOriginalChildCountMap = (
+    nodes: VendorCategory[],
+    map: Map<number, number> = new Map()
+): Map<number, number> => {
+    for (const node of nodes) {
+        map.set(node.id, node.children?.length ?? 0);
+        if (node.children?.length) {
+            buildOriginalChildCountMap(node.children, map);
+        }
+    }
+
+    return map;
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -207,6 +341,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 interface VendorCategoryTreeNodeProps {
     node: VendorCategory;
     categories: Category[];
+    originalChildCountById: Map<number, number>;
     onEdit: (node: VendorCategory) => void;
     onDelete: (node: VendorCategory) => void;
     onPreviewReferenceLink: (referenceLink: string) => void;
@@ -216,18 +351,21 @@ interface VendorCategoryTreeNodeProps {
 const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
     node,
     categories,
+    originalChildCountById,
     onEdit,
     onDelete,
     onPreviewReferenceLink,
     forceExpanded,
 }) => {
     const assignedCategories = getAssignedStoreCategories(node, categories);
-    const hasChildren = Boolean(node.children?.length);
+    const visibleChildren = node.children ?? [];
+    const hasVisibleChildren = visibleChildren.length > 0;
+    const originalChildCount = originalChildCountById.get(node.id) ?? visibleChildren.length;
     const referenceLink = getVendorCategoryReferenceLink(node);
     const [isExpanded, setIsExpanded] = useState(false);
 
     const toggleExpanded = () => {
-        if (hasChildren) {
+        if (hasVisibleChildren) {
             setIsExpanded((current) => !current);
         }
     };
@@ -241,10 +379,10 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
     return (
         <div className="space-y-0">
             <div
-                className={`group w-full rounded-[22px] border border-primary/10 bg-white p-4 text-left transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 ${hasChildren ? "cursor-pointer" : ""}`}
+                className={`group w-full rounded-[22px] border border-primary/10 bg-white p-4 text-left transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 ${hasVisibleChildren ? "cursor-pointer" : ""}`}
                 onClick={toggleExpanded}
                 onKeyDown={(event) => {
-                    if (!hasChildren) {
+                    if (!hasVisibleChildren) {
                         return;
                     }
 
@@ -253,22 +391,22 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                         toggleExpanded();
                     }
                 }}
-                role={hasChildren ? "button" : undefined}
-                tabIndex={hasChildren ? 0 : undefined}
-                aria-expanded={hasChildren ? isExpanded : undefined}
-                aria-label={hasChildren ? `${isExpanded ? "Collapse" : "Expand"} ${node.title}` : undefined}
+                role={hasVisibleChildren ? "button" : undefined}
+                tabIndex={hasVisibleChildren ? 0 : undefined}
+                aria-expanded={hasVisibleChildren ? isExpanded : undefined}
+                aria-label={hasVisibleChildren ? `${isExpanded ? "Collapse" : "Expand"} ${node.title}` : undefined}
             >
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 text-left">
                         <div className="flex flex-wrap items-center gap-2">
-                            {hasChildren ? (
+                            {hasVisibleChildren ? (
                                 <ChevronRight
                                     className={`h-4 w-4 shrink-0 text-primary transition-transform duration-300 ease-out ${isExpanded ? "rotate-90" : "rotate-0"}`}
                                 />
                             ) : null}
                             <h3 className="text-lg font-semibold text-gray-900">{node.title}</h3>
                             <span className="inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
-                                {node.children?.length ?? 0} child{node.children?.length === 1 ? "" : "ren"}
+                                {originalChildCount} child{originalChildCount === 1 ? "" : "ren"}
                             </span>
                             {assignedCategories.length > 0 ? (
                                 assignedCategories.map((category) => (
@@ -328,7 +466,7 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                 </div>
             </div>
 
-            {hasChildren && (
+            {hasVisibleChildren && (
                 <div
                     className={`grid transition-[grid-template-rows,opacity,margin-top] duration-300 ease-out ${isExpanded ? "mt-3 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"}`}
                     aria-hidden={!isExpanded}
@@ -336,11 +474,12 @@ const VendorCategoryTreeNode: React.FC<VendorCategoryTreeNodeProps> = ({
                     <div className="overflow-hidden">
                         <div className="ml-4 border-l border-primary/15 pl-4 sm:ml-6 sm:pl-5">
                             <div className={`space-y-3 transition-transform duration-300 ease-out ${isExpanded ? "translate-y-0" : "-translate-y-1 pointer-events-none"}`}>
-                                {node.children?.map((child) => (
+                                {visibleChildren.map((child) => (
                                     <VendorCategoryTreeNode
                                         key={child.id}
                                         node={child}
                                         categories={categories}
+                                        originalChildCountById={originalChildCountById}
                                         onEdit={onEdit}
                                         onDelete={onDelete}
                                         onPreviewReferenceLink={onPreviewReferenceLink}
@@ -371,6 +510,8 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
     } = useVendorCategoryTree(vendorId || 0, { enabled: !isDisabled });
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>("all");
+    const [categoryScopeFilter, setCategoryScopeFilter] = useState<CategoryScopeFilter>("all");
     const [editorMode, setEditorMode] = useState<EditorMode>("create-child");
     const [editorCategoryId, setEditorCategoryId] = useState<number | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -382,9 +523,26 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
     const updateVendorCategory = useUpdateVendorCategory();
     const deleteVendorCategory = useDeleteVendorCategory();
 
+    const hasActiveTreeFilters =
+        searchQuery.trim().length > 0 ||
+        assignmentFilter !== "all" ||
+        categoryScopeFilter !== "all";
+
     const filteredTree = useMemo(
-        () => filterVendorCategoryTree(categoryTree, searchQuery, categories),
-        [categories, categoryTree, searchQuery]
+        () =>
+            filterVendorCategoryTree(
+                categoryTree,
+                searchQuery,
+                categories,
+                assignmentFilter,
+                categoryScopeFilter
+            ),
+        [assignmentFilter, categories, categoryScopeFilter, categoryTree, searchQuery]
+    );
+
+    const originalChildCountById = useMemo(
+        () => buildOriginalChildCountMap(categoryTree),
+        [categoryTree]
     );
 
     const editingNode = useMemo(() => {
@@ -574,16 +732,16 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                         </div>
                     ) : (
                         <div className="space-y-4 rounded-[28px] border border-primary/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                <div>
-                                    <h3 className="text-base font-semibold text-gray-900">Categories</h3>
-                                    <p className="text-sm text-gray-500">
-                                        Manage the full vendor category tree in one place.
-                                    </p>
-                                </div>
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">Categories</h3>
+                                        <p className="text-sm text-gray-500">
+                                            Manage the full vendor category tree in one place.
+                                        </p>
+                                    </div>
 
-                                <div className="flex w-full flex-wrap gap-3 md:w-auto md:items-center">
-                                    <div className="w-full md:min-w-72">
+                                    <div className="w-full lg:max-w-md">
                                         <Input
                                             value={searchQuery}
                                             onChange={(event) => setSearchQuery(event.target.value)}
@@ -591,6 +749,21 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                             isSearch
                                         />
                                     </div>
+                                </div>
+
+                                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                                    <TreeFilterGroup
+                                        label="Assignment"
+                                        value={assignmentFilter}
+                                        options={ASSIGNMENT_FILTER_OPTIONS}
+                                        onChange={setAssignmentFilter}
+                                    />
+                                    <TreeFilterGroup
+                                        label="Scope"
+                                        value={categoryScopeFilter}
+                                        options={CATEGORY_SCOPE_FILTER_OPTIONS}
+                                        onChange={setCategoryScopeFilter}
+                                    />
                                 </div>
                             </div>
 
@@ -616,7 +789,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                     </div>
                                 ) : (
                                     <div className="rounded-3xl border border-dashed border-primary/20 bg-primary/5 p-8 text-center text-sm text-gray-600">
-                                        No categories match your search. Try a title, reference link fragment, or category name.
+                                        No categories match your filters. Try adjusting search, assignment, or leaf scope.
                                     </div>
                                 )
                             ) : (
@@ -626,10 +799,11 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                                             key={node.id}
                                             node={node}
                                             categories={categories}
+                                            originalChildCountById={originalChildCountById}
                                             onEdit={openEditEditor}
                                             onDelete={setDeleteTarget}
                                             onPreviewReferenceLink={handlePreviewReferenceLink}
-                                            forceExpanded={searchQuery.trim().length > 0}
+                                            forceExpanded={hasActiveTreeFilters && categoryScopeFilter !== "leaf"}
                                         />
                                     ))}
                                 </div>
@@ -643,13 +817,13 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                 isOpen={isEditorOpen}
                 onClose={closeEditor}
                 className="w-full max-w-5xl self-start mt-4 sm:mt-6"
-                contentClassName="gap-6"
+                contentClassName="w-full items-stretch gap-6 p-6 md:p-8"
             >
-                <div className="flex items-start gap-3">
+                <div className="flex w-full items-start gap-3">
                     <div className="rounded-[20px] bg-primary/10 p-3 text-primary">
                         {editorMode === "edit" ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <h3 className="text-xl font-semibold text-gray-900">
                             {editorMode === "edit" ? "Edit Vendor Category" : "Add Child Category"}
                         </h3>
@@ -663,7 +837,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
 
                 {editorMode === "create-child" ? (
                     <>
-                        <div className="grid gap-5 md:grid-cols-2">
+                        <div className="grid w-full gap-5 md:grid-cols-2">
                             <Input
                                 label="Title"
                                 value={editorForm.title}
@@ -694,7 +868,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                     </>
                 ) : null}
 
-                <div className="grid gap-5">
+                <div className="grid w-full gap-5">
                     <CategoryTreeSelect
                         label="Mapped Categories"
                         categories={categories}
@@ -710,7 +884,7 @@ export const VendorCategoryTreeSection: React.FC<VendorCategoryTreeSectionProps>
                     />
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-3">
+                <div className="flex w-full flex-wrap justify-end gap-3">
                     <Button variant="outline" onClick={closeEditor}>
                         Cancel
                     </Button>

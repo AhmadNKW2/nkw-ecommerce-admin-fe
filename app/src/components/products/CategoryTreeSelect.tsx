@@ -460,7 +460,7 @@ export const CategoryTreeSelect: React.FC<CategoryTreeSelectProps> = ({
       : null;
 
   return (
-    <div id={id} ref={containerRef} className="relative group">
+    <div id={id} ref={containerRef} className="relative group w-full">
       <FieldWrapper
         label={label}
         error={error}

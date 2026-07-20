@@ -704,17 +704,55 @@ class HttpClient {
   }
 
   /**
+   * Endpoints whose query DTOs allow `is_admin` (FilterProductDto / SearchQueryDto).
+   * Other admin GETs must not send it — ValidationPipe forbidNonWhitelisted rejects it.
+   */
+  private shouldAttachAdminFlag(pathname: string): boolean {
+    const path = pathname.replace(/\/+$/, "") || "/";
+
+    if (path === "/search" || path.startsWith("/search/")) {
+      return true;
+    }
+
+    if (
+      path === "/products" ||
+      path === "/products/content" ||
+      path === "/products/archive/list" ||
+      /^\/products\/vendor\/\d+$/.test(path)
+    ) {
+      return true;
+    }
+
+    if (
+      /^\/categories\/\d+$/.test(path) ||
+      path.startsWith("/categories/slug/") ||
+      /^\/brands\/\d+$/.test(path) ||
+      path.startsWith("/brands/slug/") ||
+      /^\/vendors\/\d+$/.test(path) ||
+      path.startsWith("/vendors/slug/")
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * GET request
-   * Admin panel always sends is_admin=true so backend returns admin payloads
-   * and (for search) does not expand category filters to subcategories.
+   * Attaches is_admin=true on catalog/search endpoints that support it so admin
+   * payloads are returned and search does not expand category filters to subcategories.
    */
   public get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
     const [pathname, existingQuery = ""] = endpoint.split("?", 2);
     const searchParams = new URLSearchParams(existingQuery);
-    const mergedParams: Record<string, any> = {
-      ...(params ?? {}),
-      is_admin: true,
-    };
+    const mergedParams: Record<string, any> = { ...(params ?? {}) };
+
+    if (this.shouldAttachAdminFlag(pathname)) {
+      mergedParams.is_admin = true;
+    } else {
+      // Avoid leaking is_admin onto DTOs that reject unknown properties.
+      delete mergedParams.is_admin;
+    }
 
     Object.entries(mergedParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {

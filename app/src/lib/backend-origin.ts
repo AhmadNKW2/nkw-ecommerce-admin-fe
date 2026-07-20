@@ -2,6 +2,7 @@
  * Single backend origin for the admin app.
  *
  * Set BACKEND_ORIGIN once (e.g. https://api.ordonsooq.com or http://localhost:3001).
+ * ADMIN_BACKEND_ORIGIN is accepted as an alias (see .env.example).
  * - Server: API proxy route, SSR fetches
  * - Client: direct file uploads (bypasses Vercel /api body limit)
  *
@@ -11,8 +12,9 @@
 const DEFAULT_BACKEND_ORIGIN = "http://localhost:3001";
 
 export function getBackendOrigin(): string {
-  return (process.env.BACKEND_ORIGIN || DEFAULT_BACKEND_ORIGIN).replace(
-    /\/$/,
-    "",
-  );
+  return (
+    process.env.BACKEND_ORIGIN ||
+    process.env.ADMIN_BACKEND_ORIGIN ||
+    DEFAULT_BACKEND_ORIGIN
+  ).replace(/\/$/, "");
 }

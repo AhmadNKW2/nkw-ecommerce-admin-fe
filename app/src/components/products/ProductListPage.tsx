@@ -280,6 +280,7 @@ export function ProductListPage({
     handleDuplicateReferenceLinkChange,
     handleStatusFilterChange,
     handleClearAllFilters,
+    clampPageToTotalPages,
     handlePageChange,
     handlePageSizeChange,
   } = filters;
@@ -292,6 +293,18 @@ export function ProductListPage({
 
   const { data, isLoading, isFetching, isError, error, refetch } =
     useProducts(productQueryParams);
+
+  useEffect(() => {
+    if (isLoading || isFetching) {
+      return;
+    }
+    clampPageToTotalPages(data?.data.pagination?.totalPages);
+  }, [
+    clampPageToTotalPages,
+    data?.data.pagination?.totalPages,
+    isFetching,
+    isLoading,
+  ]);
 
   const archiveProduct = useDeleteProduct();
   const permanentDeleteProduct = usePermanentDeleteProduct();
@@ -545,7 +558,7 @@ export function ProductListPage({
 
       {!isVendorPortalUser ? (
       <ProductFiltersPanel
-        visible={products.length > 0 || hasActiveFilters}
+        visible
         hasActiveFilters={hasActiveFilters}
         onClearAllFilters={handleClearAllFilters}
         searchTerm={searchTerm}

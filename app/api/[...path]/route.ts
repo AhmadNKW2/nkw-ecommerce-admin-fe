@@ -7,6 +7,10 @@ import {
   logSsrApiRequestFailed,
   logSsrApiRequestStarted,
 } from "../../src/lib/dev/ssr-api-request-logger";
+import {
+  fetchUpstream,
+  serializeUpstreamError,
+} from "../../src/lib/upstream-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -157,19 +161,6 @@ function getSetCookieHeaders(resp: Response): string[] {
   return single ? splitCombinedSetCookieHeader(single) : [];
 }
 
-function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    message: typeof error === "string" ? error : "Unknown proxy error",
-  };
-}
-
 function buildUpstreamUrl(req: Request, pathSegments: string[]): string {
   const backendOrigin = getBackendOrigin();
   const url = new URL(req.url);
@@ -224,12 +215,16 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
   }
 
   try {
-    const upstreamResp = await fetch(upstreamUrl, {
+    // Retry transient network blips (undici "fetch failed") so brief backend
+    // restarts / DNS hiccups do not surface as intermittent admin 500s.
+    const upstreamResp = await fetchUpstream(upstreamUrl, {
       method,
       headers: outgoingHeaders,
       body: requestBody ?? undefined,
       redirect: "manual",
       cache: "no-store",
+      maxAttempts: 3,
+      baseDelayMs: 200,
     });
 
     const resHeaders = new Headers();
@@ -291,7 +286,12 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       headers: resHeaders,
     });
   } catch (error) {
-    const serialized = serializeError(error);
+    const serialized = serializeUpstreamError(error);
+    console.error("[api-proxy] upstream fetch failed", {
+      upstreamUrl,
+      method,
+      ...serialized,
+    });
     if (requestLog) {
       await logSsrApiRequestFailed({
         request: requestLog,
@@ -303,12 +303,16 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       });
     }
 
+    const detail = [serialized.message, serialized.cause, serialized.code]
+      .filter(Boolean)
+      .join(": ");
+
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 500,
-          message: serialized.message || "Upstream API proxy failed",
+          message: detail || "Upstream API proxy failed",
         },
         time: new Date().toISOString(),
       },

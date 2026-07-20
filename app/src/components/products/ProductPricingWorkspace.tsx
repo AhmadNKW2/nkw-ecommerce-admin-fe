@@ -286,6 +286,7 @@ export function ProductPricingWorkspace({
     handleDuplicateReferenceLinkChange,
     handleStatusFilterChange,
     handleClearAllFilters,
+    clampPageToTotalPages,
     handlePageChange,
     handlePageSizeChange,
   } = filters;
@@ -301,6 +302,18 @@ export function ProductPricingWorkspace({
 
   const products = data?.data.data || [];
   const isProductsLoading = isLoading || isAwaitingSearchResults;
+
+  useEffect(() => {
+    if (isLoading || isFetching) {
+      return;
+    }
+    clampPageToTotalPages(data?.data.pagination?.totalPages);
+  }, [
+    clampPageToTotalPages,
+    data?.data.pagination?.totalPages,
+    isFetching,
+    isLoading,
+  ]);
 
   useEffect(() => {
     setShowOverlay(isProductsLoading || isFetching);
@@ -476,7 +489,7 @@ export function ProductPricingWorkspace({
       />
 
       <ProductFiltersPanel
-        visible={products.length > 0 || hasActiveFilters}
+        visible
         hasActiveFilters={hasActiveFilters}
         onClearAllFilters={handleClearAllFilters}
         searchTerm={searchTerm}

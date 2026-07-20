@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth.context";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
@@ -461,6 +461,21 @@ export function useProductFilters({
     });
   };
 
+  /** Session-restored page can sit past the last page and yield an empty list. */
+  const clampPageToTotalPages = useCallback((totalPages?: number) => {
+    if (typeof totalPages !== "number" || totalPages < 1) {
+      return;
+    }
+
+    setQueryParams((prev) => {
+      const page = prev.page ?? 1;
+      if (page <= totalPages) {
+        return prev;
+      }
+      return { ...prev, page: 1 };
+    });
+  }, []);
+
   const hasActiveFilters = Object.keys(queryParams).some((key) => {
     if (key === "page" || key === "limit") {
       return false;
@@ -567,6 +582,7 @@ export function useProductFilters({
     handleDuplicateReferenceLinkChange,
     handleStatusFilterChange,
     handleClearAllFilters,
+    clampPageToTotalPages,
     handlePageChange: (page: number) => setQueryParams((prev) => ({ ...prev, page })),
     handlePageSizeChange: (pageSize: number) =>
       setQueryParams((prev) => ({ ...prev, limit: pageSize, page: 1 })),

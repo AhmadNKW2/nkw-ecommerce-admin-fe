@@ -14,7 +14,11 @@ if (r2PublicUrl) {
   }
 }
 
-const backendOrigin = (process.env.BACKEND_ORIGIN || 'http://localhost:3001').replace(/\/$/, '');
+const backendOrigin = (
+  process.env.BACKEND_ORIGIN ||
+  process.env.ADMIN_BACKEND_ORIGIN ||
+  'http://localhost:3001'
+).replace(/\/$/, '');
 
 const nextConfig: NextConfig = {
   // One env var for server + client (API URL is not secret).

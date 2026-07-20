@@ -1418,6 +1418,7 @@ export function ProductReviewWorkspace({
         handleDuplicateReferenceLinkChange,
         handleStatusFilterChange,
         handleClearAllFilters,
+        clampPageToTotalPages,
         handlePageChange,
         handlePageSizeChange,
     } = filters;
@@ -1480,6 +1481,18 @@ export function ProductReviewWorkspace({
     const updateProduct = useUpdateProduct();
 
     const products = data?.data.data || [];
+
+    useEffect(() => {
+        if (isLoading || isFetching) {
+            return;
+        }
+        clampPageToTotalPages(data?.data.pagination?.totalPages);
+    }, [
+        clampPageToTotalPages,
+        data?.data.pagination?.totalPages,
+        isFetching,
+        isLoading,
+    ]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -1797,7 +1810,7 @@ export function ProductReviewWorkspace({
             />
 
             <ProductFiltersPanel
-                visible={products.length > 0 || hasActiveFilters}
+                visible
                 hasActiveFilters={hasActiveFilters}
                 onClearAllFilters={handleClearAllFilters}
                 searchTerm={searchTerm}

@@ -54,8 +54,8 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
   const serverPaged = Boolean(productListScope);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [page, setPage] = useState(PAGINATION.defaultPage);
-  const [pageSize, setPageSize] = useState(PAGINATION.defaultPageSize);
+  const [page, setPage] = useState<number>(PAGINATION.defaultPage);
+  const [pageSize, setPageSize] = useState<number>(PAGINATION.defaultPageSize);
 
   const [displayProducts, setDisplayProducts] = useState<ProductItem[]>(products);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>(() =>

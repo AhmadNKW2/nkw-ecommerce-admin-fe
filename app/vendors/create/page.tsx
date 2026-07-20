@@ -4,15 +4,17 @@
  * Create Vendor Page
  */
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useCreateVendor } from "../../src/services/vendors/hooks/use-vendors";
-import { useProducts } from "../../src/services/products/hooks/use-products";
 import { VendorForm } from "../../src/components/vendors/VendorForm";
 import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { validateVendorForm } from "../../src/lib/validations";
 import { ProductItem } from "../../src/components/common/ProductsTableSection";
 import { buildCreateProductChanges } from "@/lib/product-changes";
+
+/** Stable empty list so ProductsTableSection keeps modal selections. */
+const EMPTY_ASSIGNED_PRODUCTS: ProductItem[] = [];
 
 export default function CreateVendorPage() {
   const router = useRouter();
@@ -37,28 +39,7 @@ export default function CreateVendorPage() {
     logo?: string;
   }>({});
 
-  const { data: productsData } = useProducts({ limit: 1000 });
   const createVendor = useCreateVendor();
-
-  // Transform products for the ProductsTableSection
-  const allProducts: ProductItem[] = useMemo(() => {
-    return productsData?.data?.data?.map((p) => ({
-      id: p.id,
-      name_en: p.name_en,
-      name_ar: p.name_ar,
-      sku: p.sku,
-      slug: p.slug,
-      primary_image: p.primary_image,
-      price: p.price,
-      category: p.category ? { name: p.category.name } : null,
-      vendor: p.vendor ? { name: p.vendor.name } : null,
-    })) || [];
-  }, [productsData]);
-
-  // Get assigned products
-  const assignedProducts: ProductItem[] = useMemo(() => {
-    return allProducts.filter((p) => product_ids.includes(p.id));
-  }, [allProducts, product_ids]);
 
   const validate = () => {
     const result = validateVendorForm({
@@ -150,8 +131,7 @@ export default function CreateVendorPage() {
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}
       formErrors={formErrors}
-      allProducts={allProducts}
-      assignedProducts={assignedProducts}
+      assignedProducts={EMPTY_ASSIGNED_PRODUCTS}
       onSubmit={handleSubmit}
       isSubmitting={createVendor.isPending}
       submitButtonText="Create Vendor"

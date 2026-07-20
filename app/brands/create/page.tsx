@@ -4,15 +4,17 @@
  * Create Brand Page
  */
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "@/hooks/use-loading-router";
 import { useCreateBrand } from "../../src/services/brands/hooks/use-brands";
-import { useProducts } from "../../src/services/products/hooks/use-products";
 import { BrandForm } from "../../src/components/brands/BrandForm";
 import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { validateBrandForm } from "../../src/lib/validations";
 import { ProductItem } from "../../src/components/common/ProductsTableSection";
 import { buildCreateProductChanges } from "@/lib/product-changes";
+
+/** Stable empty list so ProductsTableSection keeps modal selections. */
+const EMPTY_ASSIGNED_PRODUCTS: ProductItem[] = [];
 
 export default function CreateBrandPage() {
   const router = useRouter();
@@ -36,26 +38,7 @@ export default function CreateBrandPage() {
     logo?: string;
   }>({});
 
-  const { data: productsData } = useProducts({ limit: 1000 });
   const createBrand = useCreateBrand();
-
-  const allProducts: ProductItem[] = useMemo(() => {
-    return productsData?.data?.data?.map((p) => ({
-      id: p.id,
-      name_en: p.name_en,
-      name_ar: p.name_ar,
-      sku: p.sku,
-      slug: p.slug,
-      primary_image: p.primary_image,
-      price: p.price,
-      category: p.category ? { name: p.category.name } : null,
-      vendor: p.vendor ? { name: p.vendor.name } : null,
-    })) || [];
-  }, [productsData]);
-
-  const assignedProducts: ProductItem[] = useMemo(() => {
-    return allProducts.filter((p) => product_ids.includes(p.id));
-  }, [allProducts, product_ids]);
 
   const validate = () => {
     const result = validateBrandForm({
@@ -146,8 +129,7 @@ export default function CreateBrandPage() {
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}
       formErrors={formErrors}
-      allProducts={allProducts}
-      assignedProducts={assignedProducts}
+      assignedProducts={EMPTY_ASSIGNED_PRODUCTS}
       onSubmit={handleSubmit}
       isSubmitting={createBrand.isPending}
       submitButtonText="Create Brand"

@@ -42,10 +42,20 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
     products.map((product) => product.id)
   );
 
+  // Sync from parent only when the assigned ID set changes (edit load / refetch).
+  // Comparing by IDs avoids wiping modal selections when parents pass a new []
+  // reference each render, or a partial catalog-derived subset after selection.
+  const assignedProductIdsKey = useMemo(
+    () => products.map((product) => product.id).join(","),
+    [products]
+  );
+
   useEffect(() => {
     setDisplayProducts(products);
     setSelectedProductIds(products.map((product) => product.id));
-  }, [products]);
+    // products is read from the render where assignedProductIdsKey changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedProductIdsKey]);
 
   // Checked products pending page Save Changes. Kept separate from displayProducts
   // so unchecking does not remove rows from the table until the page is saved.

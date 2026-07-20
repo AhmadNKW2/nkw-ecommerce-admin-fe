@@ -324,9 +324,10 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={handleCancel}
-            className="w-[96vw] max-w-350 items-stretch justify-start gap-0 overflow-hidden p-0"
+            className="w-[96vw] max-w-[96vw] items-stretch justify-start gap-0 overflow-hidden p-0"
+            contentClassName="items-stretch justify-start p-0"
         >
-            <div className="w-full">
+            <div className="flex w-full min-w-0 flex-col">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-primary/10 px-6 py-5 md:px-8">
                     <div className="flex items-center gap-3">
                         <div className="rounded-lg bg-primary/10 p-2">
@@ -348,8 +349,8 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                     </div>
                 </div>
 
-                <div className="w-full px-6 py-5 md:px-8">
-                    <div className="space-y-5 overflow-y-auto pr-1" style={{ maxHeight: "calc(90vh - 11rem)" }}>
+                <div className="w-full min-w-0 px-6 py-5 md:px-8">
+                    <div className="w-full min-w-0 space-y-5 overflow-y-auto pr-1" style={{ maxHeight: "calc(90vh - 11rem)" }}>
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold">Filters</h3>
                             {hasActiveFilters ? (
@@ -523,27 +524,30 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                                 <p className="mt-1 text-sm text-gray-400">Try adjusting your filters</p>
                             </div>
                         ) : (
-                            <ProductCatalogTable
-                                products={tableProducts}
-                                pagination={
-                                    pagination
-                                        ? {
-                                                currentPage: pagination.page,
-                                                pageSize: pagination.limit,
-                                                totalItems: pagination.total,
-                                                totalPages: pagination.totalPages,
-                                                hasNextPage: pagination.page < pagination.totalPages,
-                                                hasPreviousPage: pagination.page > 1,
-                                            }
-                                        : undefined
-                                }
-                                onPageChange={handlePageChange}
-                                onPageSizeChange={handlePageSizeChange}
-                                selectable={true}
-                                selectedProductIds={localSelectedIds}
-                                onToggleProduct={handleToggleProduct}
-                                onToggleAll={handleToggleAll}
-                            />
+                            <div className="w-full min-w-0">
+                                <ProductCatalogTable
+                                    products={tableProducts}
+                                    pagination={
+                                        pagination
+                                            ? {
+                                                    currentPage: pagination.page,
+                                                    pageSize: pagination.limit,
+                                                    totalItems: pagination.total,
+                                                    totalPages: pagination.totalPages,
+                                                    hasNextPage: pagination.page < pagination.totalPages,
+                                                    hasPreviousPage: pagination.page > 1,
+                                                }
+                                            : undefined
+                                    }
+                                    onPageChange={handlePageChange}
+                                    onPageSizeChange={handlePageSizeChange}
+                                    selectable={true}
+                                    selectedProductIds={localSelectedIds}
+                                    onToggleProduct={handleToggleProduct}
+                                    onToggleAll={handleToggleAll}
+                                    tableClassName="min-w-full"
+                                />
+                            </div>
                         )}
                     </div>
                 </div>

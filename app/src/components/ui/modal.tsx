@@ -105,14 +105,14 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         className={`
-          relative w-full max-w-[min(100%,42rem)] max-h-[95vh] rounded-xl shadow-xl
+          relative w-full max-h-[95vh] rounded-xl shadow-xl
           flex flex-col ${scrollable ? 'overflow-hidden' : 'overflow-visible'}
           transition-all duration-300 ease-out
           ${variant === 'default' ? 'bg-white' : ''}
           ${isAnimating
             ? 'opacity-100 scale-100 translate-y-0'
             : 'opacity-0 scale-95 translate-y-4'
-          } ${className}`}
+          } ${className.includes('max-w-') ? '' : 'max-w-[min(100%,42rem)]'} ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header/Close Button Section (if we want close button absolutely positioned, we can keep it here, 
@@ -124,7 +124,15 @@ export const Modal: React.FC<ModalProps> = ({
         />
 
         {/* Content Container */}
-        <div className={`flex flex-col flex-1 justify-center items-center ${scrollable ? 'overflow-y-auto' : ''} ${variant === 'default' ? 'p-6 md:p-8' : ''} ${contentClassName}`}>
+        <div
+          className={`flex flex-col flex-1 justify-center ${
+            scrollable ? "overflow-y-auto" : ""
+          } ${contentClassName.includes("items-") ? "" : "items-center"} ${
+            contentClassName.includes("p-") || variant !== "default"
+              ? ""
+              : "p-6 md:p-8"
+          } ${contentClassName}`}
+        >
           {children}
         </div>
       </div>

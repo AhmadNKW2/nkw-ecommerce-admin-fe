@@ -68,6 +68,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
   return (
     <Table
       className={tableClassName}
+      minWidth={tableClassName.includes("min-w-full") ? "100%" : "960px"}
       pagination={pagination}
       onPageChange={onPageChange}
       onPageSizeChange={onPageSizeChange}

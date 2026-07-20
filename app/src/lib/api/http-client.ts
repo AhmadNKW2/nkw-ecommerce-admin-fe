@@ -705,30 +705,38 @@ class HttpClient {
 
   /**
    * GET request
+   * Admin panel always sends is_admin=true so backend returns admin payloads
+   * and (for search) does not expand category filters to subcategories.
    */
   public get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    let queryString = "";
-    if (params) {
-      const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value)) {
-            value.forEach((v) => searchParams.append(key, String(v)));
-          } else {
-            let strValue = String(value);
-            // Protect against 414 URI Too Long by capping overly long search inputs generically
-            if (key === 'search' && strValue.length > 150) {
-              strValue = strValue.slice(0, 150);
-            }
-            searchParams.append(key, strValue);
-          }
-        }
-      });
-      const str = searchParams.toString();
-      if (str) queryString = "?" + str;
-    }
+    const [pathname, existingQuery = ""] = endpoint.split("?", 2);
+    const searchParams = new URLSearchParams(existingQuery);
+    const mergedParams: Record<string, any> = {
+      ...(params ?? {}),
+      is_admin: true,
+    };
 
-    return this.request<T>(`${endpoint}${queryString}`, {
+    Object.entries(mergedParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        // Allow callers to pass multi-value keys without leaving stale singles.
+        searchParams.delete(key);
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, String(v)));
+        } else {
+          let strValue = String(value);
+          // Protect against 414 URI Too Long by capping overly long search inputs generically
+          if (key === "search" && strValue.length > 150) {
+            strValue = strValue.slice(0, 150);
+          }
+          searchParams.append(key, strValue);
+        }
+      }
+    });
+
+    const str = searchParams.toString();
+    const queryString = str ? `?${str}` : "";
+
+    return this.request<T>(`${pathname}${queryString}`, {
       method: "GET",
     });
   }

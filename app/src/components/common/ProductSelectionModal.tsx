@@ -63,13 +63,18 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     const [productCache, setProductCache] = useState<Record<number, ProductItem>>({});
 
     const { data, isLoading } = useProducts(queryParams, { enabled: isOpen });
-    const { data: vendorsData } = useVendors();
-    const { data: brandsData } = useBrands();
-    const categoriesData = useCategories();
-    const { data: adminsData } = useCustomers({
-        role: ["admin", "constant_token_admin", "catalog_manager"],
-        limit: 100,
-    } as any);
+    // Only fetch filter options while open — otherwise create/save invalidation
+    // refetches these in the background and can stall post-success navigation.
+    const { data: vendorsData } = useVendors(undefined, { enabled: isOpen });
+    const { data: brandsData } = useBrands(undefined, { enabled: isOpen });
+    const categoriesData = useCategories({ enabled: isOpen });
+    const { data: adminsData } = useCustomers(
+        {
+            role: ["admin", "constant_token_admin", "catalog_manager"],
+            limit: 100,
+        } as any,
+        { enabled: isOpen },
+    );
 
     const products = data?.data?.data || [];
     const pagination = data?.data?.pagination;

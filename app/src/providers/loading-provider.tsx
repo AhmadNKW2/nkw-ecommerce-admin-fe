@@ -57,11 +57,13 @@ const NavigationTracker: React.FC<{
 }> = ({ onNavigationComplete }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const onCompleteRef = useRef(onNavigationComplete);
+  onCompleteRef.current = onNavigationComplete;
 
-  // Track navigation changes - complete loading when route changes
+  // Only complete when the route actually changes — not when the callback identity changes.
   useEffect(() => {
-    onNavigationComplete();
-  }, [pathname, searchParams, onNavigationComplete]);
+    onCompleteRef.current();
+  }, [pathname, searchParams]);
 
   return null;
 };
@@ -80,12 +82,22 @@ const LoadingProviderInner: React.FC<{ children: ReactNode }> = ({
   const overlayActiveRef = useRef(false);
   const overlayStartedAtRef = useRef<number | null>(null);
   const overlayHideTimerRef = useRef<number | null>(null);
+  const navigationTimeoutRef = useRef<number | null>(null);
   const OVERLAY_MIN_VISIBLE_MS = 250;
+  // Soft navigations can stall under heavy work; never leave the overlay forever.
+  const NAVIGATION_TIMEOUT_MS = 8000;
 
   const clearOverlayHideTimer = useCallback(() => {
     if (overlayHideTimerRef.current !== null) {
       window.clearTimeout(overlayHideTimerRef.current);
       overlayHideTimerRef.current = null;
+    }
+  }, []);
+
+  const clearNavigationTimeout = useCallback(() => {
+    if (navigationTimeoutRef.current !== null) {
+      window.clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
     }
   }, []);
 
@@ -118,24 +130,34 @@ const LoadingProviderInner: React.FC<{ children: ReactNode }> = ({
     if (navigationPendingRef.current || apiPendingCountRef.current > 0) {
       return;
     }
+    clearNavigationTimeout();
     setIsLoading(false);
     NProgress.done();
     hideOverlayWithMinDuration();
     overlayActiveRef.current = false;
-  }, [hideOverlayWithMinDuration]);
-
-  // Start loading indicator (navigation/manual)
-  const startLoading = useCallback(() => {
-    navigationPendingRef.current = true;
-    if (overlayActiveRef.current) return;
-    beginOverlay();
-  }, [beginOverlay]);
+  }, [clearNavigationTimeout, hideOverlayWithMinDuration]);
 
   // Stop loading indicator
   const stopLoading = useCallback(() => {
     navigationPendingRef.current = false;
+    clearNavigationTimeout();
     endOverlayIfIdle();
-  }, [endOverlayIfIdle]);
+  }, [clearNavigationTimeout, endOverlayIfIdle]);
+
+  // Start loading indicator (navigation/manual)
+  const startLoading = useCallback(() => {
+    navigationPendingRef.current = true;
+    clearNavigationTimeout();
+    navigationTimeoutRef.current = window.setTimeout(() => {
+      if (!navigationPendingRef.current) return;
+      // Route never changed (or tracker missed it) — release the overlay.
+      navigationPendingRef.current = false;
+      navigationTimeoutRef.current = null;
+      endOverlayIfIdle();
+    }, NAVIGATION_TIMEOUT_MS);
+    if (overlayActiveRef.current) return;
+    beginOverlay();
+  }, [beginOverlay, clearNavigationTimeout, endOverlayIfIdle]);
 
   const startApiLoading = useCallback(() => {
     apiPendingCountRef.current += 1;
@@ -153,7 +175,7 @@ const LoadingProviderInner: React.FC<{ children: ReactNode }> = ({
     stopLoading();
   }, [stopLoading]);
 
-  // Track all API requests globally (GET + mutations)
+  // Track all API requests globally (mutations only — GETs skip emit in http-client)
   useEffect(() => {
     const handler = (event: Event) => {
       const customEvent = event as CustomEvent<{ delta?: number }>;
@@ -264,9 +286,10 @@ const LoadingProviderInner: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     return () => {
       clearOverlayHideTimer();
+      clearNavigationTimeout();
       NProgress.done();
     };
-  }, [clearOverlayHideTimer]);
+  }, [clearOverlayHideTimer, clearNavigationTimeout]);
 
   return (
     <LoadingContext.Provider

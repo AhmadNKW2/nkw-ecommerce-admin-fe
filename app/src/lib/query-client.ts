@@ -38,13 +38,17 @@ export function getQueryClient(): QueryClient {
 }
 
 /**
- * Invalidate all queries in the cache
- * Called after successful POST, PUT, PATCH, DELETE requests
+ * Mark all queries stale without forcing an immediate refetch storm.
+ * Called after successful POST, PUT, PATCH, DELETE in the HTTP client.
+ *
+ * Immediate `refetchType: 'active'` here previously kept the global loading
+ * overlay up (and could stall soft navigation) because every mounted query
+ * refetched at once — including heavy lists on create forms. Feature hooks
+ * still do targeted invalidation with the default active refetch.
  */
 export function invalidateAllQueries(): void {
   if (queryClient) {
-    // Invalidate all queries to force refetch
-    queryClient.invalidateQueries();
+    void queryClient.invalidateQueries({ refetchType: "none" });
   }
 }
 

@@ -15,11 +15,12 @@ import {
 } from "../types/category.types";
 import { showSuccessToast, showWarningToast } from "../../../lib/toast";
 
-export const useCategories = () => {
+export const useCategories = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [queryKeys.categories.all],
     queryFn: () => categoryService.getCategoryTree(),
     select: (response) => response.data,
+    enabled: options?.enabled ?? true,
   });
 };
 

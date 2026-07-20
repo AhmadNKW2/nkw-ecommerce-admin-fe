@@ -149,13 +149,16 @@ class HttpClient {
   }
 
   private shouldInvalidateAllQueries(endpoint: string): boolean {
-    // Blanket invalidation is expensive and can cause unrelated list queries
-    // (categories/vendors/brands/attributes) to refetch after file uploads.
-    // Media uploads are handled separately and shouldn't force global refetch.
+    // Blanket invalidation is expensive and can stall soft navigation after
+    // mutations. Prefer targeted invalidation in feature hooks.
     if (endpoint.includes("/media/upload")) return false;
 
-    // Products have their own specific cache invalidation in ProductService
+    // These domains already invalidate specifically in their React Query hooks.
     if (endpoint.includes("/products")) return false;
+    if (endpoint.includes("/categories")) return false;
+    if (endpoint.includes("/brands")) return false;
+    if (endpoint.includes("/vendors")) return false;
+    if (endpoint.includes("/users") || endpoint.includes("/customers")) return false;
 
     // Auth/session endpoints must never wipe the query cache (refresh loops).
     if (
@@ -660,8 +663,11 @@ class HttpClient {
     // Apply request interceptors
     config = await this.applyRequestInterceptors(config);
 
-    // Global API loading overlay
-    this.emitApiLoading(1);
+    // Overlay only for mutations — GET/refetch storms must not block navigation.
+    const trackLoading = method !== "GET";
+    if (trackLoading) {
+      this.emitApiLoading(1);
+    }
     try {
       try {
         const fetchConfig = this.stripInternalHeaders(config);
@@ -699,7 +705,9 @@ class HttpClient {
         } as ApiError;
       }
     } finally {
-      this.emitApiLoading(-1);
+      if (trackLoading) {
+        this.emitApiLoading(-1);
+      }
     }
   }
 

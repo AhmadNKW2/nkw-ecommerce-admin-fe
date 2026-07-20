@@ -15,10 +15,14 @@ import {
 } from "../types/brand.types";
 import { showSuccessToast } from "../../../lib/toast";
 
-export const useBrands = (params?: BrandQueryParams) => {
+export const useBrands = (
+  params?: BrandQueryParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: queryKeys.brands.list(params),
     queryFn: () => brandService.getBrands(params),
+    enabled: options?.enabled ?? true,
   });
 };
 

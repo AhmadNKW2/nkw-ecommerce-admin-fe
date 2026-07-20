@@ -21,8 +21,6 @@ import { Button } from "../../src/components/ui/button";
 import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { validateCategoryForm } from "../../src/lib/validations";
-import { ProductItem } from "../../src/components/common/ProductsTableSection";
-import { mapProductToProductItem } from "../../src/components/common/product-table-utils";
 import { buildUpdateProductChanges } from "@/lib/product-changes";
 import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 
@@ -99,15 +97,11 @@ export default function EditCategoryPage() {
 
   const updateCategory = useUpdateCategory();
 
-  // Get assigned products from category response
-  const assignedProducts: ProductItem[] = useMemo(() => {
-    const products = (category as any)?.products || [];
-    return products.map((product: any) => mapProductToProductItem(product));
-  }, [category]);
-
+  // Assigned product IDs come from the category detail (lightweight idsOnly).
+  // Product rows are loaded page-by-page inside ProductsTableSection.
   const originalProductIds = useMemo(() => {
-    const products = (category as any)?.products || [];
-    return products.map((product: { id: number }) => product.id);
+    const ids = (category as any)?.product_ids;
+    return Array.isArray(ids) ? ids.filter((id: unknown): id is number => typeof id === "number") : [];
   }, [category]);
 
   // Initialize form when category loads
@@ -143,10 +137,10 @@ export default function EditCategoryPage() {
 
   // Initialize product IDs from category response
   useEffect(() => {
-    if (category && (category as any).products) {
-      setProductIds((category as any).products.map((p: { id: number }) => p.id));
+    if (category) {
+      setProductIds(originalProductIds);
     }
-  }, [category]);
+  }, [category, originalProductIds]);
 
   useEffect(() => {
     if (!copyFromCategoryId || !sourceCategory) {
@@ -337,7 +331,8 @@ export default function EditCategoryPage() {
       parentCategories={allCategories || []}
       allAttributes={attributes}
       allSpecifications={specifications}
-      assignedProducts={assignedProducts}
+      assignedProducts={[]}
+      initialAssignedProductIds={originalProductIds}
       onSubmit={handleSubmit}
       isSubmitting={isSubmitting || updateCategory.isPending}
       submitButtonText="Save Changes"

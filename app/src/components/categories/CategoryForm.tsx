@@ -91,6 +91,8 @@ interface CategoryFormProps {
   allSpecifications?: Array<{ id: number; name_en: string; name_ar?: string | null }>;
   allProducts?: ProductItem[];
   assignedProducts?: ProductItem[];
+  /** Stable server-assigned IDs for edit mode (not the live selection). */
+  initialAssignedProductIds?: number[];
   onSubmit: () => void;
   isSubmitting: boolean;
   submitButtonText: string;
@@ -135,6 +137,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   allSpecifications = [],
   allProducts = [],
   assignedProducts = [],
+  initialAssignedProductIds,
   onSubmit,
   isSubmitting,
   submitButtonText,
@@ -372,6 +375,14 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
         <ProductsTableSection
           title="Category Products"
           products={assignedProducts}
+          assignedProductIds={
+            mode === "edit" ? initialAssignedProductIds ?? product_ids : undefined
+          }
+          productListScope={
+            mode === "edit" && currentCategoryId
+              ? { category_ids: String(currentCategoryId) }
+              : undefined
+          }
           onProductsChange={onProductIdsChange}
           emptyMessage="No products in this category"
           editButtonText="Edit Products"

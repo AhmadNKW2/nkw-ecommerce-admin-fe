@@ -18,8 +18,6 @@ import { Button } from "../../src/components/ui/button";
 import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { AlertCircle } from "lucide-react";
 import { validateVendorForm } from "../../src/lib/validations";
-import { ProductItem } from "../../src/components/common/ProductsTableSection";
-import { mapProductToProductItem } from "../../src/components/common/product-table-utils";
 import { buildUpdateProductChanges } from "@/lib/product-changes";
 
 export default function EditVendorPage() {
@@ -59,15 +57,9 @@ export default function EditVendorPage() {
 
   const updateVendor = useUpdateVendor();
 
-  // Get assigned products from vendor response
-  const assignedProducts: ProductItem[] = useMemo(() => {
-    const products = (vendor as any)?.products || [];
-    return products.map((product: any) => mapProductToProductItem(product));
-  }, [vendor]);
-
   const originalProductIds = useMemo(() => {
-    const products = (vendor as any)?.products || [];
-    return products.map((product: { id: number }) => product.id);
+    const ids = (vendor as any)?.product_ids;
+    return Array.isArray(ids) ? ids.filter((id: unknown): id is number => typeof id === "number") : [];
   }, [vendor]);
 
   // Initialize form when vendor loads
@@ -99,10 +91,10 @@ export default function EditVendorPage() {
 
   // Initialize product IDs from vendor response
   useEffect(() => {
-    if (vendor && (vendor as any).products) {
-      setProductIds((vendor as any).products.map((p: { id: number }) => p.id));
+    if (vendor) {
+      setProductIds(originalProductIds);
     }
-  }, [vendor]);
+  }, [vendor, originalProductIds]);
 
   const validate = () => {
     const result = validateVendorForm({
@@ -257,7 +249,8 @@ export default function EditVendorPage() {
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}
       formErrors={formErrors}
-      assignedProducts={assignedProducts}
+      assignedProducts={[]}
+      initialAssignedProductIds={originalProductIds}
       onSubmit={handleSubmit}
       isSubmitting={updateVendor.isPending}
       submitButtonText="Save Changes"

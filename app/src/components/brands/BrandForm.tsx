@@ -49,9 +49,11 @@ interface BrandFormProps {
   };
   allProducts?: ProductItem[];
   assignedProducts?: ProductItem[];
+  initialAssignedProductIds?: number[];
   onSubmit: () => void;
   isSubmitting: boolean;
   submitButtonText: string;
+  currentBrandId?: number;
 }
 
 export const BrandForm: React.FC<BrandFormProps> = ({
@@ -81,9 +83,11 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   formErrors,
   allProducts = [],
   assignedProducts = [],
+  initialAssignedProductIds,
   onSubmit,
   isSubmitting,
   submitButtonText,
+  currentBrandId,
 }) => {
   const router = useRouter();
   useEnterToSubmit(onSubmit, isSubmitting);
@@ -203,6 +207,14 @@ export const BrandForm: React.FC<BrandFormProps> = ({
         <ProductsTableSection
           title="Brand Products"
           products={assignedProducts}
+          assignedProductIds={
+            mode === "edit" ? initialAssignedProductIds ?? product_ids : undefined
+          }
+          productListScope={
+            mode === "edit" && currentBrandId
+              ? { brand_ids: String(currentBrandId) }
+              : undefined
+          }
           onProductsChange={onProductIdsChange}
           emptyMessage="No products assigned to this brand"
           editButtonText="Edit Products"

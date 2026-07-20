@@ -51,6 +51,7 @@ interface VendorFormProps {
   };
   allProducts?: ProductItem[];
   assignedProducts?: ProductItem[];
+  initialAssignedProductIds?: number[];
   onSubmit: () => void;
   isSubmitting: boolean;
   submitButtonText: string;
@@ -84,6 +85,7 @@ export const VendorForm: React.FC<VendorFormProps> = ({
   formErrors,
   allProducts = [],
   assignedProducts = [],
+  initialAssignedProductIds,
   onSubmit,
   isSubmitting,
   submitButtonText,
@@ -218,6 +220,14 @@ export const VendorForm: React.FC<VendorFormProps> = ({
         <ProductsTableSection
           title="Vendor Products"
           products={assignedProducts}
+          assignedProductIds={
+            mode === "edit" ? initialAssignedProductIds ?? product_ids : undefined
+          }
+          productListScope={
+            mode === "edit" && vendorId
+              ? { vendor_ids: String(vendorId) }
+              : undefined
+          }
           onProductsChange={onProductIdsChange}
           emptyMessage="No products assigned to this vendor"
           editButtonText="Edit Products"

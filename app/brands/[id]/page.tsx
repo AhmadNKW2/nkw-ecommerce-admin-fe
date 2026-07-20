@@ -18,8 +18,6 @@ import { Button } from "../../src/components/ui/button";
 import { ImageUploadItem } from "../../src/components/ui/image-upload";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { validateBrandForm } from "../../src/lib/validations";
-import { ProductItem } from "../../src/components/common/ProductsTableSection";
-import { mapProductToProductItem } from "../../src/components/common/product-table-utils";
 import { buildUpdateProductChanges } from "@/lib/product-changes";
 
 export default function EditBrandPage() {
@@ -57,15 +55,9 @@ export default function EditBrandPage() {
 
   const updateBrand = useUpdateBrand();
 
-  // Get assigned products from brand response
-  const assignedProducts: ProductItem[] = useMemo(() => {
-    const products = (brand as any)?.products || [];
-    return products.map((product: any) => mapProductToProductItem(product));
-  }, [brand]);
-
   const originalProductIds = useMemo(() => {
-    const products = (brand as any)?.products || [];
-    return products.map((product: { id: number }) => product.id);
+    const ids = (brand as any)?.product_ids;
+    return Array.isArray(ids) ? ids.filter((id: unknown): id is number => typeof id === "number") : [];
   }, [brand]);
 
   useEffect(() => {
@@ -93,12 +85,11 @@ export default function EditBrandPage() {
     }
   }, [brand]);
 
-  // Initialize product IDs from brand response
   useEffect(() => {
-    if (brand && (brand as any).products) {
-      setProductIds((brand as any).products.map((p: { id: number }) => p.id));
+    if (brand) {
+      setProductIds(originalProductIds);
     }
-  }, [brand]);
+  }, [brand, originalProductIds]);
 
   const validate = () => {
     const result = validateBrandForm({
@@ -251,10 +242,12 @@ export default function EditBrandPage() {
       onVisibleChange={setVisible}
       onProductIdsChange={setProductIds}
       formErrors={formErrors}
-      assignedProducts={assignedProducts}
+      assignedProducts={[]}
+      initialAssignedProductIds={originalProductIds}
       onSubmit={handleSubmit}
       isSubmitting={updateBrand.isPending}
       submitButtonText="Save Changes"
+      currentBrandId={brandId}
     />
   );
 }

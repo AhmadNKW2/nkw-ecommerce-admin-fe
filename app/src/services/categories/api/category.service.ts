@@ -252,11 +252,17 @@ class CategoryService {
   // ============================================
 
   /**
-   * Get products in a category
-   * Returns { category, products }
+   * Get products in a category (paginated)
+   * Returns { category, products, meta }
    */
-  async getProducts(id: number): Promise<ApiResponse<{ category: Category; products: any[] }>> {
-    return httpClient.get<ApiResponse<{ category: Category; products: any[] }>>(`${this.endpoint}/${id}/products`);
+  async getProducts(
+    id: number,
+    params?: { page?: number; limit?: number }
+  ): Promise<ApiResponse<{ category: Category; products: any[]; meta?: any }>> {
+    return httpClient.get<ApiResponse<{ category: Category; products: any[]; meta?: any }>>(
+      `${this.endpoint}/${id}/products`,
+      params
+    );
   }
 
   /**

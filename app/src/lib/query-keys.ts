@@ -46,6 +46,8 @@ export const queryKeys = {
     main: ["categories", "main"] as const,
     archived: ["categories", "archived"] as const,
     products: (id: number) => ["categories", id, "products"] as const,
+    vendorCategories: (id: number) =>
+      ["categories", id, "vendor-categories"] as const,
     urls: () => [...queryKeys.categories.all, "urls"] as const,
     urlList: (params?: Record<string, any>) =>
       [...queryKeys.categories.urls(), params] as const,

@@ -177,7 +177,7 @@ export function SubmissionsPanel() {
             ? `This will permanently delete submission #${submissionToDelete.id} (“${submissionToDelete.title}”) and its related catalog requests. ${
                 submissionToDelete.status === "materialized" &&
                 submissionToDelete.product_id
-                  ? "The already-created product will not be deleted."
+                  ? "Any linked product is left alone (even if that product was already deleted)."
                   : "This action cannot be undone."
               }`
             : undefined

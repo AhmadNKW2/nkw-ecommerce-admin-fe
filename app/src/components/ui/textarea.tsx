@@ -9,6 +9,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   minRows?: number;
   maxRows?: number;
   isRtl?: boolean;
+  isClearButton?: boolean;
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
@@ -23,10 +24,12 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       onBlur,
       onClear,
       isRtl = false,
+      isClearButton = true,
       autoResize: _autoResize,
       minRows,
       maxRows: _maxRows,
       rows,
+      disabled,
       ...props
     },
     ref,
@@ -45,6 +48,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     };
 
     const handleClear = () => {
+      if (disabled) return;
       if (onClear) {
         onClear();
       } else if (onChange) {
@@ -60,6 +64,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         hasValue={hasValue}
         onClear={handleClear}
         isRtl={isRtl}
+        isClearButton={isClearButton && !disabled}
+        disabled={disabled}
       >
         <textarea
           ref={ref}
@@ -71,6 +77,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           rows={rows ?? minRows}
           className={`${getFieldClasses(error, hasValue, false, false, className, isRtl)} resize-y min-h-20`}
           dir={isRtl ? 'rtl' : 'ltr'}
+          disabled={disabled}
           {...props}
         />
       </FieldWrapper>

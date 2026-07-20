@@ -189,10 +189,22 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
   outgoingHeaders.delete("host");
 
   const method = req.method.toUpperCase();
-  const hasBody = !(method === "GET" || method === "HEAD");
+  // GET/HEAD never have bodies. For DELETE/OPTIONS, browsers often send
+  // Content-Length: 0; forwarding that empty body through undici/fetch can throw
+  // and surface as an empty Vercel 500 with no Nest JSON payload.
+  const methodNeverHasBody = method === "GET" || method === "HEAD";
   const startedAt = Date.now();
   const shouldLog = isSsrApiDevLoggingEnabled();
-  const requestBody = hasBody ? new Uint8Array(await req.arrayBuffer()) : null;
+  const rawBody = methodNeverHasBody
+    ? null
+    : new Uint8Array(await req.arrayBuffer());
+  const requestBody =
+    rawBody && rawBody.byteLength > 0 ? rawBody : null;
+
+  if (!requestBody) {
+    outgoingHeaders.delete("content-length");
+    outgoingHeaders.delete("content-type");
+  }
 
   const requestLog = shouldLog
     ? {
@@ -279,18 +291,29 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
       headers: resHeaders,
     });
   } catch (error) {
+    const serialized = serializeError(error);
     if (requestLog) {
       await logSsrApiRequestFailed({
         request: requestLog,
         error: {
           finishedAt: new Date().toISOString(),
           durationMs: Date.now() - startedAt,
-          ...serializeError(error),
+          ...serialized,
         },
       });
     }
 
-    throw error;
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 500,
+          message: serialized.message || "Upstream API proxy failed",
+        },
+        time: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }
 

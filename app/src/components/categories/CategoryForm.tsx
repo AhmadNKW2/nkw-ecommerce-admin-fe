@@ -17,6 +17,7 @@ import { Folder } from "lucide-react";
 import { Category } from "../../services/categories/types/category.types";
 import { ProductsTableSection, ProductItem } from "../common/ProductsTableSection";
 import { CategoryTreeSelect } from "../products/CategoryTreeSelect";
+import { CategoryVendorCategoriesSection } from "./CategoryVendorCategoriesSection";
 import { useEnterToSubmit } from "../../hooks/use-enter-to-submit";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
 
@@ -232,6 +233,9 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               value={metaTitleEn}
               onChange={(e) => onMetaTitleEnChange(e.target.value)}
               maxLength={70}
+              disabled
+              readOnly
+              isClearButton={false}
             />
           )}
           {onMetaTitleArChange && (
@@ -241,6 +245,9 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               onChange={(e) => onMetaTitleArChange(e.target.value)}
               maxLength={70}
               isRtl
+              disabled
+              readOnly
+              isClearButton={false}
             />
           )}
           {onMetaDescriptionEnChange && (
@@ -250,6 +257,9 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               onChange={(e) => onMetaDescriptionEnChange(e.target.value)}
               rows={3}
               maxLength={160}
+              disabled
+              readOnly
+              isClearButton={false}
             />
           )}
           {onMetaDescriptionArChange && (
@@ -260,6 +270,9 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               rows={3}
               maxLength={160}
               isRtl
+              disabled
+              readOnly
+              isClearButton={false}
             />
           )}
           {/* Parent Category */}
@@ -349,6 +362,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
         </div>
       </Card>
       )}
+
+      {mode === "edit" && currentCategoryId ? (
+        <CategoryVendorCategoriesSection categoryId={currentCategoryId} />
+      ) : null}
 
       {/* Products Section */}
       <Card>

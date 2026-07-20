@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Percent, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Percent, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "../../src/components/common/PageHeader";
 import { SettingsNav } from "../../src/components/settings/SettingsNav";
 import { Card } from "../../src/components/ui/card";
@@ -10,14 +10,17 @@ import { Button } from "../../src/components/ui/button";
 import { Select } from "../../src/components/ui/select";
 import { showErrorToast } from "../../src/lib/toast";
 import {
+  useCancelProductPricingJob,
   useCreateProductPriceRule,
   useDeleteProductPriceRule,
   useProductPriceRules,
   useUpdateProductPriceRule,
+  useVerifyAndFixProductPricing,
 } from "../../src/services/settings/hooks/use-settings";
 import {
   CreateProductPriceRuleDto,
   ProductPriceRule,
+  ProductPricingJobStatus,
 } from "../../src/services/settings/types/settings.types";
 import { useVendors } from "../../src/services/vendors/hooks/use-vendors";
 import { useBrands } from "../../src/services/brands/hooks/use-brands";
@@ -25,14 +28,15 @@ import { CategoryTreeSelect } from "../../src/components/products/CategoryTreeSe
 import { useResolvedFeatureToggles } from "../../src/hooks/use-resolved-feature-toggles";
 import { useCategories } from "../../src/services/categories/hooks/use-categories";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ProductPriceRuleDraft = {
   id: number | null;
   vendor_ids: string[];
   brand_ids: string[];
   category_ids: string[];
-  price_condition: "" | "any" | "more_than" | "less_than" | "between";
+  /** Empty/null means any product price (no price filter). */
+  price_condition: "" | "more_than" | "less_than" | "between";
   adjustment_type: "" | "increase" | "decrease";
   min_product_price: string;
   max_product_price: string;
@@ -53,6 +57,16 @@ const createEmptyRuleDraft = (): ProductPriceRuleDraft => ({
   is_active: true,
 });
 
+const mapPriceConditionToDraft = (
+  condition: ProductPriceRule["price_condition"] | null | undefined,
+): ProductPriceRuleDraft["price_condition"] => {
+  if (!condition || condition === "any") {
+    return "";
+  }
+
+  return condition;
+};
+
 const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => {
   const legacyRule = rule as ProductPriceRule & {
     vendor_id?: number | null;
@@ -66,6 +80,7 @@ const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => {
     (legacyRule.vendor_id != null ? [legacyRule.vendor_id] : []);
   const brandIds =
     rule.brand_ids ?? (legacyRule.brand_id != null ? [legacyRule.brand_id] : []);
+  const priceCondition = mapPriceConditionToDraft(rule.price_condition);
   const minProductPrice =
     rule.min_product_price ?? legacyRule.min_vendor_price ?? null;
   const maxProductPrice =
@@ -76,16 +91,20 @@ const mapRuleToDraft = (rule: ProductPriceRule): ProductPriceRuleDraft => {
     vendor_ids: vendorIds.map((vendorId) => String(vendorId)),
     brand_ids: brandIds.map((brandId) => String(brandId)),
     category_ids: (rule.category_ids ?? []).map((categoryId) => String(categoryId)),
-    price_condition: rule.price_condition ?? "between",
+    price_condition: priceCondition,
     adjustment_type: rule.adjustment_type ?? "decrease",
     min_product_price:
-      minProductPrice === null || minProductPrice === undefined
+      priceCondition === "" || priceCondition === "less_than"
         ? ""
-        : String(minProductPrice),
+        : minProductPrice === null || minProductPrice === undefined
+          ? ""
+          : String(minProductPrice),
     max_product_price:
-      maxProductPrice === null || maxProductPrice === undefined
+      priceCondition === "" || priceCondition === "more_than"
         ? ""
-        : String(maxProductPrice),
+        : maxProductPrice === null || maxProductPrice === undefined
+          ? ""
+          : String(maxProductPrice),
     percentage: String(rule.percentage ?? "1"),
     is_active: rule.is_active ?? true,
   };
@@ -107,7 +126,12 @@ export default function PricingSettingsPage() {
   const createProductPriceRule = useCreateProductPriceRule();
   const updateProductPriceRule = useUpdateProductPriceRule();
   const deleteProductPriceRule = useDeleteProductPriceRule();
+  const verifyAndFixProductPricing = useVerifyAndFixProductPricing();
+  const cancelProductPricingJob = useCancelProductPricingJob();
   const [ruleDrafts, setRuleDrafts] = useState<ProductPriceRuleDraft[]>([]);
+  const [pricingJobId, setPricingJobId] = useState<string | null>(null);
+  const [pricingJobStatus, setPricingJobStatus] =
+    useState<ProductPricingJobStatus | null>(null);
 
   useEffect(() => {
     if (!pricingRules) {
@@ -117,15 +141,78 @@ export default function PricingSettingsPage() {
     setRuleDrafts(pricingRules.map(mapRuleToDraft));
   }, [pricingRules]);
 
+  useEffect(() => {
+    if (!pricingJobId) {
+      return;
+    }
+
+    const eventSource = new EventSource(
+      `/api/settings/pricing-rules/jobs/${pricingJobId}/stream`,
+      { withCredentials: true },
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        const status = (parsed?.data ?? parsed) as ProductPricingJobStatus;
+        setPricingJobStatus(status);
+
+        if (status?.status && status.status !== "running") {
+          eventSource.close();
+        }
+      } catch {
+        // ignore malformed SSE payloads
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [pricingJobId]);
+
+  const trackPricingJob = (jobId: string | null | undefined) => {
+    if (!jobId) {
+      return;
+    }
+
+    setPricingJobId(jobId);
+    setPricingJobStatus(null);
+  };
+
   const setRuleField = <K extends keyof ProductPriceRuleDraft>(
     index: number,
     field: K,
     value: ProductPriceRuleDraft[K],
   ) => {
     setRuleDrafts((prev) =>
-      prev.map((rule, currentIndex) =>
-        currentIndex === index ? { ...rule, [field]: value } : rule,
-      ),
+      prev.map((rule, currentIndex) => {
+        if (currentIndex !== index) {
+          return rule;
+        }
+
+        if (field !== "price_condition") {
+          return { ...rule, [field]: value };
+        }
+
+        const nextCondition = value as ProductPriceRuleDraft["price_condition"];
+
+        return {
+          ...rule,
+          price_condition: nextCondition,
+          min_product_price:
+            nextCondition === "more_than" || nextCondition === "between"
+              ? rule.min_product_price
+              : "",
+          max_product_price:
+            nextCondition === "less_than" || nextCondition === "between"
+              ? rule.max_product_price
+              : "",
+        };
+      }),
     );
   };
 
@@ -135,14 +222,20 @@ export default function PricingSettingsPage() {
     const vendorIds = draft.vendor_ids.map((value) => Number(value));
     const brandIds = draft.brand_ids.map((value) => Number(value));
     const categoryIds = draft.category_ids.map((value) => Number(value));
+    const priceCondition =
+      draft.price_condition === "" ? null : draft.price_condition;
     const minProductPrice =
-      draft.min_product_price.trim() === ""
-        ? null
-        : Number(draft.min_product_price);
+      priceCondition === "more_than" || priceCondition === "between"
+        ? draft.min_product_price.trim() === ""
+          ? null
+          : Number(draft.min_product_price)
+        : null;
     const maxProductPrice =
-      draft.max_product_price.trim() === ""
-        ? null
-        : Number(draft.max_product_price);
+      priceCondition === "less_than" || priceCondition === "between"
+        ? draft.max_product_price.trim() === ""
+          ? null
+          : Number(draft.max_product_price)
+        : null;
     const percentage = Number(draft.percentage);
 
     if (
@@ -182,12 +275,21 @@ export default function PricingSettingsPage() {
       return null;
     }
 
-    if (
-      draft.price_condition === "less_than" &&
-      maxProductPrice === null &&
-      minProductPrice === null
-    ) {
+    if (priceCondition === "more_than" && minProductPrice === null) {
+      showErrorToast("More than condition needs a minimum product price");
+      return null;
+    }
+
+    if (priceCondition === "less_than" && maxProductPrice === null) {
       showErrorToast("Less than condition needs a maximum product price");
+      return null;
+    }
+
+    if (
+      priceCondition === "between" &&
+      (minProductPrice === null || maxProductPrice === null)
+    ) {
+      showErrorToast("Between condition needs both minimum and maximum prices");
       return null;
     }
 
@@ -204,8 +306,8 @@ export default function PricingSettingsPage() {
       vendor_ids: vendorIds.length > 0 ? vendorIds : null,
       brand_ids: brandIds.length > 0 ? brandIds : null,
       category_ids: categoryIds.length > 0 ? categoryIds : null,
-      // Empty condition means no price filter: between with empty bounds matches all.
-      price_condition: draft.price_condition === "" ? "between" : draft.price_condition,
+      // Null condition means any product price (no price filter).
+      price_condition: priceCondition,
       adjustment_type: draft.adjustment_type,
       min_product_price: minProductPrice,
       max_product_price: maxProductPrice,
@@ -220,20 +322,27 @@ export default function PricingSettingsPage() {
       return;
     }
 
+    if (isPricingJobActive) {
+      showErrorToast("Wait for the current pricing job to finish");
+      return;
+    }
+
     const payload = buildRulePayload(draft);
     if (!payload) {
       return;
     }
 
     if (draft.id === null) {
-      await createProductPriceRule.mutateAsync(payload);
+      const response = await createProductPriceRule.mutateAsync(payload);
+      trackPricingJob(response.data.reprice_job_id);
       return;
     }
 
-    await updateProductPriceRule.mutateAsync({
+    const response = await updateProductPriceRule.mutateAsync({
       id: draft.id,
       data: payload,
     });
+    trackPricingJob(response.data.reprice_job_id);
   };
 
   const handleDeleteRule = async (index: number) => {
@@ -247,21 +356,71 @@ export default function PricingSettingsPage() {
       return;
     }
 
+    if (isPricingJobActive) {
+      showErrorToast("Wait for the current pricing job to finish");
+      return;
+    }
+
     if (!window.confirm("Delete this pricing rule?")) {
       return;
     }
 
-    await deleteProductPriceRule.mutateAsync(draft.id);
+    const response = await deleteProductPriceRule.mutateAsync(draft.id);
+    trackPricingJob(response.data.reprice_job_id);
+  };
+
+  const handleVerifyAndFixPricing = async () => {
+    if (isPricingJobActive) {
+      showErrorToast("Wait for the current pricing job to finish");
+      return;
+    }
+
+    const response = await verifyAndFixProductPricing.mutateAsync();
+    trackPricingJob(response.data.job_id);
+  };
+
+  const handleCancelPricingJob = async () => {
+    if (!pricingJobId) {
+      return;
+    }
+
+    await cancelProductPricingJob.mutateAsync(pricingJobId);
   };
 
   const handleAddRule = () => {
     setRuleDrafts((prev) => [...prev, createEmptyRuleDraft()]);
   };
 
+  const isPricingJobActive =
+    !!pricingJobId &&
+    (!pricingJobStatus || pricingJobStatus.status === "running");
+
   const isRuleMutationPending =
     createProductPriceRule.isPending ||
     updateProductPriceRule.isPending ||
-    deleteProductPriceRule.isPending;
+    deleteProductPriceRule.isPending ||
+    verifyAndFixProductPricing.isPending ||
+    isPricingJobActive;
+
+  const pricingJobProgressPercent = useMemo(() => {
+    if (!pricingJobStatus || pricingJobStatus.total <= 0) {
+      return 0;
+    }
+
+    return Math.min(
+      100,
+      Math.round((pricingJobStatus.progress / pricingJobStatus.total) * 100),
+    );
+  }, [pricingJobStatus]);
+
+  const pricingJobBadgeClass =
+    pricingJobStatus?.status === "done"
+      ? "bg-success/15 text-success"
+      : pricingJobStatus?.status === "failed"
+        ? "bg-danger/15 text-danger"
+        : pricingJobStatus?.status === "cancelled"
+          ? "bg-warning/20 text-warning"
+          : "bg-primary/15 text-primary";
 
   const vendorOptions = (vendorsData?.data ?? []).map((vendor: any) => ({
     value: String(vendor.id),
@@ -296,23 +455,108 @@ export default function PricingSettingsPage() {
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
                     Define persisted increase/decrease rules by vendor, brand,
-                    category, and original-price conditions.
+                    category, and original-price conditions. Saving a rule
+                    recalculates product prices in a background job.
                   </p>
                 </div>
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={handleAddRule}
-              disabled={isLoading || isRuleMutationPending}
-            >
-              <span className="inline-flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Rule
-              </span>
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={handleVerifyAndFixPricing}
+                disabled={isLoading || isRuleMutationPending}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {verifyAndFixProductPricing.isPending
+                    ? "Starting..."
+                    : "Verify & Fix Pricing"}
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleAddRule}
+                disabled={isLoading || isRuleMutationPending}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Rule
+                </span>
+              </Button>
+            </div>
           </div>
+
+          {pricingJobId ? (
+            <div className="rounded-r1 border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold">
+                    {pricingJobStatus?.mode === "verify_and_fix"
+                      ? "Verify & Fix Job"
+                      : "Reprice Job"}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Job ID: {pricingJobStatus?.job_id ?? pricingJobId}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${pricingJobBadgeClass}`}
+                >
+                  {(pricingJobStatus?.status ?? "running").toUpperCase()}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm">
+                <p>
+                  Processed: {pricingJobStatus?.progress ?? 0} /{" "}
+                  {pricingJobStatus?.total ?? "…"}
+                  {" · "}
+                  Left: {pricingJobStatus?.remaining ?? "…"}
+                  {" · "}
+                  Changed: {pricingJobStatus?.changed_count ?? 0}
+                </p>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${pricingJobProgressPercent}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  {pricingJobStatus
+                    ? `${pricingJobProgressPercent}% completed`
+                    : "Connecting to job stream..."}
+                </p>
+                {pricingJobStatus?.current_product_id ? (
+                  <p className="text-xs text-gray-500">
+                    Current product ID: {pricingJobStatus.current_product_id}
+                  </p>
+                ) : null}
+                {pricingJobStatus?.message ? (
+                  <p className="text-sm text-gray-600">{pricingJobStatus.message}</p>
+                ) : null}
+                {pricingJobStatus?.error ? (
+                  <p className="text-danger">{pricingJobStatus.error}</p>
+                ) : null}
+              </div>
+
+              {(pricingJobStatus?.status ?? "running") === "running" ? (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    color="#dc2626"
+                    onClick={handleCancelPricingJob}
+                    disabled={cancelProductPricingJob.isPending}
+                  >
+                    {cancelProductPricingJob.isPending
+                      ? "Cancelling..."
+                      : "Cancel Job"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {isError ? (
             <div className="rounded-r1 border border-danger/20 bg-danger/5 p-5">
@@ -406,7 +650,6 @@ export default function PricingSettingsPage() {
                       }
                       singleSelect={false}
                       label="Categories"
-                      placeholder="Any category"
                       disabled={isRuleMutationPending}
                     />
                     <Select
@@ -421,12 +664,11 @@ export default function PricingSettingsPage() {
                         )
                       }
                       options={[
-                        { value: "any", label: "Any product price" },
                         { value: "more_than", label: "More than min" },
                         { value: "less_than", label: "Less than max" },
                         { value: "between", label: "Between min and max" },
                       ]}
-                      placeholder="No price filter"
+                      placeholder="Any product price"
                       search={false}
                       disabled={isRuleMutationPending}
                     />
@@ -449,36 +691,42 @@ export default function PricingSettingsPage() {
                       search={false}
                       disabled={isRuleMutationPending}
                     />
-                    <Input
-                      label="Minimum Product Price"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={rule.min_product_price}
-                      onChange={(event) =>
-                        setRuleField(
-                          index,
-                          "min_product_price",
-                          event.target.value,
-                        )
-                      }
-                      disabled={isRuleMutationPending}
-                    />
-                    <Input
-                      label="Maximum Product Price"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={rule.max_product_price}
-                      onChange={(event) =>
-                        setRuleField(
-                          index,
-                          "max_product_price",
-                          event.target.value,
-                        )
-                      }
-                      disabled={isRuleMutationPending}
-                    />
+                    {rule.price_condition === "more_than" ||
+                    rule.price_condition === "between" ? (
+                      <Input
+                        label="Minimum Product Price"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={rule.min_product_price}
+                        onChange={(event) =>
+                          setRuleField(
+                            index,
+                            "min_product_price",
+                            event.target.value,
+                          )
+                        }
+                        disabled={isRuleMutationPending}
+                      />
+                    ) : null}
+                    {rule.price_condition === "less_than" ||
+                    rule.price_condition === "between" ? (
+                      <Input
+                        label="Maximum Product Price"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={rule.max_product_price}
+                        onChange={(event) =>
+                          setRuleField(
+                            index,
+                            "max_product_price",
+                            event.target.value,
+                          )
+                        }
+                        disabled={isRuleMutationPending}
+                      />
+                    ) : null}
                     <Input
                       label="Percentage"
                       type="number"
@@ -493,8 +741,9 @@ export default function PricingSettingsPage() {
                   </div>
 
                   <p className="text-sm text-gray-500">
-                    Leave vendors, brands, categories, and min/max product prices
-                    empty to apply the rule to all products.
+                    Leave vendors, brands, categories, and condition empty to
+                    apply the rule to any product price. Products with no matching
+                    rule keep their original price and original sale price.
                   </p>
 
                   <div className="flex flex-wrap gap-3">

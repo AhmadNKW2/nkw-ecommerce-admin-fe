@@ -191,3 +191,22 @@ export interface PermanentDeleteCategoryDto {
   deleteProducts?: boolean;
   move_products_to_category_id?: number;
 }
+
+/** Vendor category mapped to a platform category (reverse lookup). */
+export interface CategoryVendorCategoryItem {
+  id: number;
+  title: string;
+  reference_link: string;
+  parent_id: number | null;
+  parent_title: string | null;
+  sort_order: number;
+}
+
+/** Vendor + its vendor categories linked to one platform category. */
+export interface CategoryVendorCategoriesGroup {
+  vendor_id: number;
+  vendor_name_en: string;
+  vendor_name_ar: string;
+  vendor_slug: string | null;
+  vendor_categories: CategoryVendorCategoryItem[];
+}

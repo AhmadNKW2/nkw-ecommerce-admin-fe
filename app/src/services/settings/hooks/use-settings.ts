@@ -192,7 +192,7 @@ export const useCreateProductPriceRule = () => {
       settingsService.createProductPriceRule(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-      showSuccessToast('Pricing rule created successfully');
+      showSuccessToast('Pricing rule created. Product reprice started.');
     },
   });
 };
@@ -210,7 +210,7 @@ export const useUpdateProductPriceRule = () => {
     }) => settingsService.updateProductPriceRule(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-      showSuccessToast('Pricing rule updated successfully');
+      showSuccessToast('Pricing rule saved. Product reprice started.');
     },
   });
 };
@@ -222,8 +222,23 @@ export const useDeleteProductPriceRule = () => {
     mutationFn: (id: number) => settingsService.deleteProductPriceRule(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-      showSuccessToast('Pricing rule deleted successfully');
+      showSuccessToast('Pricing rule deleted. Product reprice started.');
     },
+  });
+};
+
+export const useVerifyAndFixProductPricing = () => {
+  return useMutation({
+    mutationFn: () => settingsService.verifyAndFixProductPricing(),
+    onSuccess: () => {
+      showSuccessToast('Product pricing verification started.');
+    },
+  });
+};
+
+export const useCancelProductPricingJob = () => {
+  return useMutation({
+    mutationFn: (jobId: string) => settingsService.cancelProductPricingJob(jobId),
   });
 };
 

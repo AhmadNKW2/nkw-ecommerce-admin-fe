@@ -11,6 +11,10 @@ import {
   ListMissingSeoFilters,
   ProductFieldToggles,
   ProductPriceRule,
+  ProductPriceRuleMutationResult,
+  ProductPricingJobStartResult,
+  ProductPricingJobStatus,
+  DeleteProductPriceRuleResult,
   RepriceExistingProductsResult,
   SeoGenerateJobStatus,
   SeoMissingItem,
@@ -94,8 +98,8 @@ class SettingsService {
 
   async createProductPriceRule(
     data: CreateProductPriceRuleDto,
-  ): Promise<ApiResponse<ProductPriceRule>> {
-    return httpClient.post<ApiResponse<ProductPriceRule>>(
+  ): Promise<ApiResponse<ProductPriceRuleMutationResult>> {
+    return httpClient.post<ApiResponse<ProductPriceRuleMutationResult>>(
       this.pricingRulesEndpoint,
       data,
       {
@@ -107,8 +111,8 @@ class SettingsService {
   async updateProductPriceRule(
     id: number,
     data: UpdateProductPriceRuleDto,
-  ): Promise<ApiResponse<ProductPriceRule>> {
-    return httpClient.patch<ApiResponse<ProductPriceRule>>(
+  ): Promise<ApiResponse<ProductPriceRuleMutationResult>> {
+    return httpClient.patch<ApiResponse<ProductPriceRuleMutationResult>>(
       `${this.pricingRulesEndpoint}/${id}`,
       data,
       {
@@ -119,13 +123,46 @@ class SettingsService {
 
   async deleteProductPriceRule(
     id: number,
-  ): Promise<ApiResponse<{ message: string }>> {
-    return httpClient.delete<ApiResponse<{ message: string }>>(
+  ): Promise<ApiResponse<DeleteProductPriceRuleResult>> {
+    return httpClient.delete<ApiResponse<DeleteProductPriceRuleResult>>(
       `${this.pricingRulesEndpoint}/${id}`,
       {
         headers: { 'x-skip-request-toast': '1' },
       },
     );
+  }
+
+  async verifyAndFixProductPricing(): Promise<
+    ApiResponse<ProductPricingJobStartResult>
+  > {
+    return httpClient.post<ApiResponse<ProductPricingJobStartResult>>(
+      `${this.pricingRulesEndpoint}/verify`,
+      undefined,
+      {
+        headers: { 'x-skip-request-toast': '1' },
+      },
+    );
+  }
+
+  async getProductPricingJob(
+    jobId: string,
+  ): Promise<ApiResponse<ProductPricingJobStatus>> {
+    return httpClient.get<ApiResponse<ProductPricingJobStatus>>(
+      `${this.pricingRulesEndpoint}/jobs/${jobId}`,
+      {
+        headers: { 'x-skip-request-toast': '1' },
+      },
+    );
+  }
+
+  async cancelProductPricingJob(
+    jobId: string,
+  ): Promise<ApiResponse<{ job_id: string; status: string; message: string }>> {
+    return httpClient.post<
+      ApiResponse<{ job_id: string; status: string; message: string }>
+    >(`${this.pricingRulesEndpoint}/jobs/${jobId}/cancel`, undefined, {
+      headers: { 'x-skip-request-toast': '1' },
+    });
   }
 
   async repriceExistingProducts(): Promise<ApiResponse<RepriceExistingProductsResult>> {

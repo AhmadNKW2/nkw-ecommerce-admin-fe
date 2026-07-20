@@ -202,6 +202,18 @@ export const useCategoryProducts = (id: number, options?: { enabled?: boolean })
   });
 };
 
+export const useCategoryVendorCategories = (
+  id: number,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: queryKeys.categories.vendorCategories(id),
+    queryFn: () => categoryService.getVendorCategories(id),
+    select: (response) => response.data,
+    enabled: options?.enabled ?? !!id,
+  });
+};
+
 export const useAssignProductsToCategory = () => {
   const queryClient = useQueryClient();
 

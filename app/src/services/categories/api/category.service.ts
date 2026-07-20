@@ -15,6 +15,7 @@ import {
   RestoreCategoryDto,
   PermanentDeleteCategoryDto,
   CategoryRestoreResult,
+  CategoryVendorCategoriesGroup,
 } from "../types/category.types";
 
 class CategoryService {
@@ -256,6 +257,17 @@ class CategoryService {
    */
   async getProducts(id: number): Promise<ApiResponse<{ category: Category; products: any[] }>> {
     return httpClient.get<ApiResponse<{ category: Category; products: any[] }>>(`${this.endpoint}/${id}/products`);
+  }
+
+  /**
+   * Vendor categories mapped to this platform category, grouped by vendor
+   */
+  async getVendorCategories(
+    id: number
+  ): Promise<ApiResponse<CategoryVendorCategoriesGroup[]>> {
+    return httpClient.get<ApiResponse<CategoryVendorCategoriesGroup[]>>(
+      `${this.endpoint}/${id}/vendor-categories`
+    );
   }
 
   /**

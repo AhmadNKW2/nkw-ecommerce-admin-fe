@@ -124,7 +124,8 @@ export interface ProductPriceRule {
   vendor_ids: number[] | null;
   brand_ids: number[] | null;
   category_ids: number[] | null;
-  price_condition: 'any' | 'more_than' | 'less_than' | 'between';
+  /** Null/any means any product price (no price filter). */
+  price_condition: 'any' | 'more_than' | 'less_than' | 'between' | null;
   adjustment_type: 'increase' | 'decrease';
   min_product_price: number | null;
   max_product_price: number | null;
@@ -138,7 +139,8 @@ export interface CreateProductPriceRuleDto {
   vendor_ids?: number[] | null;
   brand_ids?: number[] | null;
   category_ids?: number[] | null;
-  price_condition?: 'any' | 'more_than' | 'less_than' | 'between';
+  /** Null means any product price (no price filter). */
+  price_condition?: 'any' | 'more_than' | 'less_than' | 'between' | null;
   adjustment_type?: 'increase' | 'decrease';
   min_product_price?: number | null;
   max_product_price?: number | null;
@@ -152,6 +154,41 @@ export interface RepriceExistingProductsResult {
   updated_count: number;
   percentage: number;
   message: string;
+}
+
+export interface ProductPriceRuleMutationResult extends ProductPriceRule {
+  reprice_job_id: string;
+}
+
+export interface ProductPricingJobStartResult {
+  job_id: string;
+  status: 'running';
+  mode: 'reprice' | 'verify_and_fix';
+  started_at: string;
+}
+
+export interface ProductPricingJobStatus {
+  job_id: string;
+  status: 'running' | 'done' | 'failed' | 'cancelled';
+  mode: 'reprice' | 'verify_and_fix';
+  started_at: string;
+  finished_at: string | null;
+  progress: number;
+  total: number;
+  remaining: number;
+  changed_count: number;
+  unchanged_count: number;
+  skipped_count: number;
+  mismatched_count: number;
+  current_product_id: number | null;
+  error: string | null;
+  duration_seconds: number;
+  message: string;
+}
+
+export interface DeleteProductPriceRuleResult {
+  message: string;
+  reprice_job_id: string;
 }
 
 export interface ImportedPricingAuditFilters {

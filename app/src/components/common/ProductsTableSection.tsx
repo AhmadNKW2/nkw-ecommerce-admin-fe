@@ -47,6 +47,8 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
     setSelectedProductIds(products.map((product) => product.id));
   }, [products]);
 
+  // Checked products pending page Save Changes. Kept separate from displayProducts
+  // so unchecking does not remove rows from the table until the page is saved.
   const selectedProducts = useMemo(() => {
     const selectedIdSet = new Set(selectedProductIds);
     return displayProducts.filter((product) => selectedIdSet.has(product.id));
@@ -54,10 +56,10 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
 
   const paginatedProducts = useMemo(() => {
     const startIndex = (page - 1) * pageSize;
-    return selectedProducts.slice(startIndex, startIndex + pageSize);
-  }, [page, pageSize, selectedProducts]);
+    return displayProducts.slice(startIndex, startIndex + pageSize);
+  }, [page, pageSize, displayProducts]);
 
-  const totalPages = Math.ceil(selectedProducts.length / pageSize) || 1;
+  const totalPages = Math.ceil(displayProducts.length / pageSize) || 1;
 
   useEffect(() => {
     if (page > totalPages) {
@@ -67,13 +69,20 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
 
   const updateSelection = (productIds: number[], nextProducts?: ProductItem[]) => {
     setSelectedProductIds(productIds);
-    setDisplayProducts((prevProducts) => {
-      if (nextProducts) {
-        return nextProducts;
-      }
-
-      return prevProducts.filter((product) => productIds.includes(product.id));
-    });
+    // Keep existing rows visible when unselecting. Only append newly selected
+    // products from the modal; removals apply when the page Save Changes persists.
+    if (nextProducts) {
+      setDisplayProducts((prevProducts) => {
+        const prevIds = new Set(prevProducts.map((product) => product.id));
+        const merged = [...prevProducts];
+        nextProducts.forEach((product) => {
+          if (!prevIds.has(product.id)) {
+            merged.push(product);
+          }
+        });
+        return merged;
+      });
+    }
     onProductsChange(productIds);
   };
 
@@ -101,14 +110,14 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{title} <Badge variant="secondary" className="ml-2">{selectedProducts.length}</Badge></h3>
+        <h3 className="text-lg font-semibold">{title} <Badge variant="secondary" className="ml-2">{selectedProductIds.length}</Badge></h3>
         <Button variant="solid" onClick={() => setIsModalOpen(true)} disabled={isLoading}>
           {editButtonText}
         </Button>
       </div>
 
       {/* Products Table */}
-      {selectedProducts.length === 0 ? (
+      {displayProducts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
           <div className="bg-white p-4 rounded-full shadow-sm mb-3">
             <Package className="h-8 w-8 text-gray-400" />
@@ -126,7 +135,7 @@ export const ProductsTableSection: React.FC<ProductsTableSectionProps> = ({
               currentPage: page,
               totalPages,
               pageSize,
-              totalItems: selectedProducts.length,
+              totalItems: displayProducts.length,
               hasNextPage: page < totalPages,
               hasPreviousPage: page > 1,
             }}

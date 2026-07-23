@@ -4,8 +4,8 @@
  */
 import {
   ADMIN_ACCESS_KEYS,
+  CATALOG_PRESET_ACCESS,
   DEFAULT_ADMIN_ACCESS,
-  DEFAULT_CATALOG_MANAGER_ACCESS,
   resolveAdminAccess,
   type AdminAccess,
   type AdminAccessKey,
@@ -17,7 +17,6 @@ import {
   filterSettingsLinksByAccess,
 } from "../app/src/lib/settings-links";
 import { sidebarConfig } from "../app/src/components/sidebar/sidebar.config";
-import type { UserRole } from "../app/src/services/auth/types/auth.types";
 
 type TestResult = { name: string; ok: boolean; detail?: string };
 
@@ -53,7 +52,7 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
   banners: ["/banners", "/banners/create"],
   cashback_rules: ["/cashback-rules", "/cashback-rules/1"],
   notes: ["/notes"],
-  concepts: ["/concepts"],
+  concepts: ["/concepts", "/settings/terms"],
   archived: [
     "/archived-products",
     "/archived-categories",
@@ -61,10 +60,9 @@ const PERMISSION_ROUTE_SAMPLES: Record<AdminAccessKey, string[]> = {
     "/archived-brands",
   ],
   analytics: ["/analytics"],
-  settings: ["/settings/seo", "/settings/features", "/settings/popup", "/settings/terms"],
+  settings: ["/settings/seo", "/settings/features", "/settings/popup"],
   admins: ["/admins", "/admins/create"],
   catalog_requests: ["/catalog-requests"],
-  // Product form steps gate form sections, not routes.
   product_form_basic: [],
   product_form_attributes: [],
   product_form_specifications: [],
@@ -81,8 +79,6 @@ function collectSidebarLinks() {
       adminAccess:
         "adminAccess" in link ? (link.adminAccess as AdminAccessKey | undefined) : undefined,
       roles: link.roles,
-      catalogManagerBypass:
-        "catalogManagerBypass" in link ? link.catalogManagerBypass : undefined,
     })),
   );
 }
@@ -91,12 +87,16 @@ function testResolveAdminAccess() {
   const adminResolved = resolveAdminAccess({ role: "admin" });
   assert("resolveAdminAccess: admin gets full access", ADMIN_ACCESS_KEYS.every((k) => adminResolved[k]));
 
-  const catalogResolved = resolveAdminAccess({ role: "catalog_manager" });
+  const catalogPresetAdmin = resolveAdminAccess({
+    role: "admin",
+    adminAccess: CATALOG_PRESET_ACCESS,
+  });
   assert(
-    "resolveAdminAccess: catalog_manager defaults match backend",
-    catalogResolved.settings === false &&
-      catalogResolved.orders === false &&
-      catalogResolved.products === true,
+    "resolveAdminAccess: admin + catalog preset keeps admins=false",
+    catalogPresetAdmin.admins === false &&
+      catalogPresetAdmin.products === true &&
+      catalogPresetAdmin.concepts === true &&
+      catalogPresetAdmin.settings === false,
   );
 
   const explicit = resolveAdminAccess({
@@ -106,17 +106,6 @@ function testResolveAdminAccess() {
   assert("resolveAdminAccess: explicit settings=false", explicit.settings === false);
   assert("resolveAdminAccess: explicit orders=false", explicit.orders === false);
   assert("resolveAdminAccess: explicit products stays true", explicit.products === true);
-  assert(
-    "resolveAdminAccess: missing new keys inherit role defaults",
-    resolveAdminAccess({
-      role: "admin",
-      adminAccess: { settings: false, products: true } as AdminAccess,
-    }).concepts === true &&
-      resolveAdminAccess({
-        role: "admin",
-        adminAccess: { settings: false, products: true } as AdminAccess,
-      }).archived === true,
-  );
 }
 
 function testEachPermissionDeniesAccess() {
@@ -143,31 +132,26 @@ function testEachPermissionAllowsAccessWhenEnabled() {
   }
 }
 
-function testCatalogManagerDefaults() {
-  const access = DEFAULT_CATALOG_MANAGER_ACCESS;
+function testCatalogPresetDefaults() {
+  const access = CATALOG_PRESET_ACCESS;
   const canAccess = canAccessFactory(access);
 
-  assert("catalog_manager can access products", canAccessRoute("/products", "catalog_manager", canAccess));
-  assert("catalog_manager blocked from orders", !canAccessRoute("/orders", "catalog_manager", canAccess));
-  assert("catalog_manager blocked from settings/seo", !canAccessRoute("/settings/seo", "catalog_manager", canAccess));
-  assert(
-    "catalog_manager can access settings/terms via bypass",
-    canAccessRoute("/settings/terms", "catalog_manager", canAccess),
-  );
-  assert(
-    "catalog_manager blocked from product pricing",
-    !canAccessRoute("/products/pricing", "catalog_manager", canAccess),
-  );
+  assert("catalog preset can access products", canAccessRoute("/products", "admin", canAccess));
+  assert("catalog preset blocked from orders", !canAccessRoute("/orders", "admin", canAccess));
+  assert("catalog preset blocked from settings/seo", !canAccessRoute("/settings/seo", "admin", canAccess));
+  assert("catalog preset can access settings/terms via concepts", canAccessRoute("/settings/terms", "admin", canAccess));
+  assert("catalog preset blocked from product pricing", !canAccessRoute("/products/pricing", "admin", canAccess));
+  assert("catalog preset blocked from archived", !canAccessRoute("/archived-products", "admin", canAccess));
 }
 
-function testSettingsTermsBypass() {
+function testConceptsTermsAccess() {
   const conceptsOnly = makeAccess({ concepts: true, settings: false });
   const canAccessConceptsOnly = canAccessFactory(conceptsOnly);
 
   assert("admin concepts=true settings=false can access /concepts", canAccessRoute("/concepts", "admin", canAccessConceptsOnly));
   assert(
-    "admin concepts=true settings=false blocked from /settings/terms",
-    !canAccessRoute("/settings/terms", "admin", canAccessConceptsOnly),
+    "admin concepts=true settings=false can access /settings/terms",
+    canAccessRoute("/settings/terms", "admin", canAccessConceptsOnly),
   );
 
   const settingsOnly = makeAccess({ concepts: false, settings: true });
@@ -176,13 +160,8 @@ function testSettingsTermsBypass() {
     !canAccessRoute("/concepts", "admin", canAccessFactory(settingsOnly)),
   );
   assert(
-    "admin settings=true concepts=false can access /settings/terms",
-    canAccessRoute("/settings/terms", "admin", canAccessFactory(settingsOnly)),
-  );
-
-  assert(
-    "catalog_manager bypasses settings check on terms route",
-    canAccessRoute("/settings/terms", "catalog_manager", canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS)),
+    "admin settings=true concepts=false blocked from /settings/terms",
+    !canAccessRoute("/settings/terms", "admin", canAccessFactory(settingsOnly)),
   );
 }
 
@@ -193,7 +172,6 @@ function testArchivedPermission() {
   assert("archived=false blocks archived products even with products=true", !canAccessRoute("/archived-products", "admin", canAccess));
   assert("archived=false blocks archived categories even with categories=true", !canAccessRoute("/archived-categories", "admin", canAccess));
   assert("archived=true allows archived routes", canAccessRoute("/archived-products", "admin", canAccessFactory(makeAccess({ archived: true }))));
-  assert("catalog_manager blocked from archived routes", !canAccessRoute("/archived-products", "catalog_manager", canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS)));
 }
 
 function testSidebarLinkCoverage() {
@@ -213,12 +191,10 @@ function testSidebarVisibilityPerPermission() {
 
     for (const link of links) {
       if (!link.adminAccess || link.adminAccess !== key) continue;
-      if (link.catalogManagerBypass) continue;
 
       const visible = passesAdminAccessCheck(link.adminAccess, {
         role: "admin",
         canAccess,
-        catalogManagerBypass: link.catalogManagerBypass,
       }) && roleMatchesAllowedRoles("admin", link.roles);
 
       assert(`sidebar hides ${link.href} when ${key}=false`, !visible);
@@ -233,8 +209,8 @@ function testSettingsNavFiltering() {
     canAccess: canAccessFactory(conceptsOnly),
   });
   assert(
-    "settings nav empty when concepts=true but settings=false",
-    filteredConceptsOnly.length === 0,
+    "settings nav shows only terms when concepts=true settings=false",
+    filteredConceptsOnly.length === 1 && filteredConceptsOnly[0]?.href === "/settings/terms",
   );
 
   const allOff = makeAccess({ settings: false, concepts: false });
@@ -245,11 +221,11 @@ function testSettingsNavFiltering() {
   assert("settings nav empty when settings=false and concepts=false", filteredAllOff.length === 0);
 
   const catalogFiltered = filterSettingsLinksByAccess(SETTINGS_LINK_DEFINITIONS, {
-    role: "catalog_manager",
-    canAccess: canAccessFactory(DEFAULT_CATALOG_MANAGER_ACCESS),
+    role: "admin",
+    canAccess: canAccessFactory(CATALOG_PRESET_ACCESS),
   });
   assert(
-    "settings nav shows only terms for catalog_manager",
+    "settings nav shows only terms for catalog preset admin",
     catalogFiltered.length === 1 && catalogFiltered[0]?.href === "/settings/terms",
   );
 
@@ -266,12 +242,8 @@ function testRouteRuleOrdering() {
     getRouteAccessRule("/products/pricing")?.access === "product_pricing",
   );
   assert(
-    "/settings/terms matched before generic /settings",
-    getRouteAccessRule("/settings/terms")?.access === "settings",
-  );
-  assert(
-    "/settings/terms has catalog manager bypass",
-    getRouteAccessRule("/settings/terms")?.catalogManagerBypass === true,
+    "/settings/terms uses concepts access",
+    getRouteAccessRule("/settings/terms")?.access === "concepts",
   );
 }
 
@@ -293,8 +265,8 @@ function run() {
   testResolveAdminAccess();
   testEachPermissionDeniesAccess();
   testEachPermissionAllowsAccessWhenEnabled();
-  testCatalogManagerDefaults();
-  testSettingsTermsBypass();
+  testCatalogPresetDefaults();
+  testConceptsTermsAccess();
   testArchivedPermission();
   testSidebarLinkCoverage();
   testSidebarVisibilityPerPermission();

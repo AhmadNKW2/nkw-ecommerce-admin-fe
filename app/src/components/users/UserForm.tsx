@@ -28,10 +28,13 @@ import {
   ADMIN_ACCESS_LABELS,
   PRODUCT_FORM_ACCESS_LABELS,
   constrainAdminAccessByFeatureToggles,
+  detectAdminAccessPreset,
+  getAdminAccessForPreset,
   getVisibleProductFormAccessKeys,
   getVisibleSectionAccessKeys,
   type AdminAccess,
   type AdminAccessKey,
+  type AdminAccessPreset,
   type ProductFormAccessKey,
 } from "../../lib/admin-access";
 import { useResolvedFeatureToggles } from "../../hooks/use-resolved-feature-toggles";
@@ -103,9 +106,14 @@ const roleOptions = [
 
 const adminRoleOptions = [
   { value: "admin", label: "Admin" },
-  { value: "catalog_manager", label: "Catalog Manager" },
   { value: "vendor_admin", label: "Vendor Admin" },
   { value: "store_admin", label: "Store Admin" },
+];
+
+const permissionPresetOptions = [
+  { value: "full", label: "Full admin" },
+  { value: "catalog", label: "Catalog" },
+  { value: "custom", label: "Custom" },
 ];
 
 export const UserForm: React.FC<UserFormProps> = ({
@@ -168,6 +176,10 @@ export const UserForm: React.FC<UserFormProps> = ({
   };
 
   const isAdmin = userType === "admin";
+  const displayRole = role;
+  const isPortalRole = displayRole === "vendor_admin" || displayRole === "store_admin";
+  const permissionPreset: AdminAccessPreset =
+    adminAccess && !isPortalRole ? detectAdminAccessPreset(adminAccess) : "full";
   const { isResolved: featureTogglesResolved, isEnabled } = useResolvedFeatureToggles();
   const visibleSectionAccessKeys = useMemo(
     () =>
@@ -295,7 +307,7 @@ export const UserForm: React.FC<UserFormProps> = ({
             <div className="space-y-1">
               <Select
                 label="Admin Type"
-                value={role}
+                value={displayRole}
                 onChange={(value) => onRoleChange(value as UserRole)}
                 options={adminRoleOptions}
               />
@@ -305,7 +317,22 @@ export const UserForm: React.FC<UserFormProps> = ({
             </div>
           )}
 
-          {isAdmin && (role === "vendor_admin" || role === "store_admin") ? (
+          {isAdmin && !isPortalRole && adminAccess && onAdminAccessChange ? (
+            <Select
+              label="Permission preset"
+              value={permissionPreset}
+              onChange={(value) => {
+                const preset = value as AdminAccessPreset;
+                if (preset === "custom") {
+                  return;
+                }
+                onAdminAccessChange(getAdminAccessForPreset(preset));
+              }}
+              options={permissionPresetOptions}
+            />
+          ) : null}
+
+          {isAdmin && isPortalRole ? (
             <Select
               label="Linked Vendor"
               value={vendorId}

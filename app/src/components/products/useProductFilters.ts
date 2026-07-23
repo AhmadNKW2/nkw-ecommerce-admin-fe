@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth.context";
+import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSessionStoragePage } from "@/hooks/use-session-storage-page";
 import { useResolvedFeatureToggles } from "@/hooks/use-resolved-feature-toggles";
@@ -35,6 +36,8 @@ export function useProductFilters({
   onStatusCleared,
 }: UseProductFiltersOptions) {
   const { user } = useAuth();
+  const { canAccess } = useAdminAccess();
+  const canListStaffForCreatedBy = canAccess("admins");
   const isVendorPortalUser = isSimplifiedProductCreator(user);
   const lockedVendorId =
     isVendorPortalUser && user?.vendorId != null && Number(user.vendorId) > 0
@@ -129,10 +132,10 @@ export function useProductFilters({
   const categoriesData = useCategories();
   const { data: adminsData } = useCustomers(
     {
-      role: ["admin", "constant_token_admin", "catalog_manager"],
+      role: ["admin", "constant_token_admin"],
       limit: 100,
     } as any,
-    { enabled: !isVendorPortalUser },
+    { enabled: !isVendorPortalUser && canListStaffForCreatedBy },
   );
 
   // Vendor/store portal users can only see their own vendor's products.
@@ -557,7 +560,7 @@ export function useProductFilters({
     selectedCategoryIds,
     selectedCreatedByIds,
     vendorsEnabled: vendorsEnabled && !isVendorPortalUser,
-    createdByFilterEnabled: !isVendorPortalUser,
+    createdByFilterEnabled: !isVendorPortalUser && canListStaffForCreatedBy,
     referenceLinksEnabled,
     vendorOptions,
     brandOptions,

@@ -25,6 +25,7 @@ import { useVendors } from "../../services/vendors/hooks/use-vendors";
 import { useBrands } from "../../services/brands/hooks/use-brands";
 import { useCategories } from "../../services/categories/hooks/use-categories";
 import { useCustomers } from "../../services/customers/hooks/use-customers";
+import { useAdminAccess } from "../../hooks/use-admin-access";
 import { PAGINATION } from "../../lib/constants";
 
 const EMPTY_PRODUCTS: ProductItem[] = [];
@@ -67,6 +68,8 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     title = "Manage Products",
     excludeProductIds = EMPTY_PRODUCT_IDS,
 }) => {
+    const { canAccess } = useAdminAccess();
+    const canListStaffForCreatedBy = canAccess("admins");
     const [queryParams, setQueryParams] = useState<ProductFilters>({
         page: PAGINATION.defaultPage,
         limit: PAGINATION.defaultPageSize,
@@ -91,10 +94,10 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     const categoriesData = useCategories({ enabled: isOpen });
     const { data: adminsData } = useCustomers(
         {
-            role: ["admin", "constant_token_admin", "catalog_manager"],
+            role: ["admin", "constant_token_admin"],
             limit: 100,
         } as any,
-        { enabled: isOpen },
+        { enabled: isOpen && canListStaffForCreatedBy },
     );
 
     const products = data?.data?.data ?? EMPTY_API_PRODUCTS;
@@ -448,6 +451,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                                     />
                                 </div>
 
+                                {canListStaffForCreatedBy ? (
                                 <div className="relative flex-1">
                                     <Select
                                         label="Created By"
@@ -460,6 +464,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                                         disabled={adminOptions.length === 0}
                                     />
                                 </div>
+                                ) : null}
                             </div>
 
                             <div className="flex flex-col gap-4 xl:flex-row xl:items-center">

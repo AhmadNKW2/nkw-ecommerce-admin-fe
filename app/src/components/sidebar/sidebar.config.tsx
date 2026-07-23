@@ -1,10 +1,9 @@
 import React from 'react';
 import type { AdminAccessKey } from '@/lib/admin-access';
 
-// roles: undefined = everyone, ['admin'] = admin only, ['admin','catalog_manager'] = both
+// roles: undefined = everyone, ['admin'] = staff (permissions decide further)
 export type SidebarRole =
   | 'admin'
-  | 'catalog_manager'
   | 'vendor_admin'
   | 'store_admin';
 
@@ -19,7 +18,6 @@ export type SidebarLinkConfig = {
   roles?: SidebarRole[];
   featureToggle?: string;
   adminAccess?: AdminAccessKey;
-  catalogManagerBypass?: boolean;
   sidebarAction?: SidebarLinkAction;
 };
 
@@ -98,8 +96,7 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
+        }],
     },
 
     {
@@ -120,7 +117,7 @@ export const sidebarConfig = {
           href: '/products',
           label: 'Products',
           exact: true,
-          roles: ['admin', 'catalog_manager', 'vendor_admin', 'store_admin'] as SidebarRole[],
+          roles: ['admin', 'vendor_admin', 'store_admin'] as SidebarRole[],
           adminAccess: 'products',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +133,7 @@ export const sidebarConfig = {
         {
           href: '/product-submissions',
           label: 'AI Submissions',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'products',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,8 +145,7 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
+        }],
     },
 
     {
@@ -169,7 +165,7 @@ export const sidebarConfig = {
         {
           href: '/concepts',
           label: 'Concepts',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'concepts',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,8 +177,7 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
+        }],
     },
 
     {
@@ -238,7 +233,7 @@ export const sidebarConfig = {
         {
           href: '/attributes',
           label: 'Attributes',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'attributes',
           featureToggle: 'attributes_enabled' as const,
           icon: (
@@ -255,7 +250,7 @@ export const sidebarConfig = {
         {
           href: '/specifications',
           label: 'Specifications',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'specifications',
           featureToggle: 'specifications_enabled' as const,
           icon: (
@@ -272,7 +267,7 @@ export const sidebarConfig = {
         {
           href: '/categories',
           label: 'Categories',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'categories',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -288,7 +283,7 @@ export const sidebarConfig = {
         {
           href: '/vendors',
           label: 'Vendors',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'vendors',
           featureToggle: 'vendors_enabled' as const,
           icon: (
@@ -305,7 +300,7 @@ export const sidebarConfig = {
         {
           href: '/brands',
           label: 'Brands',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
+          roles: ['admin'] as SidebarRole[],
           adminAccess: 'brands',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,8 +411,7 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
+        }],
     },
     {
       label: 'Settings',
@@ -555,9 +549,8 @@ export const sidebarConfig = {
         {
           href: '/settings/terms',
           label: 'Search Concepts',
-          roles: ['admin', 'catalog_manager'] as SidebarRole[],
-          adminAccess: 'settings',
-          catalogManagerBypass: true,
+          roles: ['admin'] as SidebarRole[],
+          adminAccess: 'concepts',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -584,8 +577,7 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
+        }],
     },
     {
       label: 'Archived',
@@ -671,8 +663,6 @@ export const sidebarConfig = {
               />
             </svg>
           ),
-        },
-      ],
-    },
-  ],
+        }],
+    }],
 };

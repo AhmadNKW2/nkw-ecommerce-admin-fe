@@ -87,7 +87,6 @@ interface AuthContextType extends Omit<AuthState, 'sessionExpiresAt'> {
   sessionWarning: SessionWarning | null;
   dismissSessionWarning: () => void;
   isAdmin: boolean;
-  isCatalogManager: boolean;
   hasAdminAccess: boolean;
 }
 
@@ -606,8 +605,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, [handleLogout]);
 
   const isAdmin = authState.user?.role === 'admin' || authState.user?.role === 'constant_token_admin';
-  const isCatalogManager = authState.user?.role === 'catalog_manager';
-  const hasAdminAccess = isAdmin || isCatalogManager;
+  const hasAdminAccess = isAdmin;
 
   return (
     <AuthContext.Provider 
@@ -620,7 +618,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         sessionWarning,
         dismissSessionWarning,
         isAdmin,
-        isCatalogManager,
         hasAdminAccess,
       }}
     >

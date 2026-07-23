@@ -45,7 +45,6 @@ interface SidebarLinkItem {
     | 'popup_enabled'
   >;
   adminAccess?: AdminAccessKey;
-  catalogManagerBypass?: boolean;
 }
 
 type SidebarGroupItem = ResolvedSidebarGroup;
@@ -119,7 +118,6 @@ function AppSidebarInner({ groups, footer }: AppSidebarProps) {
     checkAdminAccess(link.adminAccess, {
       role: userRole,
       canAccess,
-      catalogManagerBypass: link.catalogManagerBypass,
     });
 
   const isFeatureTogglePending = (link: SidebarLinkItem): boolean =>

@@ -7,31 +7,29 @@ type RouteAccessRule = {
   access: AdminAccessKey;
   roles?: Extract<
     UserRole,
-    "admin" | "constant_token_admin" | "catalog_manager" | "vendor_admin" | "store_admin"
+    "admin" | "constant_token_admin" | "vendor_admin" | "store_admin"
   >[];
-  /** Allow catalog managers even when the access key is denied. */
-  catalogManagerBypass?: boolean;
 };
 
 const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
-  { prefix: "/settings/terms", access: "settings", roles: ["admin", "constant_token_admin", "catalog_manager"], catalogManagerBypass: true },
+  { prefix: "/settings/terms", access: "concepts", roles: ["admin", "constant_token_admin"] },
   { prefix: "/settings", access: "settings", roles: ["admin", "constant_token_admin"] },
-  { prefix: "/products/pricing", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/pricing-products", access: "product_pricing", roles: ["admin", "constant_token_admin", "catalog_manager"] },
+  { prefix: "/products/pricing", access: "product_pricing", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/pricing-products", access: "product_pricing", roles: ["admin", "constant_token_admin"] },
   { prefix: "/archived-products", access: "archived", roles: ["admin", "constant_token_admin"] },
   { prefix: "/archived-categories", access: "archived", roles: ["admin", "constant_token_admin"] },
   { prefix: "/archived-vendors", access: "archived", roles: ["admin", "constant_token_admin"] },
   { prefix: "/archived-brands", access: "archived", roles: ["admin", "constant_token_admin"] },
-  { prefix: "/concepts", access: "concepts", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/quick-submit", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager", "vendor_admin", "store_admin"] },
-  { prefix: "/product-submissions", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/catalog-requests", access: "catalog_requests", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/products", access: "products", roles: ["admin", "constant_token_admin", "catalog_manager", "vendor_admin", "store_admin"] },
-  { prefix: "/categories", access: "categories", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/vendors", access: "vendors", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/brands", access: "brands", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/attributes", access: "attributes", roles: ["admin", "constant_token_admin", "catalog_manager"] },
-  { prefix: "/specifications", access: "specifications", roles: ["admin", "constant_token_admin", "catalog_manager"] },
+  { prefix: "/concepts", access: "concepts", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/quick-submit", access: "products", roles: ["admin", "constant_token_admin", "vendor_admin", "store_admin"] },
+  { prefix: "/product-submissions", access: "products", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/catalog-requests", access: "catalog_requests", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/products", access: "products", roles: ["admin", "constant_token_admin", "vendor_admin", "store_admin"] },
+  { prefix: "/categories", access: "categories", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/vendors", access: "vendors", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/brands", access: "brands", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/attributes", access: "attributes", roles: ["admin", "constant_token_admin"] },
+  { prefix: "/specifications", access: "specifications", roles: ["admin", "constant_token_admin"] },
   { prefix: "/analytics", access: "analytics", roles: ["admin", "constant_token_admin"] },
   { prefix: "/orders", access: "orders", roles: ["admin", "constant_token_admin"] },
   { prefix: "/customers", access: "customers", roles: ["admin", "constant_token_admin"] },
@@ -73,6 +71,5 @@ export function canAccessRoute(
   return passesAdminAccessCheck(rule.access, {
     role,
     canAccess,
-    catalogManagerBypass: rule.catalogManagerBypass,
   });
 }

@@ -38,7 +38,6 @@ export const customerFormSchema = z.object({
       "user",
       "admin",
       "constant_token_admin",
-      "catalog_manager",
       "vendor_admin",
       "store_admin",
     ])
@@ -134,7 +133,6 @@ export function validateCustomerForm(
     "user",
     "admin",
     "constant_token_admin",
-    "catalog_manager",
     "vendor_admin",
     "store_admin",
   ];

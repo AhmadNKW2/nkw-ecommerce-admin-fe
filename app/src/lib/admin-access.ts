@@ -132,7 +132,7 @@ export const DEFAULT_ADMIN_ACCESS: AdminAccess = {
   ...ALL_PRODUCT_FORM_STEPS_ON,
 };
 
-export const DEFAULT_CATALOG_MANAGER_ACCESS: AdminAccess = {
+export const CATALOG_PRESET_ACCESS: AdminAccess = {
   products: true,
   product_pricing: false,
   categories: true,
@@ -242,15 +242,10 @@ type UserRole =
   | "user"
   | "admin"
   | "constant_token_admin"
-  | "catalog_manager"
   | "vendor_admin"
   | "store_admin";
 
 function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
-  if (role === "catalog_manager") {
-    return { ...DEFAULT_CATALOG_MANAGER_ACCESS };
-  }
-
   if (role === "vendor_admin" || role === "store_admin") {
     return { ...DEFAULT_VENDOR_PORTAL_ACCESS };
   }
@@ -263,6 +258,32 @@ function getDefaultAccessForRole(role: UserRole | undefined): AdminAccess {
     acc[key] = false;
     return acc;
   }, {} as AdminAccess);
+}
+
+export type AdminAccessPreset = "full" | "catalog" | "custom";
+
+function accessMatches(a: AdminAccess, b: AdminAccess): boolean {
+  return ADMIN_ACCESS_KEYS.every((key) => a[key] === b[key]);
+}
+
+export function detectAdminAccessPreset(access: AdminAccess): AdminAccessPreset {
+  if (accessMatches(access, DEFAULT_ADMIN_ACCESS)) {
+    return "full";
+  }
+  if (accessMatches(access, CATALOG_PRESET_ACCESS)) {
+    return "catalog";
+  }
+  return "custom";
+}
+
+export function getAdminAccessForPreset(preset: AdminAccessPreset): AdminAccess {
+  if (preset === "catalog") {
+    return { ...CATALOG_PRESET_ACCESS };
+  }
+  if (preset === "full") {
+    return { ...DEFAULT_ADMIN_ACCESS };
+  }
+  return { ...DEFAULT_ADMIN_ACCESS };
 }
 
 function normalizeExplicitAdminAccess(

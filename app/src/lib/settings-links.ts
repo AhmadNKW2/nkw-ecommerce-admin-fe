@@ -14,10 +14,8 @@ export type SettingsLinkDefinition = {
   label: string;
   navLabel: string;
   featureToggle?: SettingsLinkFeatureToggle;
-  roles?: ("admin" | "catalog_manager")[];
+  roles?: ("admin")[];
   adminAccess?: AdminAccessKey;
-  /** Catalog managers can open this page without the settings permission. */
-  catalogManagerBypass?: boolean;
 };
 
 /** Canonical settings links used by SettingsNav, sidebar reorder UI, and sidebar config. */
@@ -30,9 +28,8 @@ export const SETTINGS_LINK_DEFINITIONS: SettingsLinkDefinition[] = [
     href: "/settings/terms",
     label: "Search Concepts",
     navLabel: "Search Concepts",
-    roles: ["admin", "catalog_manager"],
-    adminAccess: "settings",
-    catalogManagerBypass: true,
+    roles: ["admin"],
+    adminAccess: "concepts",
   },
   {
     href: "/settings/search",
@@ -82,7 +79,6 @@ export function filterSettingsLinksByAccess<T extends SettingsLinkDefinition>(
     return passesAdminAccessCheck(link.adminAccess, {
       role: options.role,
       canAccess: options.canAccess,
-      catalogManagerBypass: link.catalogManagerBypass,
     });
   });
 }

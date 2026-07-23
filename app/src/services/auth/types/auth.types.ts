@@ -33,7 +33,6 @@ export type UserRole =
   | "user"
   | "admin"
   | "constant_token_admin"
-  | "catalog_manager"
   | "vendor_admin"
   | "store_admin";
 

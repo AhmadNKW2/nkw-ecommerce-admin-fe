@@ -59,7 +59,6 @@ export type UserRole =
   | "user"
   | "admin"
   | "constant_token_admin"
-  | "catalog_manager"
   | "vendor_admin"
   | "store_admin";
 
@@ -74,7 +73,6 @@ export const customerSchema = z.object({
     "user",
     "admin",
     "constant_token_admin",
-    "catalog_manager",
     "vendor_admin",
     "store_admin",
   ]).default("user"),

@@ -46,7 +46,7 @@ export const UserListPage: React.FC<UserListPageProps> = ({ userType }) => {
 
   const isAdmin = userType === "admin";
   const role: CustomerFilters["role"] = isAdmin
-    ? ["admin", "constant_token_admin", "catalog_manager", "vendor_admin", "store_admin"]
+    ? ["admin", "constant_token_admin", "vendor_admin", "store_admin"]
     : "user";
   const basePath = isAdmin ? "/admins" : "/customers";
   const label = isAdmin ? "Admin" : "Customer";

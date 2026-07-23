@@ -171,13 +171,45 @@ function buildUpstreamUrl(req: Request, pathSegments: string[]): string {
   return upstream.toString();
 }
 
+/** RFC 7230 hop-by-hop headers — must not be forwarded to upstream fetch. */
+const HOP_BY_HOP_REQUEST_HEADERS = [
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+] as const;
+
+function stripHopByHopRequestHeaders(headers: Headers) {
+  headers.delete("host");
+
+  // Connection may list extra hop-by-hop names — strip those before Connection itself.
+  const connection = headers.get("connection");
+  if (connection) {
+    for (const token of connection.split(",")) {
+      const name = token.trim();
+      if (name) headers.delete(name);
+    }
+  }
+
+  for (const name of HOP_BY_HOP_REQUEST_HEADERS) {
+    headers.delete(name);
+  }
+}
+
 async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const upstreamUrl = buildUpstreamUrl(req, path);
 
-  // Forward most headers (especially Cookie), but avoid sending hop-by-hop headers.
+  // Forward most headers (especially Cookie), but never hop-by-hop headers.
+  // Forwarding Transfer-Encoding with a buffered body makes undici throw
+  // UND_ERR_INVALID_ARG ("invalid transfer-encoding header") → admin 500s.
   const outgoingHeaders = new Headers(req.headers);
-  outgoingHeaders.delete("host");
+  stripHopByHopRequestHeaders(outgoingHeaders);
 
   const method = req.method.toUpperCase();
   // GET/HEAD never have bodies. For DELETE/OPTIONS, browsers often send
@@ -192,9 +224,13 @@ async function proxy(req: Request, ctx: { params: Promise<{ path: string[] }> })
   const requestBody =
     rawBody && rawBody.byteLength > 0 ? rawBody : null;
 
+  // Body is already buffered; undici must use Content-Length, not chunked TE.
+  outgoingHeaders.delete("transfer-encoding");
   if (!requestBody) {
     outgoingHeaders.delete("content-length");
     outgoingHeaders.delete("content-type");
+  } else {
+    outgoingHeaders.set("content-length", String(requestBody.byteLength));
   }
 
   const requestLog = shouldLog

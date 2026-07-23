@@ -19,6 +19,12 @@ const TRANSIENT_NETWORK_CODES = new Set([
   "UND_ERR_SOCKET",
 ]);
 
+/** Permanent request/response shape bugs — retrying only multiplies Vercel 500s. */
+const NON_TRANSIENT_NETWORK_CODES = new Set([
+  "UND_ERR_INVALID_ARG",
+  "UND_ERR_INVALID_RESPONSE",
+]);
+
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_BASE_DELAY_MS = 200;
 
@@ -38,9 +44,32 @@ function collectErrorChain(error: unknown): unknown[] {
 }
 
 export function isTransientUpstreamError(error: unknown): boolean {
-  for (const item of collectErrorChain(error)) {
+  const chain = collectErrorChain(error);
+
+  for (const item of chain) {
+    if (typeof item === "string") {
+      if (/UND_ERR_INVALID_ARG|invalid transfer-encoding/i.test(item)) {
+        return false;
+      }
+      continue;
+    }
+    if (!(item instanceof Error)) continue;
+
+    const code = (item as Error & { code?: string }).code;
+    if (code && NON_TRANSIENT_NETWORK_CODES.has(code)) {
+      return false;
+    }
+    if (/UND_ERR_INVALID_ARG|invalid transfer-encoding/i.test(item.message)) {
+      return false;
+    }
+  }
+
+  for (const item of chain) {
     if (!(item instanceof Error)) {
-      if (typeof item === "string" && /fetch failed|network|socket|timeout/i.test(item)) {
+      if (
+        typeof item === "string" &&
+        /fetch failed|network|socket|timeout/i.test(item)
+      ) {
         return true;
       }
       continue;
